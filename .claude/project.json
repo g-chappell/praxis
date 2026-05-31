@@ -1,0 +1,54 @@
+{
+  "starterVersion": "0.1.0",
+  "project": {
+    "name": "Praxis",
+    "slug": "praxis",
+    "created": "2026-05-31"
+  },
+  "language": "TypeScript",
+  "framework": "Next.js (apps/web) + Bun/Hono (services/orchestrator)",
+  "workspaces": [
+    "apps/web",
+    "services/orchestrator",
+    "packages/db",
+    "packages/sandbox",
+    "packages/acp-host",
+    "packages/crypto",
+    "packages/shared",
+    "templates/react-threejs-scene",
+    "infrastructure/caddy",
+    "infrastructure/docker",
+    "infrastructure/deploy",
+    "infrastructure/mcp-servers"
+  ],
+  "commands": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test --run",
+    "lint": "pnpm biome check .",
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev"
+  },
+  "branchPrefix": "auto/",
+  "successThreshold": 5,
+  "ghBin": "gh",
+  "schedule": {
+    "cron": "0 * * * *",
+    "enabled": false
+  },
+  "host": {
+    "method": "systemd",
+    "serviceName": "claude-praxis"
+  },
+  "deploy": {
+    "target": "praxis.local",
+    "method": "docker",
+    "autoDeployOnMerge": true,
+    "healthCheckUrl": "https://api.praxis.local/health",
+    "healthCheckTimeoutSec": 90,
+    "rollbackOnFail": true,
+    "strategy": "rolling"
+  },
+  "hooks": {
+    "timeoutSec": 60
+  }
+}

@@ -1,0 +1,1172 @@
+version: 1
+
+meta:
+  project: "Praxis"
+  created: "2026-05-31"
+  branch_prefix: "auto/"
+  task_id_format: "TASK-{seq:03d}"
+
+epics:
+  - id: EPIC-01
+    title: "Foundations"
+    description: |
+      Week 1 of the POC. Monorepo scaffold with agent-friendly documentation,
+      the Next.js frontend Dockerised on this VPS behind Caddy, the Postgres
+      schema and migrations, magic-link auth, and the orchestrator skeleton.
+      By the end: a deployed landing page, a signed-in dashboard, and a
+      reachable /health on the orchestrator.
+    stories:
+      - id: STORY-01
+        title: "Monorepo scaffold with agent-friendly docs and CI"
+        description: |
+          Initialise the pnpm workspaces monorepo and write the cross-tool
+          documentation files that ground every later session — AGENTS.md
+          (root + scoped), CLAUDE.md as a thin importer, ARCHITECTURE.md,
+          and the ADR template. Set up Biome + tsc + vitest and a CI
+          workflow that runs them on every PR.
+        acceptance_criteria:
+          - "Fresh clone → `pnpm i && pnpm test` exits 0 (no tests yet is acceptable; the runner must be wired)."
+          - "AGENTS.md, CLAUDE.md, ARCHITECTURE.md, and docs/decisions/0000-template.md are committed at repo root."
+          - "GitHub Actions `ci` workflow passes on a no-op PR and is set as a required check."
+        user_flow: null
+        out_of_scope:
+          - "Per-workspace AGENTS.md (added as each workspace lands)."
+          - "Production CI hardening (caching, matrix builds) — basic runner is enough."
+        tasks:
+          - id: TASK-001
+            title: "Initialise pnpm workspaces with apps/ services/ packages/ templates/ infrastructure/"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: []
+            description: |
+              Add root package.json (private, pnpm workspaces), pnpm-workspace.yaml
+              listing apps/*, services/*, packages/*, templates/*, infrastructure/*,
+              tsconfig.base.json with strict TypeScript, Biome config, root .gitignore
+              additions for Node/Next/Vite/TS build artefacts.
+            depends_on: []
+            attempt_count: 0
+            task_acceptance:
+              - "`pnpm -v` resolves to >=8 in the repo root after install."
+              - ".gitignore covers node_modules, .next, dist, .turbo, .vite, *.tsbuildinfo."
+          - id: TASK-002
+            title: "Write AGENTS.md, CLAUDE.md, ARCHITECTURE.md grounded in /docs"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: []
+            description: |
+              Root AGENTS.md ≤200 lines: one-line description, build/test commands,
+              code style summary, architecture paragraph, never-dos. CLAUDE.md is
+              two lines that @-import AGENTS.md and docs/conventions/claude-code-specific.md.
+              ARCHITECTURE.md mirrors project_plan.md §2 (high-level shape + core principles).
+            depends_on: [TASK-001]
+            attempt_count: 0
+            task_acceptance:
+              - "AGENTS.md exists with all sections referenced in project_plan.md §3."
+              - "CLAUDE.md @imports resolve to existing files."
+          - id: TASK-003
+            title: "Add CI workflow (Biome + tsc + vitest) and pull_request_template.md"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: []
+            description: |
+              .github/workflows/ci.yml runs `pnpm install --frozen-lockfile`,
+              `pnpm lint`, `pnpm typecheck`, `pnpm test --run`. Under 2 minutes
+              on a clean cache. Add .github/pull_request_template.md summarising
+              context, scope, and AC link.
+            depends_on: [TASK-001]
+            attempt_count: 0
+            task_acceptance:
+              - "CI passes on a PR that touches only docs."
+              - "`ci` is set as a required check via .github/branch-protection.sh."
+          - id: TASK-004
+            title: "ADR template and first two ADRs (deployment + template choice)"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: []
+            description: |
+              docs/decisions/0000-template.md (Context/Decision/Consequences/Alternatives).
+              ADR-0001: POC deploys entirely to a single VPS via Caddy + Docker;
+              Cloudflare Pages deferred. ADR-0002: React + Three.js (drei + fiber)
+              chosen as the POC template over React/Phaser; reason: easier visual
+              output from the image-gen MCP via textures.
+            depends_on: [TASK-002]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Both ADRs are written and committed; status=Accepted."
+              - "STORY-01 acceptance_criteria all satisfied."
+
+      - id: STORY-02
+        title: "Next.js frontend Dockerised and deployed to this VPS via Caddy"
+        description: |
+          Scaffold apps/web (Next.js 14 App Router, shadcn/ui, Tailwind).
+          Produce a Docker image, run it as a systemd-managed service on the
+          VPS, and reverse-proxy it through Caddy at app.<domain>. Wire a
+          GitHub Actions deploy job that rebuilds and reloads on merge to main.
+        acceptance_criteria:
+          - "https://app.<domain> serves a landing page with project name and a Sign in button (HTTPS via Caddy)."
+          - "Merge to main triggers a deploy job that rebuilds the image and `systemctl reload` runs without dropping connections."
+        user_flow:
+          - "Visitor hits app.<domain>"
+          - "Landing page renders project name, short pitch, Sign in button"
+          - "Sign in routes to /signin (implemented in STORY-04)"
+        out_of_scope:
+          - "Cloudflare Pages migration (post-POC, see ADR-0001)."
+          - "CDN / edge caching."
+        tasks:
+          - id: TASK-005
+            title: "Scaffold apps/web with Next.js 14, shadcn/ui, Tailwind"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Use create-next-app (App Router, TypeScript, Tailwind). Install
+              shadcn/ui with sensible defaults (slate base). Build the landing
+              page with the project name, a one-paragraph pitch from docs/
+              executive_summary.md, and a Sign in CTA that links to /signin.
+            depends_on: [TASK-001]
+            attempt_count: 0
+            task_acceptance:
+              - "`pnpm --filter web dev` serves the landing page locally."
+              - "Tailwind classes apply correctly (verified by snapshot or e2e)."
+          - id: TASK-006
+            title: "Dockerise apps/web with Next.js standalone output"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Add apps/web/Dockerfile producing a slim runtime image (node:20-alpine,
+              standalone output). Multi-stage build. Expose port 3000.
+            depends_on: [TASK-005]
+            attempt_count: 0
+            task_acceptance:
+              - "`docker build` succeeds and the resulting container responds to GET / with 200."
+          - id: TASK-007
+            title: "Caddyfile and systemd unit for the web container"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["infrastructure/caddy", "infrastructure/deploy"]
+            description: |
+              infrastructure/caddy/Caddyfile with `app.<domain>` block reverse-proxying
+              to 127.0.0.1:3000. infrastructure/deploy/praxis-web.service systemd
+              unit running `docker run` for the web image with restart=on-failure.
+              Document the install-on-VPS steps in docs/runbooks/deploy-web.md.
+            depends_on: [TASK-006]
+            attempt_count: 0
+            task_acceptance:
+              - "Both files lint clean (`caddy validate`, `systemd-analyze verify`)."
+          - id: TASK-008
+            title: "GitHub Actions deploy job → SSH → docker pull → systemctl reload"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["infrastructure/deploy"]
+            description: |
+              .github/workflows/deploy-web.yml: triggers on push to main when
+              apps/web/** changes. Builds the image, pushes to GHCR, SSHs to
+              the VPS using a deploy key, pulls, runs `systemctl reload
+              praxis-web.service`. Smoke-tests https://app.<domain>.
+            depends_on: [TASK-007]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Deploy job green on a PR that bumps the landing page copy."
+              - "STORY-02 acceptance_criteria satisfied end-to-end."
+
+      - id: STORY-03
+        title: "Postgres schema and migrations (POC subset)"
+        description: |
+          Stand up Postgres locally via docker-compose and on the VPS via a
+          systemd-managed container. Apply the 13 POC tables from
+          project_plan.md §9 via a migration runner, and codegen TypeScript
+          types into packages/db so the rest of the codebase consumes a
+          single source of truth.
+        acceptance_criteria:
+          - "`pnpm db:migrate` against a fresh Postgres creates all 13 POC tables idempotently."
+          - "`pnpm db:codegen` regenerates packages/db/types from the live schema; CI fails if the generated file is stale."
+        user_flow: null
+        out_of_scope:
+          - "Skills, portfolio, subscriptions, admin tables (post-POC)."
+          - "Connection pooling / pgbouncer."
+        tasks:
+          - id: TASK-009
+            title: "Local Postgres via docker-compose; production Postgres systemd unit on VPS"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["infrastructure/deploy"]
+            description: |
+              infrastructure/deploy/docker-compose.dev.yml runs Postgres 16 +
+              MinIO for local dev. infrastructure/deploy/praxis-postgres.service
+              runs a Postgres container on the VPS with a persistent volume
+              and daily pg_dump backups.
+            depends_on: []
+            attempt_count: 0
+            task_acceptance:
+              - "`docker compose up postgres` brings up a database reachable on 5432."
+          - id: TASK-010
+            title: "Migration runner with the 13 POC tables"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["packages/db"]
+            description: |
+              Pick drizzle-kit or kysely-codegen — write packages/db with the
+              schema verbatim from project_plan.md §9 (users, auth_sessions,
+              magic_link_tokens, oauth_tokens, teams, team_memberships,
+              team_invites, projects, sessions, events, agent_turns,
+              learning_links). Add `pnpm db:migrate`.
+            depends_on: [TASK-001, TASK-009]
+            attempt_count: 0
+            task_acceptance:
+              - "All 13 tables and indexes from §9 exist after `db:migrate`."
+              - "Re-running `db:migrate` is a no-op."
+          - id: TASK-011
+            title: "Codegen TypeScript types and a CI check for drift"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["packages/db"]
+            description: |
+              `pnpm db:codegen` emits packages/db/types.ts from the live schema.
+              CI runs codegen and fails if `git diff --exit-code` reports
+              uncommitted changes.
+            depends_on: [TASK-010]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Types are consumed by apps/web and services/orchestrator without manual definition."
+              - "STORY-03 acceptance_criteria satisfied."
+
+      - id: STORY-04
+        title: "Magic-link auth via Better Auth"
+        description: |
+          Users sign in by submitting an email; the platform mails a one-time
+          link; clicking it creates a session and redirects to /dashboard.
+          No password, no MFA. Email sender behind an interface so dev mode
+          can stub it and production uses Resend (or SMTP).
+        acceptance_criteria:
+          - "Submitting an email at /signin produces a `magic_link_tokens` row and an email (real or stubbed); clicking the link issues a session cookie and lands on /dashboard."
+          - "Expired/invalid tokens reject with a 4xx and a clear error page."
+        user_flow:
+          - "User opens /signin"
+          - "Types email, submits"
+          - "Sees 'Check your email' confirmation"
+          - "Clicks magic link in email"
+          - "Lands on /dashboard signed in"
+        out_of_scope:
+          - "Email/password sign-up, MFA, OAuth-only sign-in (later phases)."
+          - "Account deletion UI."
+        tasks:
+          - id: TASK-012
+            title: "Wire Better Auth with the Postgres adapter and a magic-link plugin"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web", "packages/db"]
+            description: |
+              Install Better Auth in apps/web. Use the schema from STORY-03 for
+              users / auth_sessions / magic_link_tokens. Add the magic-link
+              plugin with a configurable mailer.
+            depends_on: [TASK-005, TASK-011]
+            attempt_count: 0
+            task_acceptance:
+              - "Better Auth routes mounted under /api/auth and respond 2xx where expected."
+          - id: TASK-013
+            title: "Mailer interface + Resend prod / stub dev"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              packages/mailer or apps/web/lib/mailer.ts exposing send(email,subject,html).
+              Prod implementation uses Resend (RESEND_API_KEY). Dev implementation
+              logs to stdout and writes to .mail/ for local inspection.
+            depends_on: [TASK-012]
+            attempt_count: 0
+            task_acceptance:
+              - "Local sign-in surfaces the link in .mail/ when no Resend key is configured."
+          - id: TASK-014
+            title: "Sign-in pages and protected /dashboard"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              /signin (email form), /verify (handles magic link), /dashboard
+              (placeholder, shows user email and a Sign out button). Server-side
+              session middleware redirects unauthenticated requests to /signin.
+            depends_on: [TASK-012, TASK-013]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "End-to-end Playwright test: submit email → fetch link from .mail/ → visit → land on /dashboard."
+              - "STORY-04 acceptance_criteria satisfied."
+
+      - id: STORY-05
+        title: "Orchestrator skeleton — Bun + Hono + WebSocket hub"
+        description: |
+          Scaffold services/orchestrator as a Bun + Hono process. Expose
+          /health (used by deploy + uptime checks) and /ws (the WebSocket
+          hub that later carries agent events, presence, prompts). Run it
+          as a systemd-managed Bun process on the VPS, fronted by Caddy
+          at api.<domain> (HTTPS, /ws upgrades to WSS).
+        acceptance_criteria:
+          - "GET https://api.<domain>/health returns `{ ok: true, version }` with status 200."
+          - "A WebSocket client can connect to wss://api.<domain>/ws, send `{type:'ping'}`, and receive `{type:'pong'}` within 1s."
+        user_flow: null
+        out_of_scope:
+          - "Per-project rooms, prompt queue, ACP host (STORY-08 and later)."
+          - "Authentication on /ws — added when sessions land in STORY-09."
+        tasks:
+          - id: TASK-015
+            title: "Scaffold services/orchestrator with Bun + Hono + Dockerfile"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["services/orchestrator"]
+            description: |
+              Bun init + Hono dependency. Add Dockerfile (oven/bun:1 base).
+              tsconfig with strict settings extending tsconfig.base.json.
+            depends_on: [TASK-001]
+            attempt_count: 0
+            task_acceptance:
+              - "`bun run dev` starts the server locally on :4000."
+          - id: TASK-016
+            title: "/health + /ws ping/pong with structured logging"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["services/orchestrator"]
+            description: |
+              Hono routes for GET /health. Bun.serve websocket handler for /ws.
+              Pino-style JSON logging via Bun's console + a small lib.
+            depends_on: [TASK-015]
+            attempt_count: 0
+            task_acceptance:
+              - "Integration test connects a WebSocket, sends ping, asserts pong."
+          - id: TASK-017
+            title: "Caddy block for api.<domain> + systemd unit"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["infrastructure/caddy", "infrastructure/deploy"]
+            description: |
+              Add `api.<domain>` block to the Caddyfile reverse-proxying to
+              127.0.0.1:4000 (handles /ws upgrade). Add
+              praxis-orchestrator.service running the Bun container with
+              restart=on-failure.
+            depends_on: [TASK-016, TASK-007]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Public /health returns 200 after deploy."
+              - "STORY-05 acceptance_criteria satisfied."
+
+  - id: EPIC-02
+    title: "Agent integration"
+    description: |
+      Week 2. Anthropic OAuth so users connect their own subscription, the
+      Sandbox abstraction with a Docker implementation, the ACP host that
+      speaks to Claude Code over JSON-RPC, and the first end-to-end
+      hello-world session that joins all three.
+    stories:
+      - id: STORY-06
+        title: "Anthropic OAuth flow with encrypted token storage"
+        description: |
+          A signed-in user clicks "Connect Anthropic" on /settings, completes
+          OAuth, and the platform stores access + refresh tokens encrypted
+          in oauth_tokens. On agent invocation, the orchestrator retrieves
+          the prompting user's token, refreshes if needed, and passes it
+          to Claude Code via environment.
+        acceptance_criteria:
+          - "After connecting, a row exists in oauth_tokens with encrypted access/refresh tokens; decrypting yields valid tokens."
+          - "When the access token is within 60s of expiry, a refresh is performed automatically before any agent spawn."
+        user_flow:
+          - "User goes to /settings"
+          - "Clicks 'Connect Anthropic'"
+          - "Redirected to Anthropic OAuth"
+          - "Consents to scopes"
+          - "Redirected back to /settings showing 'Connected to Anthropic ✓'"
+        out_of_scope:
+          - "OpenAI OAuth (next phase, alongside Codex)."
+          - "Per-team token sharing."
+        tasks:
+          - id: TASK-018
+            title: "Anthropic OAuth client + /api/oauth/anthropic/{authorize,callback}"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Register a platform OAuth client with Anthropic (manual, captured
+              in docs/runbooks/anthropic-oauth.md). Implement state-cookie CSRF
+              protection, code exchange, and persistence into oauth_tokens.
+            depends_on: [TASK-014]
+            attempt_count: 0
+            task_acceptance:
+              - "Round-trip from /settings → consent → /settings produces a row in oauth_tokens for the signed-in user."
+          - id: TASK-019
+            title: "Token encryption at rest"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["packages/crypto", "apps/web"]
+            description: |
+              packages/crypto: libsodium-based encrypt/decrypt using a 32-byte
+              key derived from PRAXIS_MASTER_KEY env. Document key rotation
+              in docs/runbooks/key-rotation.md.
+            depends_on: [TASK-018]
+            attempt_count: 0
+            task_acceptance:
+              - "Round-trip encrypt → store → fetch → decrypt yields the original token."
+          - id: TASK-020
+            title: "Refresh-on-expiry + 'Connected to Anthropic' UI"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web", "services/orchestrator"]
+            description: |
+              Shared helper: getValidAnthropicToken(userId) refreshes if
+              expires_at < now+60s. Settings page shows connection status,
+              with Disconnect action that nulls the row.
+            depends_on: [TASK-019]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Forcing expires_at into the past triggers a successful refresh before the next agent spawn."
+              - "STORY-06 acceptance_criteria satisfied."
+
+      - id: STORY-07
+        title: "Sandbox interface + DockerSandbox implementation"
+        description: |
+          Define the Sandbox interface from project_plan.md §6 in
+          packages/sandbox so consumers depend on the abstraction, not on
+          Docker. Implement DockerSandbox via dockerode against a base
+          image with Node 20, Claude Code CLI, git, and common build tools.
+          Idle shutdown after 30 minutes; resource limits per §6.
+        acceptance_criteria:
+          - "Integration tests cover start/exec/spawn/writeFile/readFile/watchFiles/exposePort/stop against a real Docker daemon and pass in CI."
+          - "After 30 minutes of no exec/spawn activity, the container is stopped automatically; the next start() restores from object storage (stubbed in tests)."
+        user_flow: null
+        out_of_scope:
+          - "E2B, Firecracker, Daytona implementations (later phases)."
+          - "Per-template sandbox base images (handled in STORY-14)."
+        tasks:
+          - id: TASK-021
+            title: "packages/sandbox: define the Sandbox TypeScript interface"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["packages/sandbox"]
+            description: |
+              Copy the interface from project_plan.md §6 verbatim. Add
+              SandboxHandle, ExecOptions, ExecResult, SpawnOptions,
+              ProcessHandle, FileEvent, Unsubscribe types.
+            depends_on: [TASK-001]
+            attempt_count: 0
+            task_acceptance:
+              - "Interface compiles with no `any`; exported from package index."
+          - id: TASK-022
+            title: "DockerSandbox via dockerode + base image"
+            status: ready
+            priority: high
+            complexity: large
+            workspaces: ["packages/sandbox", "infrastructure/docker"]
+            description: |
+              infrastructure/docker/sandbox-base/Dockerfile based on node:20-bookworm
+              with claude-code CLI, git, build-essential, python3. DockerSandbox
+              class implements every method. Resource limits via HostConfig
+              (Memory 2g, CpuQuota for 1 CPU, StorageOpt 5g).
+            depends_on: [TASK-021]
+            attempt_count: 0
+            task_acceptance:
+              - "All Sandbox methods have integration tests against the real Docker daemon and pass."
+          - id: TASK-023
+            title: "Idle-shutdown daemon + state persistence to MinIO"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["packages/sandbox", "services/orchestrator"]
+            description: |
+              Track last activity per sandbox; cron-style sweep every minute
+              stops idle ones. On stop, tar the project volume and PUT to
+              MinIO (bucket per project). On start with existing snapshot,
+              restore before returning the handle.
+            depends_on: [TASK-022]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "End-to-end test: write file, force idle, observe stop, start, file is present."
+              - "STORY-07 acceptance_criteria satisfied."
+
+      - id: STORY-08
+        title: "ACP host module in packages/acp-host"
+        description: |
+          Implement the ACP host code in packages/acp-host. Given a sandbox
+          handle and an Anthropic OAuth token, it spawns Claude Code inside
+          the sandbox, negotiates the ACP session over stdio, and exposes
+          prompt(text, attribution) returning an async iterator of
+          ACP events (text chunks, tool calls, file changes).
+        acceptance_criteria:
+          - "Given a running sandbox and a valid token, prompt('hello') yields at least one text-chunk event and completes without error."
+          - "Tool-permission events surface to the caller for approval; denial cancels the turn cleanly."
+        user_flow: null
+        out_of_scope:
+          - "Multi-user attribution (handled at the orchestrator layer in STORY-12)."
+          - "Codex support (next phase)."
+        tasks:
+          - id: TASK-024
+            title: "Pick an OSS ACP client lib (or write a minimal one)"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["packages/acp-host"]
+            description: |
+              Evaluate published Node ACP libraries. Pick one or implement a
+              ~300-line JSON-RPC stdio client covering initialize, prompt,
+              session/update, request_permission, complete, shutdown.
+              Record the decision as ADR-0003.
+            depends_on: [TASK-001]
+            attempt_count: 0
+            task_acceptance:
+              - "Choice recorded in docs/decisions/0003-*.md with Consequences and Alternatives."
+          - id: TASK-025
+            title: "AcpHost.spawnAndPrompt(sandbox, token, prompt) → AsyncIterable<AcpEvent>"
+            status: ready
+            priority: high
+            complexity: large
+            workspaces: ["packages/acp-host"]
+            description: |
+              Spawn `claude-code --acp` inside the sandbox via Sandbox.spawn.
+              Pipe stdin/stdout JSON-RPC. Emit typed events for each ACP
+              session/update kind. Forward request_permission to a callback.
+            depends_on: [TASK-021, TASK-024]
+            attempt_count: 0
+            task_acceptance:
+              - "Unit tests cover happy-path prompt, tool-permission, and shutdown."
+          - id: TASK-026
+            title: "End-to-end integration test: prompt round-trip in a real sandbox"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["packages/acp-host", "packages/sandbox"]
+            description: |
+              CI job that starts a DockerSandbox, runs AcpHost.spawnAndPrompt
+              with a test token, and asserts a streamed text response within
+              30s. Skipped on PRs that don't touch acp-host or sandbox.
+            depends_on: [TASK-025, TASK-022]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Integration test passes in CI on a clean build."
+              - "STORY-08 acceptance_criteria satisfied."
+
+      - id: STORY-09
+        title: "End-to-end hello-world session"
+        description: |
+          Tie it all together. A signed-in user creates a project, the
+          orchestrator starts a DockerSandbox, ACP host spins up Claude
+          Code, and the user's first prompt streams back to the browser
+          over WebSocket. On session stop, the project state captures to
+          MinIO; next session resume restores it.
+        acceptance_criteria:
+          - "From a fresh dashboard: 'New project' → container starts → prompt 'say hello' → assistant response streams in chat panel within 10s."
+          - "Closing the session then re-opening the project restores file state (a marker file written during the first session is present in the second)."
+        user_flow:
+          - "Signed-in user on /dashboard"
+          - "Clicks 'New project'"
+          - "Picks the (single) react-threejs-scene template"
+          - "Lands on /projects/<id> with the three-panel workspace"
+          - "Types 'say hello' in the prompt panel"
+          - "Sees assistant response stream in the chat panel"
+        out_of_scope:
+          - "Two-user simultaneous session (STORY-12)."
+          - "Preview URL (STORY-13)."
+        tasks:
+          - id: TASK-027
+            title: "Orchestrator: createSession + WebSocket session room"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              POST /sessions { projectId } creates a row in `sessions`, starts
+              a sandbox, spawns ACP, registers a WebSocket room. Clients in
+              the room receive agent_event messages broadcast from ACP.
+            depends_on: [TASK-017, TASK-023, TASK-025]
+            attempt_count: 0
+            task_acceptance:
+              - "Postman/integration test creates a session and receives at least one agent_event."
+          - id: TASK-028
+            title: "Frontend: New project flow + minimal chat panel"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              /dashboard 'New project' button → POST /projects → /projects/<id>
+              page that opens the WebSocket, sends prompts, renders streamed
+              agent events. No file tree / Monaco yet (that's STORY-10).
+            depends_on: [TASK-014, TASK-027]
+            attempt_count: 0
+            task_acceptance:
+              - "Manual test: prompt 'say hello' streams a response in the chat panel."
+          - id: TASK-029
+            title: "State capture/restore via MinIO"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator", "packages/sandbox"]
+            description: |
+              On session stop, tarball the project volume and PUT to MinIO
+              (bucket: praxis-project-state, key: <projectId>.tar.gz). On
+              next start, GET and untar before ACP spawn. Skip if no snapshot.
+            depends_on: [TASK-027, TASK-023]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Integration test: write marker file, stop session, restart, marker present."
+              - "STORY-09 acceptance_criteria satisfied."
+
+  - id: EPIC-03
+    title: "Workspace UI"
+    description: |
+      Week 3. The collaborative three-panel surface: file tree + Monaco +
+      chat/prompt, real-time sync between two users with presence, cursors,
+      and file-level locks, a prompt queue with attribution, and preview
+      URLs surfaced through a wildcard Caddy domain.
+    stories:
+      - id: STORY-10
+        title: "Three-panel workspace shell"
+        description: |
+          The IDE-like layout users live in. Left: file tree from the
+          sandbox over WebSocket. Centre: Monaco loading whichever file
+          is clicked. Right: chat/prompt panel from STORY-09 expanded
+          with attribution and message types.
+        acceptance_criteria:
+          - "Opening a project renders all three panels; the file tree mirrors the sandbox; clicking a file loads it in Monaco within 500ms."
+          - "Edits in Monaco persist to the sandbox over the WebSocket and reload correctly after a page refresh."
+        user_flow:
+          - "User opens /projects/<id>"
+          - "Three panels render: file tree, editor, chat"
+          - "Clicks a file → contents load in Monaco"
+          - "Edits and saves → file persists in the sandbox"
+        out_of_scope:
+          - "Yjs co-editing (post-POC)."
+          - "Multi-cursor presence (STORY-11)."
+        tasks:
+          - id: TASK-030
+            title: "Workspace layout components + resizable panels"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              apps/web/components/Workspace with a 3-pane react-resizable-panels
+              layout. Persists pane sizes per-user in localStorage.
+            depends_on: [TASK-028]
+            attempt_count: 0
+            task_acceptance:
+              - "Resizing a pane survives a page refresh."
+          - id: TASK-031
+            title: "File tree fed by sandbox watchFiles; Monaco loader"
+            status: ready
+            priority: high
+            complexity: large
+            workspaces: ["apps/web", "services/orchestrator"]
+            description: |
+              Orchestrator forwards Sandbox.watchFiles events to the WebSocket
+              room as file_changed messages. Client builds a tree, requests
+              file contents via WS request, loads into Monaco. Save action
+              sends edit message → orchestrator writeFile → sandbox.
+            depends_on: [TASK-030, TASK-023]
+            attempt_count: 0
+            task_acceptance:
+              - "Edit-save-refresh cycle preserves content."
+          - id: TASK-032
+            title: "Chat panel: typed message kinds + per-user attribution UI"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Render agent_event messages with kinds: text_chunk, tool_call,
+              file_change_notice, error. Each message shows the prompting
+              user's avatar+name. Prompt input shows the current user.
+            depends_on: [TASK-030]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Snapshot test of the chat panel rendering each message kind."
+              - "STORY-10 acceptance_criteria satisfied."
+
+      - id: STORY-11
+        title: "Presence, cursors, and file-level locks"
+        description: |
+          Two browsers in the same project see each other. Per-user cursors
+          show in Monaco when both users have the same file open. Opening
+          a file acquires a soft lock — the other user can see the file but
+          can't edit until the lock is released.
+        acceptance_criteria:
+          - "Two browser sessions in the same project display each other in a presence list with avatar + name."
+          - "When user A opens file X, user B sees a lock indicator on file X and Monaco for X is read-only for B."
+        user_flow:
+          - "User A and User B both open the same project"
+          - "Both see each other in the presence list"
+          - "User A clicks file X — file X is locked by A"
+          - "User B clicks file X — Monaco loads in read-only mode with 'Locked by A' header"
+          - "User A closes file X — lock releases, B's editor becomes editable"
+        out_of_scope:
+          - "Character-level co-editing via Yjs (post-POC)."
+          - "Follow mode (post-POC)."
+        tasks:
+          - id: TASK-033
+            title: "Presence + cursor messages and UI overlays"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web", "services/orchestrator"]
+            description: |
+              presence (join/leave/heartbeat) and cursor messages over WS.
+              Presence list in the workspace header; cursor overlays in
+              Monaco using monaco-editor decorations API.
+            depends_on: [TASK-031]
+            attempt_count: 0
+            task_acceptance:
+              - "Two tabs in two windows see each other's cursor positions live."
+          - id: TASK-034
+            title: "File-lock acquire/release + read-only Monaco when locked"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web", "services/orchestrator"]
+            description: |
+              Orchestrator tracks file_locks per project room. file_lock
+              and file_unlock messages over WS. Client marks Monaco
+              read-only and shows lock owner in the file tree.
+            depends_on: [TASK-033]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Race test: simultaneous lock requests resolve deterministically (first writer wins)."
+              - "STORY-11 acceptance_criteria satisfied."
+
+      - id: STORY-12
+        title: "Prompt queue with two-user attribution"
+        description: |
+          Both users in a project can submit prompts. Only one turn runs at
+          a time. Other prompts queue with visible position. The agent's
+          response is attributed to the user who prompted, in the chat
+          panel, in the agent_turns row, and in git commit metadata.
+        acceptance_criteria:
+          - "If user A submits a prompt while user B's prompt is mid-turn, user A's prompt shows queue_position=1 until B's turn completes, then runs."
+          - "After completion, agent_turns row has prompting_user_id set; chat panel attributes the response to the prompter."
+        user_flow:
+          - "User A submits 'do X' while User B is mid-turn"
+          - "User A sees 'queue position: 1' on their message"
+          - "User B's turn completes"
+          - "User A's prompt runs; response attributed to A"
+        out_of_scope:
+          - "Cross-project queuing."
+          - "Priority levels / preemption."
+        tasks:
+          - id: TASK-035
+            title: "Orchestrator FIFO queue per project + ACP attribution wrap"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator", "packages/acp-host"]
+            description: |
+              Per-project queue of pending prompts. Each prompt wrapped with
+              an attribution header (invisible to the agent) before being
+              sent over ACP. agent_turns row created at enqueue, completed
+              after stream end.
+            depends_on: [TASK-027]
+            attempt_count: 0
+            task_acceptance:
+              - "Integration test queues 3 prompts and confirms strict FIFO ordering."
+          - id: TASK-036
+            title: "Frontend: queue position UI + attribution in chat"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Show queue_position on the user's own pending message. When
+              a turn starts, swap to 'thinking…'. Chat messages show the
+              prompter's avatar + name.
+            depends_on: [TASK-035, TASK-032]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Manual two-browser test: A's prompt queues behind B's, runs after, both attributed correctly."
+              - "STORY-12 acceptance_criteria satisfied."
+
+      - id: STORY-13
+        title: "Preview URL via Caddy wildcard"
+        description: |
+          When a project's app starts (e.g. Vite on :5173 in the sandbox),
+          the orchestrator allocates a unique subdomain
+          <projectSlug>.preview.<domain> and registers it with Caddy
+          on-demand so it routes to the right sandbox port. URL is revoked
+          when the sandbox stops.
+        acceptance_criteria:
+          - "Calling Sandbox.exposePort(handle, 5173) returns an https URL that fetches the sandbox's port content within 1s."
+          - "After Sandbox.stop(), the URL returns 502/404 (Caddy upstream gone)."
+        user_flow: null
+        out_of_scope:
+          - "Persistent preview URLs across sessions (Plus tier, productisation)."
+          - "Custom user domains."
+        tasks:
+          - id: TASK-037
+            title: "Caddy on-demand TLS for *.preview.<domain>"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["infrastructure/caddy"]
+            description: |
+              Wildcard Caddy block with on_demand TLS and an ask endpoint
+              that the orchestrator answers (returns 200 iff the subdomain
+              maps to a live sandbox).
+            depends_on: [TASK-007]
+            attempt_count: 0
+            task_acceptance:
+              - "Caddy validates and obtains a wildcard cert for the placeholder domain."
+          - id: TASK-038
+            title: "Sandbox.exposePort → Caddy upstream registration"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["packages/sandbox", "services/orchestrator"]
+            description: |
+              exposePort returns the URL after writing a mapping in an
+              orchestrator-local store. /caddy/ask reads the store. On
+              Sandbox.stop, mapping removed and Caddy reloaded (or just
+              dropped from the ask endpoint).
+            depends_on: [TASK-037, TASK-022]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Integration test: expose port serving 'hello', curl URL returns 'hello'; stop, curl returns 5xx."
+              - "STORY-13 acceptance_criteria satisfied."
+
+  - id: EPIC-04
+    title: "Template, git, polish"
+    description: |
+      Week 4. The single POC template (React + Three.js + Vite),
+      image-generation MCP feeding textures, the git panel, agent
+      auto-commit guidance, curated learning links, and the dogfood pass
+      that closes the POC.
+    stories:
+      - id: STORY-14
+        title: "React + Three.js + Vite template scaffold"
+        description: |
+          templates/react-threejs-scene with Vite + React + TypeScript +
+          @react-three/fiber + drei. template.json declares preview port
+          5173, harness claude-code, MCP servers [image-gen]. AGENTS.md
+          gives Claude Code Three.js conventions and texture-loading
+          patterns from public/textures/.
+        acceptance_criteria:
+          - "Creating a project from `react-threejs-scene` lands the scaffold in the sandbox; `npm run dev` from inside the sandbox renders a starter cube scene visible in the preview URL."
+          - "Template AGENTS.md is loaded by Claude Code on its first turn (verified via the agent quoting one of its rules)."
+        user_flow: null
+        out_of_scope:
+          - "Additional templates (post-POC)."
+          - "Asset pipelines for GLB/GLTF (later, if needed)."
+        tasks:
+          - id: TASK-039
+            title: "Scaffold templates/react-threejs-scene/"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["templates/react-threejs-scene"]
+            description: |
+              Vite + React + TypeScript + @react-three/fiber + drei +
+              eslint + prettier. Starter scene with a rotating cube and a
+              skybox slot ready for an image-gen texture.
+            depends_on: [TASK-001]
+            attempt_count: 0
+            task_acceptance:
+              - "Local `npm run dev` renders the starter cube on http://localhost:5173."
+          - id: TASK-040
+            title: "template.json + AGENTS.md + mcp-servers.json + sandbox.json"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["templates/react-threejs-scene"]
+            description: |
+              template.json matches §11 example with id react-threejs-scene.
+              AGENTS.md documents Three.js conventions, texture loading from
+              /public/textures, image-gen usage rules. mcp-servers.json
+              enables image-gen. sandbox.json sets base image and port 5173.
+            depends_on: [TASK-039]
+            attempt_count: 0
+            task_acceptance:
+              - "Schema validation for template.json passes against the (yet-to-be-written) validator."
+          - id: TASK-041
+            title: "End-to-end: create project from template, see preview URL render"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator", "apps/web"]
+            description: |
+              POST /projects with template_id=react-threejs-scene copies
+              scaffold into the sandbox, runs `npm install`, exposes port
+              5173, returns the preview URL. UI shows preview iframe.
+            depends_on: [TASK-040, TASK-038, TASK-029]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "End-to-end Playwright test creates a project and asserts the preview iframe renders the cube."
+              - "STORY-14 acceptance_criteria satisfied."
+
+      - id: STORY-15
+        title: "Image-generation MCP server (textures for Three.js)"
+        description: |
+          infrastructure/mcp-servers/image-gen exposes a `generate_image`
+          tool backed by the OpenAI Image API. Claude Code discovers it
+          via the template's mcp-servers.json and calls it for texture
+          generation; outputs land in /public/textures/ and become
+          loadable in the running scene.
+        acceptance_criteria:
+          - "Claude Code in a react-threejs-scene project, prompted to add a stone texture, calls `generate_image` and writes a PNG into /public/textures/; the scene loads it within the same turn."
+          - "Per-project per-day usage cap is enforced (default 50 calls); the 51st call returns an error response from the MCP server."
+        user_flow: null
+        out_of_scope:
+          - "Multi-provider image generation (later)."
+          - "Image editing / inpainting (later)."
+        tasks:
+          - id: TASK-042
+            title: "infrastructure/mcp-servers/image-gen MCP server"
+            status: ready
+            priority: high
+            complexity: large
+            workspaces: ["infrastructure/mcp-servers"]
+            description: |
+              MCP server (stdio) implementing tools/list + tools/call for
+              generate_image. Args: prompt, width, height, save_path. Uses
+              OPENAI_API_KEY from the sandbox env; defaults save_path to
+              /workspace/public/textures/<slug>.png.
+            depends_on: [TASK-001]
+            attempt_count: 0
+            task_acceptance:
+              - "Standalone test against the MCP server returns a PNG file on disk."
+          - id: TASK-043
+            title: "Per-project usage cap"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["infrastructure/mcp-servers", "services/orchestrator"]
+            description: |
+              Counter stored in Postgres (events table or a small `mcp_usage`
+              table). MCP server reads PROJECT_ID + cap from env on startup
+              and rejects with an explicit error after the cap is hit.
+            depends_on: [TASK-042]
+            attempt_count: 0
+            task_acceptance:
+              - "Integration test crosses the cap and observes a clean refusal."
+          - id: TASK-044
+            title: "Wire MCP server into the react-threejs-scene sandbox"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["templates/react-threejs-scene", "packages/sandbox"]
+            description: |
+              DockerSandbox reads mcp-servers.json from the template and
+              co-spawns each MCP server as a sidecar inside the sandbox,
+              configuring Claude Code's MCP config to point at it.
+            depends_on: [TASK-042, TASK-040, TASK-022]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "End-to-end: Claude Code is asked to add a stone texture; sees it appear in the preview."
+              - "STORY-15 acceptance_criteria satisfied."
+
+      - id: STORY-16
+        title: "Git panel — branch, log, diff, revert"
+        description: |
+          A panel in the workspace shows the project's current branch,
+          recent commits with author + message + timestamp, working tree
+          status, and per-file diffs in Monaco's diff editor. Revert
+          rewinds the working tree to a chosen commit with a confirm step.
+        acceptance_criteria:
+          - "After at least one auto-commit, the git panel lists it with author = prompting user and the commit message the agent wrote."
+          - "Revert to a chosen commit restores the working tree; subsequent diff view confirms the change."
+        user_flow:
+          - "User opens git panel"
+          - "Sees current branch + last 20 commits"
+          - "Clicks a commit → diff renders in Monaco diff mode"
+          - "Clicks Revert → confirmation modal → working tree resets"
+        out_of_scope:
+          - "Branches / merges UI (later)."
+          - "Pushing to a remote (later)."
+        tasks:
+          - id: TASK-045
+            title: "Orchestrator: git data API (branch, log, status, diff)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              GET /projects/<id>/git/{branch,log,status} and
+              /git/diff?from=<sha>&to=<sha>. Backed by Sandbox.exec running
+              git commands in the project directory.
+            depends_on: [TASK-029]
+            attempt_count: 0
+            task_acceptance:
+              - "All four endpoints return structured JSON; integration tests pass."
+          - id: TASK-046
+            title: "Frontend: GitPanel component + revert with confirmation"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              GitPanel mounts in workspace right rail. Log list, file diff
+              via Monaco diff editor, Revert action with a 'Type the commit
+              SHA to confirm' modal.
+            depends_on: [TASK-045, TASK-030]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Manual test: revert a known commit, working tree state matches."
+              - "STORY-16 acceptance_criteria satisfied."
+
+      - id: STORY-17
+        title: "Agent auto-commit policy + curated learning links"
+        description: |
+          The agent's system prompt and the template AGENTS.md guide
+          Claude Code to commit at meaningful stages with imperative-mood
+          messages, attributed to the prompting user via git author. The
+          learning_links table is seeded with curated entries from
+          Anthropic Cookbook, OpenAI Codex docs, git tutorials, and
+          agentic-prompting guides; the workspace surfaces them.
+        acceptance_criteria:
+          - "After completing one of the dogfood tasks in STORY-18, the project has ≥3 git commits with imperative messages and the prompting user as author."
+          - "learning_links has ≥10 entries spanning ACP, MCP, Three.js, git, and agentic-prompting topics; the workspace learning panel renders them grouped by topic."
+        user_flow:
+          - "Agent finishes a coherent unit of work"
+          - "Agent runs `git add` and `git commit -m '<imperative message>'`"
+          - "Commit appears in the git panel attributed to the prompter"
+          - "User opens learning panel and sees topic-grouped links"
+        out_of_scope:
+          - "In-house authored learning content (post-POC)."
+          - "Progress tracking on link interactions (post-POC)."
+        tasks:
+          - id: TASK-047
+            title: "Auto-commit guidance in template AGENTS.md + a /commit skill"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["templates/react-threejs-scene"]
+            description: |
+              AGENTS.md section: when to commit (task complete; before
+              destructive op; on user ask) and how (imperative mood,
+              concise, references task). Add a small skill under
+              .claude/skills/commit-checkpoint/SKILL.md.
+            depends_on: [TASK-040]
+            attempt_count: 0
+            task_acceptance:
+              - "Agent in a dogfood session commits at the expected moments without explicit prompting."
+          - id: TASK-048
+            title: "Seed learning_links with ≥10 curated entries"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["packages/db", "apps/web"]
+            description: |
+              Seed file in packages/db/seeds/learning-links.ts. Entries
+              cover ACP overview, MCP overview, Three.js + drei,
+              react-three-fiber patterns, OpenAI image API, git basics,
+              agentic prompting (Anthropic), Cookbook samples, Caddy
+              on-demand TLS, Better Auth.
+            depends_on: [TASK-011]
+            attempt_count: 0
+            task_acceptance:
+              - "Seed runs idempotently; SELECT COUNT(*) FROM learning_links ≥10."
+          - id: TASK-049
+            title: "Workspace learning panel grouped by topic"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Collapsible panel near the chat panel grouping links by topic
+              tag. Cards: title + source. External links open in a new tab.
+            depends_on: [TASK-048, TASK-032]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Snapshot test of the panel rendering grouped links."
+              - "STORY-17 acceptance_criteria satisfied."
+
+      - id: STORY-18
+        title: "Internal dogfood + first university pair"
+        description: |
+          Validate the POC by using it. Founders pair to build a small
+          Three.js game end-to-end inside the platform, capturing friction.
+          Then onboard one external pair of university students, observe a
+          session, file bugs, and write a short retro to close the POC.
+        acceptance_criteria:
+          - "Founders complete a small Three.js game end-to-end inside the platform without manual workarounds."
+          - "One external pair completes a session; ≥5 issues filed; a retro doc is committed under docs/retros/."
+        user_flow:
+          - "Founders open a project, prompt the agent to build a small game"
+          - "Iterate to a playable build, deploy to preview URL"
+          - "Onboard external pair for a 60-minute session"
+          - "Observe; file issues; write retro"
+        out_of_scope:
+          - "Bug fixes from the dogfood session (folded into post-POC backlog)."
+        tasks:
+          - id: TASK-050
+            title: "Founders' dogfood pass and friction log"
+            status: ready
+            priority: high
+            complexity: large
+            workspaces: []
+            description: |
+              Founders pair for one or two sessions building a small
+              Three.js game (e.g. ball-rolling, simple collector). Log
+              friction in docs/retros/dogfood-friction.md as it happens.
+            depends_on: [TASK-049, TASK-046, TASK-044, TASK-041]
+            attempt_count: 0
+            task_acceptance:
+              - "Friction log file exists with ≥10 entries."
+          - id: TASK-051
+            title: "External pair session + bug filing"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: []
+            description: |
+              Recruit one pair (university). Observe a 60-minute session.
+              File each surfaced issue as a GitHub issue with steps to
+              reproduce.
+            depends_on: [TASK-050]
+            attempt_count: 0
+            task_acceptance:
+              - "≥5 GitHub issues filed and labelled `from:user-test-1`."
+          - id: TASK-052
+            title: "POC retro doc"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: []
+            description: |
+              docs/retros/2026-XX-poc-close.md: what worked, what broke,
+              what's next, signal vs noise from the external pair. Closes
+              the POC milestone.
+            depends_on: [TASK-051]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Retro doc committed."
+              - "STORY-18 acceptance_criteria satisfied."
