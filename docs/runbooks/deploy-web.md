@@ -1,0 +1,244 @@
+# Deploy: `apps/web` to the Praxis VPS
+
+How `apps/web` runs in production: a Docker container managed by
+systemd, fronted by **Caddy** at `praxis.blacksail.dev`, with TLS via
+Caddy's built-in ACME client. Continuous-deploy is wired via
+`.github/workflows/deploy-web.yml` (TASK-008).
+
+This runbook covers **manual operations** on a configured host plus a
+**setup-history** appendix for what was done to get here.
+
+## Topology
+
+```
+                  https://praxis.blacksail.dev
+                            │
+                            ▼
+                ┌──────────────────────────┐
+                │  Caddy on :80 + :443     │   shared with colonize,
+                │  TLS via ACME            │   pirate-battle, dashboard
+                │  /etc/caddy/Caddyfile    │   (see ADR-0004)
+                └────────────┬─────────────┘
+                             │ HTTP, 127.0.0.1:3002
+                             ▼
+                  ┌──────────────────────┐
+                  │  praxis-web.service  │
+                  │  (systemd, Type=simple)│
+                  └──────────┬───────────┘
+                             │ docker run --rm
+                             ▼
+                  ┌──────────────────────┐
+                  │  ghcr.io/g-chappell/ │
+                  │  praxis-web:latest   │
+                  │  Next.js standalone  │
+                  │  on :3000 inside     │
+                  └──────────────────────┘
+```
+
+Health endpoint: `http://127.0.0.1:3002/api/health` → `{"ok":true}`.
+Caddy probes every 30s and parks an unhealthy upstream.
+
+## Multi-tenant context
+
+This VPS hosts four apps under `*.blacksail.dev`:
+
+| Host | Container port | Owner repo |
+|---|---|---|
+| `colonize.blacksail.dev` | `127.0.0.1:3000` | `g-chappell/colonize` |
+| `pirate-battle.blacksail.dev` | `127.0.0.1:3001` | `g-chappell/pirate-battle` |
+| `praxis.blacksail.dev` | `127.0.0.1:3002` | `g-chappell/praxis` (this repo) |
+| `dashboard.blacksail.dev` | `127.0.0.1:4000` | `g-chappell/autodev-mcp` |
+
+The host's `/etc/caddy/Caddyfile` is composite: one block per app.
+This repo owns the Praxis block (`infrastructure/caddy/Caddyfile`);
+the other blocks are mirrored from their respective repos.
+
+See **ADR-0004** for the migration history (nginx → Caddy, certbot →
+Caddy ACME) and the port-allocation convention.
+
+## Daily operations
+
+### Status
+
+```bash
+sudo systemctl status praxis-web.service
+docker ps --filter name=praxis-web
+curl -sf http://127.0.0.1:3002/api/health    # local health probe
+curl -sf https://praxis.blacksail.dev/api/health   # via Caddy
+```
+
+### Tail logs
+
+```bash
+journalctl -u praxis-web.service -f    # systemd-level (container start/stop)
+docker logs -f praxis-web              # app-level (Next.js stdout)
+```
+
+### Force a redeploy without a new commit
+
+```bash
+sudo systemctl restart praxis-web.service
+# ExecStartPre pulls :latest before each start.
+```
+
+### Roll back to a specific commit's image
+
+Each successful CI deploy tags the image with both `:latest` and
+`:sha-<short>`. To roll back:
+
+```bash
+# On the VPS, as root:
+docker tag ghcr.io/g-chappell/praxis-web:sha-abc1234 \
+           ghcr.io/g-chappell/praxis-web:latest
+sudo systemctl restart praxis-web.service
+```
+
+### Update the Caddy block
+
+The host Caddyfile is at `/etc/caddy/Caddyfile`. To pick up changes
+from this repo's `infrastructure/caddy/Caddyfile`:
+
+```bash
+# Compare and copy the praxis block manually, then:
+sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+sudo systemctl reload caddy
+```
+
+### Caddy didn't get a TLS cert
+
+```bash
+sudo journalctl -u caddy --since "10 minutes ago" | grep -iE 'acme|cert|tls'
+```
+
+Common causes: DNS A record not yet pointing at `72.61.207.12`, port
+:80 blocked at the firewall (Let's Encrypt HTTP-01 challenge needs
+it), Let's Encrypt rate-limit hit (5 certs per registered domain per
+week).
+
+## CI deploy workflow
+
+`.github/workflows/deploy-web.yml` (added in TASK-008) runs on every
+push to `main` that touches `apps/web/**`,
+`infrastructure/deploy/praxis-web.service`, or the workflow file
+itself. It:
+
+1. Builds the image from `apps/web/Dockerfile` (build context = repo
+   root).
+2. Pushes to `ghcr.io/g-chappell/praxis-web` with tags `:latest`,
+   `:sha-<short>`, `:main`.
+3. SSHes to the VPS as `deploy` (using the `VPS_HOST`, `VPS_USER`,
+   `VPS_SSH_KEY` repo secrets) and runs
+   `sudo systemctl restart praxis-web.service`. The sudo is allowed
+   by the narrow sudoers fragment installed during setup
+   (`/etc/sudoers.d/praxis-deploy`).
+4. Smoke-tests `https://${{ vars.WEB_DOMAIN }}/api/health` and fails
+   the job if non-200.
+
+Restart, not reload, on the literal `systemctl` verb — see the
+ADR-0001 and **ADR-0004** note about Caddy's upstream-retry buffer
+covering the brief restart gap.
+
+---
+
+## Setup history (one-time work, done 2026-05-31)
+
+This section records what was done to get the host into its current
+state. Most steps are not idempotent and shouldn't be re-run on a
+configured host. Kept here for audit and reproducibility.
+
+### What was already there
+
+- Ubuntu 24.04 LTS with `sudo`, Docker, `gh`, `node` available.
+- **nginx** serving Colonize, Pirate-Battle, Dashboard with certbot-
+  managed Let's Encrypt certs.
+- **Caddy** package installed but service failed to start (port
+  collision with nginx).
+
+### What changed
+
+1. **Migrated nginx → Caddy** (see ADR-0004). All four apps now
+   served by Caddy from a single `/etc/caddy/Caddyfile`. Approx 5s
+   downtime on the existing three apps during the swap.
+
+2. **certbot retired.** Caddy's ACME client issues + renews. certbot
+   timer + cron disabled. `/etc/letsencrypt/` left in place (dormant)
+   for the audit trail. POSIX ACL `setfacl -R -m u:caddy:rX
+   /etc/letsencrypt/{live,archive}` was applied to allow the brief
+   period when Caddy was using existing certs; once certbot is
+   uninstalled this can be revoked.
+
+3. **`praxis-web` image** built and pushed to
+   `ghcr.io/g-chappell/praxis-web` from the VPS (auth via
+   `gh auth token`) for tags `:latest` and the initial `:sha-<short>`
+   build. Root is logged into GHCR via that token; the systemd unit's
+   `ExecStartPre docker pull` uses that auth. (The GHCR package is
+   private — flipping it public requires the GitHub web UI for
+   user-owned packages.)
+
+4. **systemd unit** for `praxis-web.service` installed at
+   `/etc/systemd/system/praxis-web.service` (mirrors
+   `infrastructure/deploy/praxis-web.service` in this repo) and
+   enabled. Container binds host port `:3002`.
+
+5. **Deploy user** for the CI workflow:
+
+   ```bash
+   sudo useradd --create-home --shell /bin/bash deploy
+   sudo mkdir -p /home/deploy/.ssh
+   sudo chmod 700 /home/deploy/.ssh
+   sudo chown -R deploy:deploy /home/deploy/.ssh
+   sudo usermod -aG docker deploy
+   ```
+
+6. **Sudoers fragment** `/etc/sudoers.d/praxis-deploy`:
+
+   ```
+   deploy ALL=(root) NOPASSWD: /bin/systemctl restart praxis-web.service, /bin/systemctl reload caddy.service
+   ```
+
+   Chmod 0440, validated with `visudo -c`.
+
+7. **GitHub Actions secrets and variable** set via `gh secret set`
+   and `gh variable set` from the VPS:
+
+   | Name | Type | Value |
+   |---|---|---|
+   | `VPS_HOST` | secret | `72.61.207.12` |
+   | `VPS_USER` | secret | `deploy` |
+   | `VPS_SSH_KEY` | secret | (operator pastes via GH web UI; see below) |
+   | `WEB_DOMAIN` | variable | `praxis.blacksail.dev` |
+
+### What the operator still needs to do
+
+Three items the executor cannot do from the VPS:
+
+1. **DNS** — add an `A` record for `praxis.blacksail.dev` pointing
+   at `72.61.207.12`. Optionally an `AAAA` record for
+   `2a02:4780:f:a2e2::1` so IPv6 visitors reach Praxis too. Caddy
+   will issue the TLS cert on the first request that lands after DNS
+   propagates.
+
+2. **SSH keypair for the `deploy` user** — generated on a workstation
+   (private key never lands on the VPS):
+
+   ```bash
+   ssh-keygen -t ed25519 -f ~/.ssh/praxis-deploy -N '' -C 'praxis-deploy'
+   ```
+
+   Paste the public key (`~/.ssh/praxis-deploy.pub`) somewhere the
+   executor (or operator) can append to
+   `/home/deploy/.ssh/authorized_keys` (chmod 600, chown
+   deploy:deploy).
+
+   Paste the **private** key (`~/.ssh/praxis-deploy`) into the
+   `VPS_SSH_KEY` GitHub Actions secret via the web UI at
+   <https://github.com/g-chappell/praxis/settings/secrets/actions>.
+
+3. **GHCR package visibility (optional)** — make
+   `ghcr.io/g-chappell/praxis-web` public via
+   <https://github.com/users/g-chappell/packages/container/praxis-web/settings>
+   so the VPS pulls don't need a GHCR-authenticated docker client.
+   Functional today (root is logged in via `gh auth token`); switch
+   to public for robustness.
+
+After items 1 and 2 are complete, TASK-008's CI workflow can land green.
