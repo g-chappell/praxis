@@ -1,0 +1,46 @@
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+out/
+.next/
+.nuxt/
+target/
+*.pyc
+__pycache__/
+.pytest_cache/
+
+# Dependencies
+node_modules/
+vendor/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code state
+.claude/.setup-progress
+# Per-machine Bash permission allow-list — interactive sessions mutate it.
+.claude/settings.local.json
+# Hook-written observability logs (InstructionsLoaded, etc.) — grow
+# unbounded and contain absolute paths specific to the machine.
+.claude/logs/
+
+# Approvals (history.md and archived approvals) ARE committed per the
+# auditable-approvals design. PENDING.md is retired in favour of
+# auto-merging review PRs — see autonomous-review/SKILL.md.
+
+# Deploy artifacts (transient, local only)
+scripts/.deploy-lock
+scripts/.previous-image
