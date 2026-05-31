@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-progress runs when a new commit lands on the same ref
+# (amend-pushes, force-pushes, branch updates) so we don't burn CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -23,42 +29,26 @@ jobs:
             exit 1
           }
 
-      - name: Detect package.json
-        id: detect
-        run: |
-          if [ -f package.json ]; then
-            echo "has_pkg=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "has_pkg=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - uses: pnpm/action-setup@v3
-        if: steps.detect.outputs.has_pkg == 'true'
         with:
-          version: 9
+          version: 9.15.5
 
       - uses: actions/setup-node@v4
-        if: steps.detect.outputs.has_pkg == 'true'
         with:
           node-version: '20'
           cache: 'pnpm'
 
       - name: Install
-        if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm lint
 
       - name: Typecheck
-        if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm -r --if-present typecheck
 
       - name: Test
-        if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm test
 
       - name: Build
-        if: steps.detect.outputs.has_pkg == 'true'
         run: pnpm -r --if-present build
