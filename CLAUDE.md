@@ -25,17 +25,19 @@ Firecracker without touching consumers).
 - **Runtime:** Node 20 for tools and web; Bun 1 for the orchestrator
 - **Database:** Postgres 16 (managed by drizzle-kit or kysely)
 - **Test framework:** Vitest (unit + integration); Playwright (end-to-end)
+- **Lint + format:** Prettier 3 + ESLint 9 (flat config). See ADR-0003.
 - **CI:** GitHub Actions
 - **Deploy:** Docker + Caddy on a single VPS (target: `praxis.local`); auto-deploy on merge to main
 
 ## Key commands
 
 ```bash
-pnpm -r --parallel dev   # start all dev servers (web, orchestrator)
-pnpm -r test --run       # run all tests
-pnpm -r typecheck        # tsc --noEmit across workspaces
-pnpm biome check .       # lint + format check
-pnpm -r build            # production build for all workspaces
+pnpm -r --parallel --if-present dev   # start all dev servers (web, orchestrator)
+pnpm test                             # run all tests (root Vitest)
+pnpm -r --if-present typecheck        # tsc --noEmit across workspaces
+pnpm lint                             # prettier --check && eslint
+pnpm format                           # prettier --write && eslint --fix
+pnpm -r --if-present build            # production build for all workspaces
 ```
 
 ## Workspace structure

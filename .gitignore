@@ -14,6 +14,17 @@ target/
 __pycache__/
 .pytest_cache/
 
+# JS / TS tooling caches
+.turbo/
+.vite/
+*.tsbuildinfo
+coverage/
+playwright-report/
+test-results/
+
+# Local mailer drop (magic-link dev mode)
+.mail/
+
 # Dependencies
 node_modules/
 vendor/
