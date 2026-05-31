@@ -52,3 +52,19 @@ jobs:
 
       - name: Build
         run: pnpm -r --if-present build
+
+      # Validate the deploy artefacts. Caddy is not on the runner image by
+      # default; install it from the official apt repo (~10s). systemd-analyze
+      # ships with the runner.
+      - name: Install Caddy (for validation)
+        run: |
+          curl -fsSL 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+          curl -fsSL 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y caddy >/dev/null
+
+      - name: Validate Caddyfile
+        run: caddy validate --config infrastructure/caddy/Caddyfile --adapter caddyfile
+
+      - name: Validate systemd unit
+        run: systemd-analyze verify infrastructure/deploy/praxis-web.service

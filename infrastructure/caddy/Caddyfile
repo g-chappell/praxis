@@ -1,0 +1,36 @@
+# Praxis — Caddy reverse-proxy config
+#
+# Single site block for the web frontend. The hostname is read from the
+# PRAXIS_DOMAIN environment variable (set on the VPS in
+# /etc/default/caddy or via `systemctl edit caddy.service`); falls back
+# to `praxis.local` so `caddy validate` runs clean in CI / local checks
+# without DNS or env config.
+#
+# Future blocks (api.{$PRAXIS_DOMAIN}, *.preview.{$PRAXIS_DOMAIN}) land
+# in STORY-05 (orchestrator) and STORY-13 (preview URLs).
+
+{
+	# Global options. Add an `email` directive on the production VPS so
+	# Let's Encrypt has a contact address for renewal notifications.
+	# Leave empty in this committed file so CI doesn't tie us to a
+	# specific operator email.
+}
+
+{$PRAXIS_DOMAIN:praxis.local} {
+	encode gzip zstd
+
+	# Reverse-proxy to the apps/web container on its loopback port.
+	# Caddy's default upstream retry buffers brief gaps during
+	# `systemctl restart praxis-web.service` so users see continuity
+	# rather than a 502 (the practical "no dropped connections" path
+	# called out in STORY-02 AC #2 — see ADR-0001 and the runbook).
+	reverse_proxy 127.0.0.1:3000 {
+		# Probe the web container's health endpoint every 30s; Caddy
+		# stops sending traffic to an unhealthy upstream until it
+		# recovers.
+		health_uri /api/health
+		health_interval 30s
+		health_timeout 5s
+		health_status 200
+	}
+}
