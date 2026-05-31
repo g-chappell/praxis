@@ -59,21 +59,18 @@ function buildAuth() {
     // expects Drizzle *property* names, not SQL column names.
     //
     // The one exception: BA's `User.name` is our `displayName` property.
+    // The schema map in `drizzleAdapter` above already maps BA's `user` /
+    // `session` / `verification` keys to our Drizzle exports; `modelName`
+    // is intentionally not set here so BA uses those keys directly.
     user: {
-      modelName: 'users',
       fields: {
         name: 'displayName',
       },
     },
 
     session: {
-      modelName: 'session',
       // 7-day session; users sign in once a week. Tune later if needed.
       expiresIn: 60 * 60 * 24 * 7,
-    },
-
-    verification: {
-      modelName: 'verification',
     },
 
     // UUID generator matches our existing schema (uuid PK + defaultRandom()).
