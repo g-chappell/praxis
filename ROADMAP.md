@@ -125,12 +125,12 @@ reachable /health on the orchestrator.
 
 - **STORY-03** — Postgres schema and migrations (POC subset)
   > Stand up Postgres locally via docker-compose and on the VPS via a
-  > systemd-managed container. Apply the 13 POC tables from
+  > systemd-managed container. Apply the 12 POC tables (plus 1 supporting index) from
   > project_plan.md §9 via a migration runner, and codegen TypeScript
   > types into packages/db so the rest of the codebase consumes a
   > single source of truth.
   **Acceptance criteria:**
-  - `pnpm db:migrate` against a fresh Postgres creates all 13 POC tables idempotently.
+  - `pnpm db:migrate` against a fresh Postgres creates all 12 POC tables plus the 1 supporting index idempotently.
   - `pnpm db:codegen` regenerates packages/db/types from the live schema; CI fails if the generated file is stale.
   **Out of scope:**
   - Skills, portfolio, subscriptions, admin tables (post-POC).
@@ -142,7 +142,7 @@ reachable /health on the orchestrator.
     > and daily pg_dump backups.
     _Task AC:_
     - `docker compose up postgres` brings up a database reachable on 5432.
-  - :black_circle: **TASK-010** — Migration runner with the 13 POC tables  `high` `medium` _(packages/db)_  
+  - :black_circle: **TASK-010** — Migration runner with the 12 POC tables (plus supporting index)  `high` `medium` _(packages/db)_  
     _depends on: TASK-001, TASK-009_
     > Pick drizzle-kit or kysely-codegen — write packages/db with the
     > schema verbatim from project_plan.md §9 (users, auth_sessions,
@@ -150,7 +150,7 @@ reachable /health on the orchestrator.
     > team_invites, projects, sessions, events, agent_turns,
     > learning_links). Add `pnpm db:migrate`.
     _Task AC:_
-    - All 13 tables and indexes from §9 exist after `db:migrate`.
+    - All 12 tables and the supporting index from §9 exist after `db:migrate`.
     - Re-running `db:migrate` is a no-op.
   - :black_circle: **TASK-011** :checkered_flag: — Codegen TypeScript types and a CI check for drift  `med` `small` _(packages/db)_  
     _depends on: TASK-010_
