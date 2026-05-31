@@ -184,12 +184,12 @@ epics:
         title: "Postgres schema and migrations (POC subset)"
         description: |
           Stand up Postgres locally via docker-compose and on the VPS via a
-          systemd-managed container. Apply the 13 POC tables from
+          systemd-managed container. Apply the 12 POC tables (plus 1 supporting index) from
           project_plan.md §9 via a migration runner, and codegen TypeScript
           types into packages/db so the rest of the codebase consumes a
           single source of truth.
         acceptance_criteria:
-          - "`pnpm db:migrate` against a fresh Postgres creates all 13 POC tables idempotently."
+          - "`pnpm db:migrate` against a fresh Postgres creates all 12 POC tables plus the 1 supporting index idempotently."
           - "`pnpm db:codegen` regenerates packages/db/types from the live schema; CI fails if the generated file is stale."
         user_flow: null
         out_of_scope:
@@ -212,7 +212,7 @@ epics:
             task_acceptance:
               - "`docker compose up postgres` brings up a database reachable on 5432."
           - id: TASK-010
-            title: "Migration runner with the 13 POC tables"
+            title: "Migration runner with the 12 POC tables (plus supporting index)"
             status: ready
             priority: high
             complexity: medium
@@ -226,7 +226,7 @@ epics:
             depends_on: [TASK-001, TASK-009]
             attempt_count: 0
             task_acceptance:
-              - "All 13 tables and indexes from §9 exist after `db:migrate`."
+              - "All 12 tables and the supporting index from §9 exist after `db:migrate`."
               - "Re-running `db:migrate` is a no-op."
           - id: TASK-011
             title: "Codegen TypeScript types and a CI check for drift"
