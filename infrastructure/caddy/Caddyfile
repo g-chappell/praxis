@@ -1,29 +1,20 @@
-# Praxis — Caddy reverse-proxy config
+# Praxis — Caddy block for /etc/caddy/Caddyfile on the deploy VPS.
 #
-# Single site block for the web frontend. The hostname is read from the
-# PRAXIS_DOMAIN environment variable (set on the VPS in
-# /etc/default/caddy or via `systemctl edit caddy.service`); falls back
-# to `praxis.local` so `caddy validate` runs clean in CI / local checks
-# without DNS or env config.
+# This file documents the Praxis-owned block of the host's Caddyfile.
+# The host file is a composite: blocks for Colonize, Pirate-Battle, and
+# Dashboard live in their own repos and are mirrored alongside this
+# block at /etc/caddy/Caddyfile. See ADR-0004 for the multi-tenant
+# context.
 #
-# Future blocks (api.{$PRAXIS_DOMAIN}, *.preview.{$PRAXIS_DOMAIN}) land
-# in STORY-05 (orchestrator) and STORY-13 (preview URLs).
-{
-	# Global options. Add an `email` directive on the production VPS so
-	# Let's Encrypt has a contact address for renewal notifications.
-	# Leave empty in this committed file so CI doesn't tie us to a
-	# specific operator email.
-}
+# Caddy manages TLS for all hostnames via its built-in ACME client; the
+# global block (operator email, etc.) lives once at the top of the
+# host's /etc/caddy/Caddyfile, not in this file.
 
-{$PRAXIS_DOMAIN:praxis.local} {
-	encode gzip zstd
-
-	# Reverse-proxy to the apps/web container on its loopback port.
-	# Caddy's default upstream retry buffers brief gaps during
-	# `systemctl restart praxis-web.service` so users see continuity
-	# rather than a 502 (the practical "no dropped connections" path
-	# called out in STORY-02 AC #2 — see ADR-0001 and the runbook).
-	reverse_proxy 127.0.0.1:3000 {
+praxis.blacksail.dev {
+	# Upstream: praxis-web container on host port :3002.
+	# (Colonize already uses :3000, Pirate-Battle uses :3001 — see the
+	# port-allocation note in ADR-0004.)
+	reverse_proxy 127.0.0.1:3002 {
 		# Probe the web container's health endpoint every 30s; Caddy
 		# stops sending traffic to an unhealthy upstream until it
 		# recovers.
@@ -32,4 +23,6 @@
 		health_timeout 5s
 		health_status 200
 	}
+
+	encode gzip zstd
 }
