@@ -60,7 +60,7 @@ log(`Loaded roadmap: ${epics.length} epics`);
 // ----- discover existing issues -----
 log('Fetching existing repo issues…');
 const existingIssues = ghJson(
-  `gh issue list --repo ${REPO} --state all --limit 1000 --json number,title,labels,milestone,body`
+  `gh issue list --repo ${REPO} --state all --limit 1000 --json number,title,labels,milestone,body`,
 ).map((i) => ({
   ...i,
   labelNames: (i.labels || []).map((l) => l.name).sort(),
@@ -92,9 +92,7 @@ function refMd(id, idToNum) {
 }
 
 function renderEpicBody(epic, idToNum) {
-  const stories = epic.stories
-    .map((s) => `- ${refMd(s.id, idToNum)} — ${s.title}`)
-    .join('\n');
+  const stories = epic.stories.map((s) => `- ${refMd(s.id, idToNum)} — ${s.title}`).join('\n');
   return `**Epic** \`${epic.id}\` mirrors \`roadmap/roadmap.yml\`. Milestone: \`${epic.id}: ${epic.title}\`.
 
 ${(epic.description || '').trim()}
@@ -111,9 +109,7 @@ function renderStoryBody(story, epic, idToNum) {
   const ac = (story.acceptance_criteria || []).map((a) => `- ${a}`).join('\n');
   const flow = (story.user_flow || []).map((s) => `1. ${s}`).join('\n');
   const oos = (story.out_of_scope || []).map((s) => `- ${s}`).join('\n');
-  const tasks = story.tasks
-    .map((t) => `- ${refMd(t.id, idToNum)} — ${t.title}`)
-    .join('\n');
+  const tasks = story.tasks.map((t) => `- ${refMd(t.id, idToNum)} — ${t.title}`).join('\n');
   return `**Story** \`${story.id}\` mirrors \`roadmap/roadmap.yml\`. Parent epic: ${refMd(epic.id, idToNum)}.
 
 ${(story.description || '').trim()}
@@ -144,7 +140,7 @@ ${ac || '_None recorded yet._'}
 - **Status:** \`${task.status}\`
 - **Priority:** \`${task.priority}\`
 - **Complexity:** \`${task.complexity}\`
-- **Terminal:** ${task.is_terminal ? 'yes — completing this satisfies the parent story\'s AC' : 'no'}
+- **Terminal:** ${task.is_terminal ? "yes — completing this satisfies the parent story's AC" : 'no'}
 - **Workspaces:** ${ws || '_none_'}
 
 ${deps ? `## Depends on\n${deps}\n` : ''}
@@ -200,15 +196,19 @@ function reconcileMeta({ id, title, labels, milestone }) {
   const parts = [`gh issue edit ${num} --repo ${REPO}`];
   if (titleChanged) parts.push(`--title ${escapeForShellSingleQuote(title)}`);
   if (milestoneChanged) {
-    parts.push(wantedMs ? `--milestone ${escapeForShellSingleQuote(wantedMs)}` : `--remove-milestone`);
+    parts.push(
+      wantedMs ? `--milestone ${escapeForShellSingleQuote(wantedMs)}` : `--remove-milestone`,
+    );
   }
   if (labelsChanged) {
     // remove every label that exists but isn't wanted, add every wanted that's missing
     for (const old of existing.labelNames) {
-      if (!wantedLabels.includes(old)) parts.push(`--remove-label ${escapeForShellSingleQuote(old)}`);
+      if (!wantedLabels.includes(old))
+        parts.push(`--remove-label ${escapeForShellSingleQuote(old)}`);
     }
     for (const w of wantedLabels) {
-      if (!existing.labelNames.includes(w)) parts.push(`--add-label ${escapeForShellSingleQuote(w)}`);
+      if (!existing.labelNames.includes(w))
+        parts.push(`--add-label ${escapeForShellSingleQuote(w)}`);
     }
   }
   sh(parts.join(' '), { write: true });
@@ -216,7 +216,9 @@ function reconcileMeta({ id, title, labels, milestone }) {
     titleChanged && 'title',
     labelsChanged && 'labels',
     milestoneChanged && 'milestone',
-  ].filter(Boolean).join('+');
+  ]
+    .filter(Boolean)
+    .join('+');
   log(`  reconciled: ${id} (#${num}) — ${changedBits}`);
   // Reflect the change in the cache so subsequent passes see fresh values
   existing.title = title;
@@ -318,7 +320,9 @@ if (!SKIP_SUBISSUES) {
   function nodeId(num) {
     if (nodeIdCache.has(num)) return nodeIdCache.get(num);
     const q = `repository(owner:"${PROJECT_OWNER}",name:"praxis"){issue(number:${num}){id}}`;
-    const out = sh(`gh api graphql -f query=${escapeForShellSingleQuote(`{${q}}`)} --jq .data.repository.issue.id`);
+    const out = sh(
+      `gh api graphql -f query=${escapeForShellSingleQuote(`{${q}}`)} --jq .data.repository.issue.id`,
+    );
     nodeIdCache.set(num, out);
     return out;
   }
@@ -331,7 +335,7 @@ if (!SKIP_SUBISSUES) {
     try {
       sh(`gh api graphql -f query=${escapeForShellSingleQuote(mutation)}`, { write: true });
       log(`  linked: #${childNum} → parent #${parentNum}`);
-    } catch (err) {
+    } catch {
       // Likely already linked, or sub-issues not enabled. Surface message but continue.
       log(`  skip:   #${childNum} → #${parentNum} (already linked or API rejected)`);
     }
@@ -356,7 +360,7 @@ if (!SKIP_PROJECT) {
 
   // Fetch existing project items once
   const items = ghJson(
-    `gh project item-list ${PROJECT_NUMBER} --owner ${PROJECT_OWNER} --format json --limit 1000`
+    `gh project item-list ${PROJECT_NUMBER} --owner ${PROJECT_OWNER} --format json --limit 1000`,
   );
   const itemsOnBoard = new Set();
   for (const it of items.items ?? []) {
@@ -371,7 +375,9 @@ if (!SKIP_PROJECT) {
       // already there
       continue;
     }
-    sh(`gh project item-add ${PROJECT_NUMBER} --owner ${PROJECT_OWNER} --url ${url}`, { write: true });
+    sh(`gh project item-add ${PROJECT_NUMBER} --owner ${PROJECT_OWNER} --url ${url}`, {
+      write: true,
+    });
     log(`  added: ${id} (#${num}) → board`);
   }
 }

@@ -22,11 +22,11 @@
     "infrastructure/mcp-servers"
   ],
   "commands": {
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test --run",
-    "lint": "pnpm biome check .",
-    "build": "pnpm -r build",
-    "dev": "pnpm -r --parallel dev"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm test",
+    "lint": "pnpm lint",
+    "build": "pnpm -r --if-present build",
+    "dev": "pnpm -r --parallel --if-present dev"
   },
   "branchPrefix": "auto/",
   "successThreshold": 5,
