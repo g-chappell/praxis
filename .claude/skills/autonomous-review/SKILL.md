@@ -1,6 +1,6 @@
 ---
 name: autonomous-review
-description: Draft and auto-merge repo-wide refinements after N consecutive successful runs. Reads AGENT-LOG, produces CLAUDE.md / script / skill / workflow / roadmap edits on a dedicated PR branch, enables auto-merge. No PENDING.md, no human approval gate — the PR itself is the audit trail. Do NOT invoke directly — called by /autonomous-run Step 10.
+description: Draft and auto-merge repo-wide refinements after N consecutive successful runs. Reads AGENT-LOG, produces AGENTS.md / script / skill / workflow / roadmap edits on a dedicated PR branch, enables auto-merge. No PENDING.md, no human approval gate — the PR itself is the audit trail. Do NOT invoke directly — called by /autonomous-run Step 10.
 user-invocable: false
 ---
 
@@ -8,7 +8,7 @@ user-invocable: false
 
 Self-improvement pass. Runs after the success streak hits
 `project.json.successThreshold`. Drafts and **directly commits** refinements
-anywhere in the repo (except CLAUDE.md Tier 1) on a branch, opens a PR,
+anywhere in the repo (except AGENTS.md Tier 1) on a branch, opens a PR,
 enables auto-merge. The PR history IS the approval record — no filesystem
 gates, no paused cron, no waiting for a human.
 
@@ -23,7 +23,7 @@ gates, no paused cron, no waiting for a human.
 **Fair game** — any file in the repo the agent judges worth changing to
 codify a lesson learned:
 
-- CLAUDE.md (Tier 2 project conventions; Tier 3 tech-coupled rules)
+- AGENTS.md (Tier 2 project conventions; Tier 3 tech-coupled rules)
 - `.claude/skills/*.md` — refine skill prose/steps
 - `scripts/*` — fix or improve deploy, healthcheck, run-workspaces, etc.
 - `.github/workflows/*.yml` — tune CI
@@ -33,7 +33,7 @@ codify a lesson learned:
 
 **Forbidden** (validator enforces):
 
-1. Any line between the `<!-- Tier 1 — UNIVERSAL RULES -->` and the next `<!-- ===... Tier 2 -->` markers in `CLAUDE.md`. Read both markers, diff must not touch any line in that range.
+1. Any line between the `<!-- Tier 1 — UNIVERSAL RULES -->` and the next `<!-- ===... Tier 2 -->` markers in `AGENTS.md`. Read both markers, diff must not touch any line in that range.
 2. `.claude/.setup-progress` (it's runtime state, not source).
 3. `.env*` (secrets).
 4. `.claude/approvals/history.md` — only written via the normal merge flow, never as part of a self-improvement diff.
@@ -43,7 +43,7 @@ codify a lesson learned:
 ### 1. Gather input
 
 - Last N AGENT-LOG entries (N = `successThreshold`)
-- Full current `CLAUDE.md`
+- Full current `AGENTS.md`
 - `.claude/approvals/history.md` (prior proposal record)
 - Last 5 review PRs via `gh pr list --search "in:title review: self-improvement" --state all --limit 5 --json title,body,mergedAt`
 - Relevant skill / script / workflow files for any candidate edits
@@ -89,12 +89,12 @@ No rate limit: if N non-duplicate patterns exist, make N commits.
 
 ### 5. Tier-1 validator
 
-Before staging each edit to `CLAUDE.md`:
+Before staging each edit to `AGENTS.md`:
 
 ```bash
 # Find Tier-1 block line range
-start=$(grep -n '<!-- Tier 1' CLAUDE.md | head -1 | cut -d: -f1)
-end=$(grep -n '<!-- Tier 2' CLAUDE.md | head -1 | cut -d: -f1)
+start=$(grep -n '<!-- Tier 1' AGENTS.md | head -1 | cut -d: -f1)
+end=$(grep -n '<!-- Tier 2' AGENTS.md | head -1 | cut -d: -f1)
 ```
 
 If the diff touches any line in `[start, end)`, abort the entire review

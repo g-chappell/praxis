@@ -10,7 +10,7 @@ user-invocable: true
 
 Previously this skill was the human approval gate for self-improvement
 proposals. It read `.claude/approvals/PENDING.md`, prompted you per-proposal,
-applied accepted ones to CLAUDE.md, and re-enabled the paused cron.
+applied accepted ones to AGENTS.md, and re-enabled the paused cron.
 
 **That flow is retired.** `/autonomous-review` now writes refinements
 directly to a branch + PR and enables auto-merge. The PR itself is the

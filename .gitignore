@@ -47,6 +47,8 @@ Thumbs.db
 # Hook-written observability logs (InstructionsLoaded, etc.) — grow
 # unbounded and contain absolute paths specific to the machine.
 .claude/logs/
+# Per-session lock for ScheduleWakeup (process state, not source).
+.claude/scheduled_tasks.lock
 
 # Approvals (history.md and archived approvals) ARE committed per the
 # auditable-approvals design. PENDING.md is retired in favour of
