@@ -17,6 +17,8 @@ export default [
       'test-results/**',
       '.claude/**',
       'roadmap/yaml-lite.mjs',
+      'packages/db/migrations/**',
+      'packages/db/src/generated/**',
     ],
   },
   js.configs.recommended,

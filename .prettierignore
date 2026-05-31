@@ -11,6 +11,10 @@ coverage
 playwright-report
 test-results
 
+# Drizzle-generated migration SQL + introspection output
+packages/db/migrations
+packages/db/src/generated
+
 # Generated / append-only repo artefacts
 ROADMAP.md
 AGENT-LOG.md
