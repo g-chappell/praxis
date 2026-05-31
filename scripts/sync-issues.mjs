@@ -61,7 +61,11 @@ log(`Loaded roadmap: ${epics.length} epics`);
 log('Fetching existing repo issues…');
 const existingIssues = ghJson(
   `gh issue list --repo ${REPO} --state all --limit 1000 --json number,title,labels,milestone,body`
-);
+).map((i) => ({
+  ...i,
+  labelNames: (i.labels || []).map((l) => l.name).sort(),
+  milestoneTitle: i.milestone?.title ?? null,
+}));
 
 const idRe = /^(EPIC-\d+|STORY-\d+|TASK-\d+):/;
 const issueByRoadmapId = new Map();
@@ -165,8 +169,61 @@ function ensureIssue({ id, title, labels, milestone }) {
   const num = parseInt(url.split('/').pop(), 10);
   log(`  created: ${id} → #${num} (${url})`);
   // Add it to the in-memory map so the second pass can reference it
-  issueByRoadmapId.set(id, { number: num, title, labels: [], milestone: null, body: '' });
+  issueByRoadmapId.set(id, {
+    number: num,
+    title,
+    labels: labels.map((name) => ({ name })),
+    labelNames: [...labels].sort(),
+    milestone: milestone ? { title: milestone.title } : null,
+    milestoneTitle: milestone?.title ?? null,
+    body: '',
+  });
   return num;
+}
+
+function reconcileMeta({ id, title, labels, milestone }) {
+  const existing = issueByRoadmapId.get(id);
+  if (!existing) return; // created earlier in this run; no reconcile needed
+  const num = existing.number;
+  if (num < 0) return; // dry-run placeholder
+
+  const wantedLabels = [...labels].sort();
+  const labelsChanged =
+    wantedLabels.length !== existing.labelNames.length ||
+    wantedLabels.some((l, i) => l !== existing.labelNames[i]);
+  const titleChanged = existing.title !== title;
+  const wantedMs = milestone?.title ?? null;
+  const milestoneChanged = existing.milestoneTitle !== wantedMs;
+
+  if (!titleChanged && !labelsChanged && !milestoneChanged) return;
+
+  const parts = [`gh issue edit ${num} --repo ${REPO}`];
+  if (titleChanged) parts.push(`--title ${escapeForShellSingleQuote(title)}`);
+  if (milestoneChanged) {
+    parts.push(wantedMs ? `--milestone ${escapeForShellSingleQuote(wantedMs)}` : `--remove-milestone`);
+  }
+  if (labelsChanged) {
+    // remove every label that exists but isn't wanted, add every wanted that's missing
+    for (const old of existing.labelNames) {
+      if (!wantedLabels.includes(old)) parts.push(`--remove-label ${escapeForShellSingleQuote(old)}`);
+    }
+    for (const w of wantedLabels) {
+      if (!existing.labelNames.includes(w)) parts.push(`--add-label ${escapeForShellSingleQuote(w)}`);
+    }
+  }
+  sh(parts.join(' '), { write: true });
+  const changedBits = [
+    titleChanged && 'title',
+    labelsChanged && 'labels',
+    milestoneChanged && 'milestone',
+  ].filter(Boolean).join('+');
+  log(`  reconciled: ${id} (#${num}) — ${changedBits}`);
+  // Reflect the change in the cache so subsequent passes see fresh values
+  existing.title = title;
+  existing.labelNames = wantedLabels;
+  existing.labels = labels.map((name) => ({ name }));
+  existing.milestoneTitle = wantedMs;
+  existing.milestone = milestone ? { title: milestone.title } : null;
 }
 
 // ----- Pass A: ensure every epic/story/task has an issue -----
@@ -175,24 +232,28 @@ const idToNum = new Map();
 
 for (const epic of epics) {
   const milestone = milestoneByEpic.get(epic.id);
-  const num = ensureIssue({
+  const spec = {
     id: epic.id,
     title: `${epic.id}: ${epic.title}`,
     labels: ['type:epic'],
     milestone,
-  });
+  };
+  const num = ensureIssue(spec);
+  reconcileMeta(spec);
   idToNum.set(epic.id, num);
 }
 
 for (const epic of epics) {
   const milestone = milestoneByEpic.get(epic.id);
   for (const story of epic.stories) {
-    const num = ensureIssue({
+    const spec = {
       id: story.id,
       title: `${story.id}: ${story.title}`,
       labels: ['type:story'],
       milestone,
-    });
+    };
+    const num = ensureIssue(spec);
+    reconcileMeta(spec);
     idToNum.set(story.id, num);
   }
 }
@@ -203,12 +264,14 @@ for (const epic of epics) {
     for (const task of story.tasks) {
       const labels = ['type:task', `priority:${task.priority}`, `complexity:${task.complexity}`];
       if (task.is_terminal) labels.push('is-terminal');
-      const num = ensureIssue({
+      const spec = {
         id: task.id,
         title: `${task.id}: ${task.title}`,
         labels,
         milestone,
-      });
+      };
+      const num = ensureIssue(spec);
+      reconcileMeta(spec);
       idToNum.set(task.id, num);
     }
   }
