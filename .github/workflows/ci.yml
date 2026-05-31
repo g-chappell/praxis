@@ -74,5 +74,10 @@ jobs:
             exit 1
           fi
 
-      - name: Validate systemd unit
-        run: systemd-analyze verify infrastructure/deploy/praxis-web.service
+      - name: Validate systemd units
+        run: |
+          systemd-analyze verify \
+            infrastructure/deploy/praxis-web.service \
+            infrastructure/deploy/praxis-postgres.service \
+            infrastructure/deploy/praxis-postgres-backup.service \
+            infrastructure/deploy/praxis-postgres-backup.timer
