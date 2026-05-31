@@ -50,4 +50,4 @@ Bring Your Own Subscription — users link their own Anthropic and OpenAI accoun
 
 ## Documentation
 
-See [docs/project_overview.md](docs/project_overview.md) for the full executive summary and detailed product definition.
+See [docs/executive_summary.md](docs/executive_summary.md) for the full executive summary and detailed product definition / implementation plan [docs/project_plan.md](docs/project_plan.md).
