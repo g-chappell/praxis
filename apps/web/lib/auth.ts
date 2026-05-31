@@ -17,7 +17,7 @@ import { magicLink } from 'better-auth/plugins';
 import { authSession, users, verification } from '@praxis/db';
 import { db } from '@praxis/db/client';
 
-import { sendMagicLinkEmail } from './mailer-inline';
+import { sendMagicLinkEmail } from './mailer';
 
 // Lazy singleton — Next.js's build-time page-data collection imports
 // route modules without env, and throwing at module load breaks the
