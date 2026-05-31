@@ -66,5 +66,13 @@ jobs:
       - name: Validate Caddyfile
         run: caddy validate --config infrastructure/caddy/Caddyfile --adapter caddyfile
 
+      - name: Check Caddyfile is formatted
+        run: |
+          caddy fmt infrastructure/caddy/Caddyfile > /tmp/caddyfile.formatted
+          if ! diff -u infrastructure/caddy/Caddyfile /tmp/caddyfile.formatted; then
+            echo "::error::Caddyfile is not formatted. Run 'caddy fmt --overwrite infrastructure/caddy/Caddyfile' locally." >&2
+            exit 1
+          fi
+
       - name: Validate systemd unit
         run: systemd-analyze verify infrastructure/deploy/praxis-web.service

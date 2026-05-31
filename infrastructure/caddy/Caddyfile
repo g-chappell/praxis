@@ -8,7 +8,6 @@
 #
 # Future blocks (api.{$PRAXIS_DOMAIN}, *.preview.{$PRAXIS_DOMAIN}) land
 # in STORY-05 (orchestrator) and STORY-13 (preview URLs).
-
 {
 	# Global options. Add an `email` directive on the production VPS so
 	# Let's Encrypt has a contact address for renewal notifications.
