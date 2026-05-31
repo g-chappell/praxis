@@ -1,7 +1,7 @@
 // similarity.mjs — Jaro-Winkler string similarity, zero dependencies.
 //
-// Used by autonomous-review to de-duplicate CLAUDE.md proposals against
-// existing CLAUDE.md content and against approvals/history.md (so items
+// Used by autonomous-review to de-duplicate AGENTS.md proposals against
+// existing AGENTS.md content and against approvals/history.md (so items
 // already proposed before — approved OR rejected — never re-surface).
 //
 // Returns a float in [0, 1]. Higher = more similar. 1.0 = exact match.

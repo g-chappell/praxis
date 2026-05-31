@@ -21,7 +21,7 @@ crisp epic with stories, not to design the solution.
 Before asking anything, read:
 
 - `roadmap/roadmap.yml` — so you don't propose duplicate work
-- `CLAUDE.md` (Tier 2 — project conventions)
+- `AGENTS.md` (Tier 2 — project conventions)
 - `~/.claude/memory/project_<slug>_vision.md` if it exists — the existing vision
 
 Cite specific tasks/epics from roadmap.yml when relevant ("we already have

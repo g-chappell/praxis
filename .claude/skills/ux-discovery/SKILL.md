@@ -39,7 +39,7 @@ Accepts either:
 ## Context to load
 
 - `roadmap/roadmap.yml` for neighboring work
-- `CLAUDE.md` Tier 3 (tech-coupled rules) — especially testing patterns and
+- `AGENTS.md` Tier 3 (tech-coupled rules) — especially testing patterns and
   UI conventions
 - Any existing UI components referenced (read before proposing changes)
 
@@ -93,7 +93,7 @@ Probe explicitly — users rarely volunteer these:
 - Keyboard navigation path (tab order)
 - Screen-reader labels for non-text controls
 - Mobile/tablet layout at smaller breakpoints
-- Color contrast on the brand palette (if specified in CLAUDE.md)
+- Color contrast on the brand palette (if specified in AGENTS.md)
 
 ### 6. Out of scope
 
@@ -194,7 +194,7 @@ Next step: pass this to /roadmap-expand to add it to the roadmap.
 ## Anti-patterns
 
 - Don't design the database schema or pick libraries — that's tech-coupled
-- Don't invent new brand / color / typography — cite CLAUDE.md
+- Don't invent new brand / color / typography — cite AGENTS.md
 - Don't write code samples longer than 2 lines — just describe the contract
 - Don't skip edge cases to save time — this is exactly when they're cheapest
   to capture

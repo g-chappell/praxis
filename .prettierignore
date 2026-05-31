@@ -59,5 +59,7 @@ LICENSE
 README.md
 CLAUDE.md
 CLAUDE.md.tmpl
+AGENTS.md
+ARCHITECTURE.md
 .mcp.json.tmpl
 .env.example

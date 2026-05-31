@@ -101,7 +101,7 @@ async function main() {
     process.stderr.write(`  ... and ${hits.length - 10} more\n`);
   }
   process.stderr.write(
-    '\nPer CLAUDE.md Tier 1 stub policy:\n' +
+    '\nPer AGENTS.md Tier 1 stub policy:\n' +
     '  - Replace with a real implementation, OR\n' +
     '  - Add follow-up tasks via `node scripts/roadmap-followup.mjs <TASK> --add-tasks "..."`\n' +
     '    and continue WITHOUT the stub, OR\n' +

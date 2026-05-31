@@ -189,18 +189,18 @@ errors (missing project.json, slug derivation failed, branch exists).
 the Story's `acceptance_criteria`, `user_flow`, `out_of_scope`, and
 `task_acceptance` (per-task subset) from `roadmap.yml` and treat them as
 the actual specification. The task `description` is a starting point;
-the Story's AC is what the agent must satisfy — see CLAUDE.md Tier 1
+the Story's AC is what the agent must satisfy — see AGENTS.md Tier 1
 ("Implement to the Story, not the literal Task body" — added in PR 4 of
 the feature-first rollout).
 
-Follow CLAUDE.md Tier 1 rules:
+Follow AGENTS.md Tier 1 rules:
 - One file at a time
 - Typecheck + targeted tests between edits (the `post-edit.mjs` hook does this automatically)
 - Read whole components before editing
 - Write tests for new behavior
 
 Task description drives the work. Consult:
-- CLAUDE.md Tier 2/3 (conventions, testing patterns)
+- AGENTS.md Tier 2/3 (conventions, testing patterns)
 - Relevant `techstack_*.md` memory files
 
 ### No-stub policy (anti-drift)
