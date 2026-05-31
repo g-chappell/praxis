@@ -11,6 +11,7 @@
 
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   index,
   jsonb,
   pgTable,
@@ -22,25 +23,56 @@ import {
 } from 'drizzle-orm/pg-core';
 
 // ─── users ────────────────────────────────────────────────────────────
+// Praxis-canonical identity table. STORY-01's `display_name` stays;
+// STORY-04 adds Better Auth's required columns (`email_verified`,
+// `image`, `updated_at`). The schema-fields mapping in apps/web/lib/
+// auth.ts is what bridges Better Auth's camelCase API to these
+// snake_case columns. See ADR-0005.
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').notNull().unique(),
+  emailVerified: boolean('email_verified').notNull().default(false),
   displayName: text('display_name'),
+  image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
-// ─── auth_sessions ────────────────────────────────────────────────────
-export const authSessions = pgTable('auth_sessions', {
-  id: uuid('id').primaryKey(),
-  userId: uuid('user_id').references(() => users.id),
-  expiresAt: timestamp('expires_at', { withTimezone: true }),
+// ─── session (BA's authentication session) ──────────────────────────
+// Owned by Better Auth (STORY-04). Stores active login sessions; the
+// session cookie carries the opaque `id` only. Supersedes STORY-01's
+// dropped `auth_sessions` placeholder. See ADR-0005.
+//
+// The TS export name is `authSession` to avoid colliding with the
+// pre-existing `sessions` project-session table (codegen would emit
+// `Session` for both). The underlying Postgres table name stays
+// `session` (Better Auth's default); the BA `drizzleAdapter`'s
+// `schema` map bridges BA's "session" → `authSession`.
+export const authSession = pgTable('session', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  token: text('token').notNull().unique(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-// ─── magic_link_tokens ────────────────────────────────────────────────
-export const magicLinkTokens = pgTable('magic_link_tokens', {
-  token: text('token').primaryKey(),
-  userId: uuid('user_id').references(() => users.id),
-  expiresAt: timestamp('expires_at', { withTimezone: true }),
+// ─── verification ─────────────────────────────────────────────────────
+// Owned by Better Auth's magic-link plugin (STORY-04). Stores one-time
+// verification tokens (the magic-link's secret); rows are short-lived
+// (expires_at = now() + ~5 minutes). Supersedes STORY-01's dropped
+// `magic_link_tokens` placeholder. See ADR-0005.
+export const verification = pgTable('verification', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
 
 // ─── oauth_tokens ─────────────────────────────────────────────────────

@@ -8,17 +8,14 @@ import type * as schema from '../schema.js';
 export type AgentTurn = InferSelectModel<typeof schema.agentTurns>;
 export type NewAgentTurn = InferInsertModel<typeof schema.agentTurns>;
 
-export type AuthSession = InferSelectModel<typeof schema.authSessions>;
-export type NewAuthSession = InferInsertModel<typeof schema.authSessions>;
+export type AuthSession = InferSelectModel<typeof schema.authSession>;
+export type NewAuthSession = InferInsertModel<typeof schema.authSession>;
 
 export type Event = InferSelectModel<typeof schema.events>;
 export type NewEvent = InferInsertModel<typeof schema.events>;
 
 export type LearningLink = InferSelectModel<typeof schema.learningLinks>;
 export type NewLearningLink = InferInsertModel<typeof schema.learningLinks>;
-
-export type MagicLinkToken = InferSelectModel<typeof schema.magicLinkTokens>;
-export type NewMagicLinkToken = InferInsertModel<typeof schema.magicLinkTokens>;
 
 export type OauthToken = InferSelectModel<typeof schema.oauthTokens>;
 export type NewOauthToken = InferInsertModel<typeof schema.oauthTokens>;
@@ -40,3 +37,6 @@ export type NewTeam = InferInsertModel<typeof schema.teams>;
 
 export type User = InferSelectModel<typeof schema.users>;
 export type NewUser = InferInsertModel<typeof schema.users>;
+
+export type Verification = InferSelectModel<typeof schema.verification>;
+export type NewVerification = InferInsertModel<typeof schema.verification>;
