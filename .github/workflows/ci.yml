@@ -53,6 +53,19 @@ jobs:
       - name: Build
         run: pnpm -r --if-present build
 
+      # @praxis/db codegen drift check.
+      # The script reads packages/db/src/schema.ts at the TS level and emits
+      # row-type aliases into packages/db/src/generated/types.ts. CI fails if
+      # the committed file doesn't match — that means a contributor forgot to
+      # run `pnpm db:codegen` after editing schema.ts.
+      - name: DB codegen drift check
+        run: |
+          pnpm db:codegen
+          git diff --exit-code -- packages/db/src/generated || {
+            echo "::error::packages/db/src/generated/types.ts is stale. Run 'pnpm db:codegen' locally and commit." >&2
+            exit 1
+          }
+
       # Validate the deploy artefacts. Caddy is not on the runner image by
       # default; install it from the official apt repo (~10s). systemd-analyze
       # ships with the runner.
