@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 0 / 18 (0%)
+- **Features verified:** 5 / 18 (28%)
 - **Total tasks:** 52
-- **Done:** 0 (0%)
-- **Ready:** 52
+- **Done:** 17 (33%)
+- **Ready:** 35
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -25,7 +25,7 @@ schema and migrations, magic-link auth, and the orchestrator skeleton.
 By the end: a deployed landing page, a signed-in dashboard, and a
 reachable /health on the orchestrator.
 
-- **STORY-01** — Monorepo scaffold with agent-friendly docs and CI
+- **STORY-01** — Monorepo scaffold with agent-friendly docs and CI  [:white_check_mark: verified]
   > Initialise the pnpm workspaces monorepo and write the cross-tool
   > documentation files that ground every later session — AGENTS.md
   > (root + scoped), CLAUDE.md as a thin importer, ARCHITECTURE.md,
@@ -38,7 +38,7 @@ reachable /health on the orchestrator.
   **Out of scope:**
   - Per-workspace AGENTS.md (added as each workspace lands).
   - Production CI hardening (caching, matrix builds) — basic runner is enough.
-  - :black_circle: **TASK-001** — Initialise pnpm workspaces with apps/ services/ packages/ templates/ infrastructure/  `high` `small`
+  - :white_check_mark: **TASK-001** — Initialise pnpm workspaces with apps/ services/ packages/ templates/ infrastructure/  `high` `small`
     > Add root package.json (private, pnpm workspaces), pnpm-workspace.yaml
     > listing apps/*, services/*, packages/*, templates/*, infrastructure/*,
     > tsconfig.base.json with strict TypeScript, Biome config, root .gitignore
@@ -46,7 +46,7 @@ reachable /health on the orchestrator.
     _Task AC:_
     - `pnpm -v` resolves to >=8 in the repo root after install.
     - .gitignore covers node_modules, .next, dist, .turbo, .vite, *.tsbuildinfo.
-  - :black_circle: **TASK-002** — Write AGENTS.md, CLAUDE.md, ARCHITECTURE.md grounded in /docs  `high` `small`  
+  - :white_check_mark: **TASK-002** — Write AGENTS.md, CLAUDE.md, ARCHITECTURE.md grounded in /docs  `high` `small`  
     _depends on: TASK-001_
     > Root AGENTS.md ≤200 lines: one-line description, build/test commands,
     > code style summary, architecture paragraph, never-dos. CLAUDE.md is
@@ -55,7 +55,7 @@ reachable /health on the orchestrator.
     _Task AC:_
     - AGENTS.md exists with all sections referenced in project_plan.md §3.
     - CLAUDE.md @imports resolve to existing files.
-  - :black_circle: **TASK-003** — Add CI workflow (Biome + tsc + vitest) and pull_request_template.md  `high` `small`  
+  - :white_check_mark: **TASK-003** — Add CI workflow (Biome + tsc + vitest) and pull_request_template.md  `high` `small`  
     _depends on: TASK-001_
     > .github/workflows/ci.yml runs `pnpm install --frozen-lockfile`,
     > `pnpm lint`, `pnpm typecheck`, `pnpm test --run`. Under 2 minutes
@@ -64,7 +64,7 @@ reachable /health on the orchestrator.
     _Task AC:_
     - CI passes on a PR that touches only docs.
     - `ci` is set as a required check via .github/branch-protection.sh.
-  - :black_circle: **TASK-004** :checkered_flag: — ADR template and first two ADRs (deployment + template choice)  `med` `small`  
+  - :white_check_mark: **TASK-004** :checkered_flag: — ADR template and first two ADRs (deployment + template choice)  `med` `small`  
     _depends on: TASK-002_
     > docs/decisions/0000-template.md (Context/Decision/Consequences/Alternatives).
     > ADR-0001: POC deploys entirely to a single VPS via Caddy + Docker;
@@ -75,7 +75,7 @@ reachable /health on the orchestrator.
     - Both ADRs are written and committed; status=Accepted.
     - STORY-01 acceptance_criteria all satisfied.
 
-- **STORY-02** — Next.js frontend Dockerised and deployed to this VPS via Caddy
+- **STORY-02** — Next.js frontend Dockerised and deployed to this VPS via Caddy  [:white_check_mark: verified]
   > Scaffold apps/web (Next.js 14 App Router, shadcn/ui, Tailwind).
   > Produce a Docker image, run it as a systemd-managed service on the
   > VPS, and reverse-proxy it through Caddy at app.<domain>. Wire a
@@ -90,7 +90,7 @@ reachable /health on the orchestrator.
   **Out of scope:**
   - Cloudflare Pages migration (post-POC, see ADR-0001).
   - CDN / edge caching.
-  - :black_circle: **TASK-005** — Scaffold apps/web with Next.js 14, shadcn/ui, Tailwind  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-005** — Scaffold apps/web with Next.js 14, shadcn/ui, Tailwind  `high` `medium` _(apps/web)_  
     _depends on: TASK-001_
     > Use create-next-app (App Router, TypeScript, Tailwind). Install
     > shadcn/ui with sensible defaults (slate base). Build the landing
@@ -99,13 +99,13 @@ reachable /health on the orchestrator.
     _Task AC:_
     - `pnpm --filter web dev` serves the landing page locally.
     - Tailwind classes apply correctly (verified by snapshot or e2e).
-  - :black_circle: **TASK-006** — Dockerise apps/web with Next.js standalone output  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-006** — Dockerise apps/web with Next.js standalone output  `high` `small` _(apps/web)_  
     _depends on: TASK-005_
     > Add apps/web/Dockerfile producing a slim runtime image (node:20-alpine,
     > standalone output). Multi-stage build. Expose port 3000.
     _Task AC:_
     - `docker build` succeeds and the resulting container responds to GET / with 200.
-  - :black_circle: **TASK-007** — Caddyfile and systemd unit for the web container  `high` `small` _(infrastructure/caddy, infrastructure/deploy)_  
+  - :white_check_mark: **TASK-007** — Caddyfile and systemd unit for the web container  `high` `small` _(infrastructure/caddy, infrastructure/deploy)_  
     _depends on: TASK-006_
     > infrastructure/caddy/Caddyfile with `app.<domain>` block reverse-proxying
     > to 127.0.0.1:3000. infrastructure/deploy/praxis-web.service systemd
@@ -113,7 +113,7 @@ reachable /health on the orchestrator.
     > Document the install-on-VPS steps in docs/runbooks/deploy-web.md.
     _Task AC:_
     - Both files lint clean (`caddy validate`, `systemd-analyze verify`).
-  - :black_circle: **TASK-008** :checkered_flag: — GitHub Actions deploy job → SSH → docker pull → systemctl reload  `high` `medium` _(infrastructure/deploy)_  
+  - :white_check_mark: **TASK-008** :checkered_flag: — GitHub Actions deploy job → SSH → docker pull → systemctl reload  `high` `medium` _(infrastructure/deploy)_  
     _depends on: TASK-007_
     > .github/workflows/deploy-web.yml: triggers on push to main when
     > apps/web/** changes. Builds the image, pushes to GHCR, SSHs to
@@ -123,7 +123,7 @@ reachable /health on the orchestrator.
     - Deploy job green on a PR that bumps the landing page copy.
     - STORY-02 acceptance_criteria satisfied end-to-end.
 
-- **STORY-03** — Postgres schema and migrations (POC subset)
+- **STORY-03** — Postgres schema and migrations (POC subset)  [:white_check_mark: verified]
   > Stand up Postgres locally via docker-compose and on the VPS via a
   > systemd-managed container. Apply the 12 POC tables (plus 1 supporting index) from
   > project_plan.md §9 via a migration runner, and codegen TypeScript
@@ -135,14 +135,14 @@ reachable /health on the orchestrator.
   **Out of scope:**
   - Skills, portfolio, subscriptions, admin tables (post-POC).
   - Connection pooling / pgbouncer.
-  - :black_circle: **TASK-009** — Local Postgres via docker-compose; production Postgres systemd unit on VPS  `high` `small` _(infrastructure/deploy)_
+  - :white_check_mark: **TASK-009** — Local Postgres via docker-compose; production Postgres systemd unit on VPS  `high` `small` _(infrastructure/deploy)_
     > infrastructure/deploy/docker-compose.dev.yml runs Postgres 16 +
     > MinIO for local dev. infrastructure/deploy/praxis-postgres.service
     > runs a Postgres container on the VPS with a persistent volume
     > and daily pg_dump backups.
     _Task AC:_
     - `docker compose up postgres` brings up a database reachable on 5432.
-  - :black_circle: **TASK-010** — Migration runner with the 12 POC tables (plus supporting index)  `high` `medium` _(packages/db)_  
+  - :white_check_mark: **TASK-010** — Migration runner with the 12 POC tables (plus supporting index)  `high` `medium` _(packages/db)_  
     _depends on: TASK-001, TASK-009_
     > Pick drizzle-kit or kysely-codegen — write packages/db with the
     > schema verbatim from project_plan.md §9 (users, auth_sessions,
@@ -152,7 +152,7 @@ reachable /health on the orchestrator.
     _Task AC:_
     - All 12 tables and the supporting index from §9 exist after `db:migrate`.
     - Re-running `db:migrate` is a no-op.
-  - :black_circle: **TASK-011** :checkered_flag: — Codegen TypeScript types and a CI check for drift  `med` `small` _(packages/db)_  
+  - :white_check_mark: **TASK-011** :checkered_flag: — Codegen TypeScript types and a CI check for drift  `med` `small` _(packages/db)_  
     _depends on: TASK-010_
     > `pnpm db:codegen` emits packages/db/types.ts from the live schema.
     > CI runs codegen and fails if `git diff --exit-code` reports
@@ -161,7 +161,7 @@ reachable /health on the orchestrator.
     - Types are consumed by apps/web and services/orchestrator without manual definition.
     - STORY-03 acceptance_criteria satisfied.
 
-- **STORY-04** — Magic-link auth via Better Auth
+- **STORY-04** — Magic-link auth via Better Auth  [:white_check_mark: verified]
   > Users sign in by submitting an email; the platform mails a one-time
   > link; clicking it creates a session and redirects to /dashboard.
   > No password, no MFA. Email sender behind an interface so dev mode
@@ -178,21 +178,21 @@ reachable /health on the orchestrator.
   **Out of scope:**
   - Email/password sign-up, MFA, OAuth-only sign-in (later phases).
   - Account deletion UI.
-  - :black_circle: **TASK-012** — Wire Better Auth with the Postgres adapter and a magic-link plugin  `high` `medium` _(apps/web, packages/db)_  
+  - :white_check_mark: **TASK-012** — Wire Better Auth with the Postgres adapter and a magic-link plugin  `high` `medium` _(apps/web, packages/db)_  
     _depends on: TASK-005, TASK-011_
     > Install Better Auth in apps/web. Use the schema from STORY-03 for
     > users / auth_sessions / magic_link_tokens. Add the magic-link
     > plugin with a configurable mailer.
     _Task AC:_
     - Better Auth routes mounted under /api/auth and respond 2xx where expected.
-  - :black_circle: **TASK-013** — Mailer interface + Resend prod / stub dev  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-013** — Mailer interface + Resend prod / stub dev  `high` `small` _(apps/web)_  
     _depends on: TASK-012_
     > packages/mailer or apps/web/lib/mailer.ts exposing send(email,subject,html).
     > Prod implementation uses Resend (RESEND_API_KEY). Dev implementation
     > logs to stdout and writes to .mail/ for local inspection.
     _Task AC:_
     - Local sign-in surfaces the link in .mail/ when no Resend key is configured.
-  - :black_circle: **TASK-014** :checkered_flag: — Sign-in pages and protected /dashboard  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-014** :checkered_flag: — Sign-in pages and protected /dashboard  `high` `medium` _(apps/web)_  
     _depends on: TASK-012, TASK-013_
     > /signin (email form), /verify (handles magic link), /dashboard
     > (placeholder, shows user email and a Sign out button). Server-side
@@ -201,7 +201,7 @@ reachable /health on the orchestrator.
     - End-to-end Playwright test: submit email → fetch link from .mail/ → visit → land on /dashboard.
     - STORY-04 acceptance_criteria satisfied.
 
-- **STORY-05** — Orchestrator skeleton — Bun + Hono + WebSocket hub
+- **STORY-05** — Orchestrator skeleton — Bun + Hono + WebSocket hub  [:white_check_mark: verified]
   > Scaffold services/orchestrator as a Bun + Hono process. Expose
   > /health (used by deploy + uptime checks) and /ws (the WebSocket
   > hub that later carries agent events, presence, prompts). Run it
@@ -213,19 +213,19 @@ reachable /health on the orchestrator.
   **Out of scope:**
   - Per-project rooms, prompt queue, ACP host (STORY-08 and later).
   - Authentication on /ws — added when sessions land in STORY-09.
-  - :black_circle: **TASK-015** — Scaffold services/orchestrator with Bun + Hono + Dockerfile  `high` `small` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-015** — Scaffold services/orchestrator with Bun + Hono + Dockerfile  `high` `small` _(services/orchestrator)_  
     _depends on: TASK-001_
     > Bun init + Hono dependency. Add Dockerfile (oven/bun:1 base).
     > tsconfig with strict settings extending tsconfig.base.json.
     _Task AC:_
     - `bun run dev` starts the server locally on :4000.
-  - :black_circle: **TASK-016** — /health + /ws ping/pong with structured logging  `high` `small` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-016** — /health + /ws ping/pong with structured logging  `high` `small` _(services/orchestrator)_  
     _depends on: TASK-015_
     > Hono routes for GET /health. Bun.serve websocket handler for /ws.
     > Pino-style JSON logging via Bun's console + a small lib.
     _Task AC:_
     - Integration test connects a WebSocket, sends ping, asserts pong.
-  - :black_circle: **TASK-017** :checkered_flag: — Caddy block for api.<domain> + systemd unit  `high` `small` _(infrastructure/caddy, infrastructure/deploy)_  
+  - :white_check_mark: **TASK-017** :checkered_flag: — Caddy block for api.<domain> + systemd unit  `high` `small` _(infrastructure/caddy, infrastructure/deploy)_  
     _depends on: TASK-016, TASK-007_
     > Add `api.<domain>` block to the Caddyfile reverse-proxying to
     > 127.0.0.1:4000 (handles /ws upgrade). Add

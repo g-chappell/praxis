@@ -24,6 +24,8 @@ epics:
           (root + scoped), CLAUDE.md as a thin importer, ARCHITECTURE.md,
           and the ADR template. Set up Biome + tsc + vitest and a CI
           workflow that runs them on every PR.
+        verified_at: '2026-06-01T10:03:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Fresh clone → `pnpm i && pnpm test` exits 0 (no tests yet is acceptable; the runner must be wired)."
           - "AGENTS.md, CLAUDE.md, ARCHITECTURE.md, and docs/decisions/0000-template.md are committed at repo root."
@@ -35,7 +37,7 @@ epics:
         tasks:
           - id: TASK-001
             title: "Initialise pnpm workspaces with apps/ services/ packages/ templates/ infrastructure/"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: []
@@ -51,7 +53,7 @@ epics:
               - ".gitignore covers node_modules, .next, dist, .turbo, .vite, *.tsbuildinfo."
           - id: TASK-002
             title: "Write AGENTS.md, CLAUDE.md, ARCHITECTURE.md grounded in /docs"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: []
@@ -67,7 +69,7 @@ epics:
               - "CLAUDE.md @imports resolve to existing files."
           - id: TASK-003
             title: "Add CI workflow (Biome + tsc + vitest) and pull_request_template.md"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: []
@@ -83,7 +85,7 @@ epics:
               - "`ci` is set as a required check via .github/branch-protection.sh."
           - id: TASK-004
             title: "ADR template and first two ADRs (deployment + template choice)"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: []
@@ -107,6 +109,8 @@ epics:
           Produce a Docker image, run it as a systemd-managed service on the
           VPS, and reverse-proxy it through Caddy at app.<domain>. Wire a
           GitHub Actions deploy job that rebuilds and reloads on merge to main.
+        verified_at: '2026-06-01T10:03:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "https://app.<domain> serves a landing page with project name and a Sign in button (HTTPS via Caddy)."
           - "Merge to main triggers a deploy job that rebuilds the image and `systemctl reload` runs without dropping connections."
@@ -120,7 +124,7 @@ epics:
         tasks:
           - id: TASK-005
             title: "Scaffold apps/web with Next.js 14, shadcn/ui, Tailwind"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -136,7 +140,7 @@ epics:
               - "Tailwind classes apply correctly (verified by snapshot or e2e)."
           - id: TASK-006
             title: "Dockerise apps/web with Next.js standalone output"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -149,7 +153,7 @@ epics:
               - "`docker build` succeeds and the resulting container responds to GET / with 200."
           - id: TASK-007
             title: "Caddyfile and systemd unit for the web container"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["infrastructure/caddy", "infrastructure/deploy"]
@@ -164,7 +168,7 @@ epics:
               - "Both files lint clean (`caddy validate`, `systemd-analyze verify`)."
           - id: TASK-008
             title: "GitHub Actions deploy job → SSH → docker pull → systemctl reload"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["infrastructure/deploy"]
@@ -188,6 +192,8 @@ epics:
           project_plan.md §9 via a migration runner, and codegen TypeScript
           types into packages/db so the rest of the codebase consumes a
           single source of truth.
+        verified_at: '2026-06-01T10:03:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "`pnpm db:migrate` against a fresh Postgres creates all 12 POC tables plus the 1 supporting index idempotently."
           - "`pnpm db:codegen` regenerates packages/db/types from the live schema; CI fails if the generated file is stale."
@@ -198,7 +204,7 @@ epics:
         tasks:
           - id: TASK-009
             title: "Local Postgres via docker-compose; production Postgres systemd unit on VPS"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["infrastructure/deploy"]
@@ -213,7 +219,7 @@ epics:
               - "`docker compose up postgres` brings up a database reachable on 5432."
           - id: TASK-010
             title: "Migration runner with the 12 POC tables (plus supporting index)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/db"]
@@ -230,7 +236,7 @@ epics:
               - "Re-running `db:migrate` is a no-op."
           - id: TASK-011
             title: "Codegen TypeScript types and a CI check for drift"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["packages/db"]
@@ -252,6 +258,8 @@ epics:
           link; clicking it creates a session and redirects to /dashboard.
           No password, no MFA. Email sender behind an interface so dev mode
           can stub it and production uses Resend (or SMTP).
+        verified_at: '2026-06-01T10:03:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Submitting an email at /signin produces a `magic_link_tokens` row and an email (real or stubbed); clicking the link issues a session cookie and lands on /dashboard."
           - "Expired/invalid tokens reject with a 4xx and a clear error page."
@@ -267,7 +275,7 @@ epics:
         tasks:
           - id: TASK-012
             title: "Wire Better Auth with the Postgres adapter and a magic-link plugin"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web", "packages/db"]
@@ -281,7 +289,7 @@ epics:
               - "Better Auth routes mounted under /api/auth and respond 2xx where expected."
           - id: TASK-013
             title: "Mailer interface + Resend prod / stub dev"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -295,7 +303,7 @@ epics:
               - "Local sign-in surfaces the link in .mail/ when no Resend key is configured."
           - id: TASK-014
             title: "Sign-in pages and protected /dashboard"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -318,6 +326,8 @@ epics:
           hub that later carries agent events, presence, prompts). Run it
           as a systemd-managed Bun process on the VPS, fronted by Caddy
           at api.<domain> (HTTPS, /ws upgrades to WSS).
+        verified_at: '2026-06-01T10:03:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "GET https://api.<domain>/health returns `{ ok: true, version }` with status 200."
           - "A WebSocket client can connect to wss://api.<domain>/ws, send `{type:'ping'}`, and receive `{type:'pong'}` within 1s."
@@ -328,7 +338,7 @@ epics:
         tasks:
           - id: TASK-015
             title: "Scaffold services/orchestrator with Bun + Hono + Dockerfile"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["services/orchestrator"]
@@ -341,7 +351,7 @@ epics:
               - "`bun run dev` starts the server locally on :4000."
           - id: TASK-016
             title: "/health + /ws ping/pong with structured logging"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["services/orchestrator"]
@@ -354,7 +364,7 @@ epics:
               - "Integration test connects a WebSocket, sends ping, asserts pong."
           - id: TASK-017
             title: "Caddy block for api.<domain> + systemd unit"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["infrastructure/caddy", "infrastructure/deploy"]
