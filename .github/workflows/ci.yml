@@ -93,7 +93,8 @@ jobs:
             infrastructure/deploy/praxis-web.service \
             infrastructure/deploy/praxis-postgres.service \
             infrastructure/deploy/praxis-postgres-backup.service \
-            infrastructure/deploy/praxis-postgres-backup.timer
+            infrastructure/deploy/praxis-postgres-backup.timer \
+            infrastructure/deploy/praxis-orchestrator.service
 
   # Separate Playwright job. NOT marked as a required check today —
   # branch protection only requires `ci`. Promote to required once

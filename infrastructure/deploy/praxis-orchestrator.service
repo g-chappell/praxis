@@ -1,0 +1,37 @@
+[Unit]
+Description=Praxis orchestrator (Bun + Hono) container
+Documentation=https://github.com/g-chappell/praxis/blob/main/docs/runbooks/deploy-orchestrator.md
+After=docker.service network-online.target praxis-postgres.service
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+
+# Pull the latest image before each (re)start so `systemctl restart`
+# after a deploy picks up the new tag. Mirrors praxis-web.service.
+ExecStartPre=-/usr/bin/docker rm -f praxis-orchestrator
+ExecStartPre=/usr/bin/docker pull ghcr.io/g-chappell/praxis-orchestrator:latest
+
+# Host port :4001 (NOT :4000 — autodev-mcp dashboard already owns :4000
+# on this VPS; see ADR-0004). Container internal port stays :4001 via
+# the Dockerfile's PORT env.
+#
+# --network praxis-net puts the container on the same bridge as
+# praxis-db so DATABASE_URL can use `praxis-db` as the hostname.
+# --env-file passes /etc/praxis/praxis.env (DATABASE_URL,
+# BETTER_AUTH_*, RESEND_*). See docs/runbooks/deploy-postgres.md for
+# the env-file format conventions.
+ExecStart=/usr/bin/docker run --rm --name praxis-orchestrator \
+  --network praxis-net \
+  --env-file /etc/praxis/praxis.env \
+  -p 127.0.0.1:4001:4001 \
+  ghcr.io/g-chappell/praxis-orchestrator:latest
+
+ExecStop=/usr/bin/docker stop praxis-orchestrator
+
+[Install]
+WantedBy=multi-user.target

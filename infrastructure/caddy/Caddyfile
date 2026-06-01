@@ -26,3 +26,17 @@ praxis.blacksail.dev {
 
 	encode gzip zstd
 }
+
+api.praxis.blacksail.dev {
+	# Upstream: praxis-orchestrator (Bun + Hono) on host port :4001.
+	# Caddy auto-handles WebSocket upgrades for reverse_proxy — no
+	# extra directive needed for /ws.
+	reverse_proxy 127.0.0.1:4001 {
+		health_uri /health
+		health_interval 30s
+		health_timeout 5s
+		health_status 200
+	}
+
+	encode gzip zstd
+}
