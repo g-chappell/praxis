@@ -87,10 +87,11 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 
 ## Universal rules
 
-- **Implement to the Story, not the literal Task body.** Each task you pick is one slice of a Story. Read the Story's `acceptance_criteria`, `user_flow`, and `out_of_scope` from `roadmap/roadmap.yml` BEFORE writing any code (the autonomous cycle's Step 5 picker emits the parent `storyId`; Step 7 prose tells you to load it). Your work must move the Story toward "all AC satisfied" — never produce stubs, placeholders, or mock data that would fail an AC if exercised end-to-end. Adding work strictly outside the Story's scope is still forbidden — refine via `/roadmap-add` first.
+- **Implement to the Story, not the literal Task body.** Each task you pick is one slice of a Story. Read the Story's `acceptance_criteria`, `user_flow`, and `out_of_scope` from `roadmap/roadmap.yml` BEFORE writing any code. Your work must move the Story toward "all AC satisfied" — never produce stubs, placeholders, or mock data that would fail an AC if exercised end-to-end. Adding work strictly outside the Story's scope is still forbidden — refine via `/roadmap-add` first.
+- **One Story → one PR, per-task commits.** A Story's tasks land on the same branch as separate commits; the terminal task's commit closes the Story. If a Story proves too large mid-flight, refine via `/roadmap-add` into smaller Stories rather than splitting the PR.
 - **No stubs, no placeholders. Ever.** If during implementation you discover the current task can't be completed without producing a stub/placeholder, **do not ship the stub**. Two paths:
-  1. Auto-add follow-up tasks via `node scripts/roadmap-followup.mjs <TASK-ID> --reason "<why>" --add-tasks "<title>;<title>"` and continue the current task only if its own `task_acceptance` can be met WITHOUT the stub. The new follow-ups land in the same PR under the same Story; `select-task.mjs` picks them first in the next cycle.
-  2. Mark the task `status: blocked` with a clear `blocked_reason` and stop the cycle if the gap is ambiguous (design decision needed) or the current task itself can't satisfy its `task_acceptance` without the stub.
+  1. Add follow-up tasks via `/roadmap-add` (or edit `roadmap.yml` directly) and continue the current task only if its own `task_acceptance` can be met WITHOUT the stub. The new follow-ups land in the same PR under the same Story.
+  2. Mark the task `status: blocked` with a clear `blocked_reason` and stop if the gap is ambiguous (design decision needed) or the current task itself can't satisfy its `task_acceptance` without the stub.
 
   A "stub" is any of:
   - A function that returns a hardcoded placeholder string (`"Coming soon"`, `"TODO"`, `"lorem ipsum"`, `"TBD"`)
@@ -99,16 +100,17 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
   - An exported symbol that throws `"not implemented"` or returns `null`/`undefined` while the caller's contract requires a value
   - A route, button, or menu item that renders nothing or no-ops on click
 
-  The `stub-scan.mjs` PostToolUse hook catches the obvious cases at edit time (fail-fast). The Step 8.5 acceptance check (`scripts/story-acceptance-check.mjs`) re-scans the full branch diff and runs an LLM judgment against the Story's AC before the PR opens — both layers run.
+  Two layers catch stubs. The `stub-scan.mjs` PostToolUse hook fires on every Write/Edit (fail-fast at the keystroke). Before opening the PR that closes a Story, run `node scripts/story-acceptance-check.mjs <STORY-ID>` — it greps the full branch diff for stub patterns AND runs an LLM judgment against the Story's `acceptance_criteria`. Exit 0 = ship; exit 1 = fix and re-run.
 - Edit one file at a time. Run typecheck + targeted tests after each edit before moving to the next.
 - Read the full file/component before modifying it. Verify all sibling elements, handlers, and conditional branches survive the edit.
 - Never skip tests after a change — even a "trivial" one. UI changes especially need explicit verification.
+- **Verify externally after deploys and config changes.** CI green ≠ live serving. After a deploy or VPS config change (Caddy reload, env-file edit, sudoers, systemd unit, image push), probe the live URL / `docker ps` / log tail to confirm the change took effect. "Never skip tests" covers in-process testing; this is the deploy-layer analogue.
 - If you notice unrelated brokenness, flag it; do not fix in the same PR.
 - Trust internal code and framework guarantees. Only validate at system boundaries (user input, external APIs).
 - Default to writing no comments. Only add when the **why** is non-obvious.
 - Never introduce security vulnerabilities (command injection, XSS, SQL injection, OWASP top 10). Fix immediately if you notice.
 - Do not take destructive git actions (force-push to main, hard-reset, amend published commits) without explicit user approval.
-- Never commit secrets (.env, credentials). Warn if a user asks to.
+- Never commit secrets (.env, credentials). Warn if a user asks to. **If a secret has been seen by anyone other than the operator** (chat transcript, screenshot, shared terminal, paste service), **rotate it immediately** — assume compromise. Same rule, two cases: don't commit, and respond fast when it leaks.
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <!-- Tier 2 — PROJECT CONVENTIONS. Edit freely. autonomous-review may append. -->
@@ -119,24 +121,26 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 - **AGENTS.md is the primary cross-tool agent-context file.** `CLAUDE.md` is one line: `@AGENTS.md`. Per-workspace `AGENTS.md` files override at sub-folder scope; the sibling `CLAUDE.md` in each workspace is also a single `@AGENTS.md` import. Keep root AGENTS.md under 200 lines; push detail into `docs/conventions/` or `ARCHITECTURE.md`.
 - **ADRs in `docs/decisions/`** for any decision that crosses component boundaries, introduces a new external dependency, or chooses between non-obvious alternatives. Half a page is enough. Sequential numbering, format: Context / Decision / Consequences / Alternatives.
 - **Two open standards are load-bearing.** Anything ACP- or MCP-related changes only with an ADR and confirmation from both contributors.
-- **Branch-as-payload.** Roadmap status changes travel through the PR, never committed directly to main. Branch naming: `auto/<TASK-ID>-<slug>` for autonomous-cycle PRs; `<initials>/<slug>` for human PRs.
-- **One Story → one PR, per-task commits.** A Story's tasks land on the same branch as separate commits; the terminal task's commit closes the Story. Don't open one PR per task — review fatigue, merge churn, and broken intermediate states make it worse than the bundled review.
+- **Branch-as-payload.** Roadmap status changes travel through the PR, never committed directly to main. Branch naming: `auto/<TASK-ID>-<slug>` is the convention for every Story PR (the `auto/` prefix is historical — it does not imply autonomous run). Ad-hoc human PRs use `<initials>/<slug>`.
 - **Two abstractions are sacred.** The `Sandbox` interface (packages/sandbox) and the `AcpHost` layer (packages/acp-host) exist so downstream choices stay reversible. Don't bypass them, don't leak Docker or Anthropic specifics into consumers, and require an ADR before changing their shape.
 - **Secrets and OAuth tokens** are encrypted at rest via `packages/crypto`. Never log raw tokens. The master key (`PRAXIS_MASTER_KEY`) lives only in `.env` and the VPS systemd environment.
 - **Idle shutdown is non-negotiable** for sandboxes (30 min default). Resource limits per project_plan.md §6 — don't relax without an ADR.
 
 ## Scaffolding hygiene
 
-- **Gitignore new tooling artefacts in the same PR that introduces the tool.**
-  When scaffolding a new dependency, audit what the tool writes to disk on
-  first use and add those paths to `.gitignore` *before* opening the PR.
-  Relevant for the Praxis stack:
-  - **Next.js / Vite / Bun:** `.next/`, `.vite/`, `.turbo/`, `dist/`, `build/`, `*.tsbuildinfo`
-  - **Drizzle / Kysely:** `drizzle/.snapshot/` only if you choose to keep generated migrations out of version control (default: commit them)
-  - **Docker:** `.docker-build/` if you scaffold a local build cache directory
-  - **Playwright:** `playwright-report/`, `test-results/`
-  - **Vitest:** `coverage/`
-  - **Editors:** `.idea/`, `.vscode/` (unless intentionally shared), `.DS_Store`
+- **Gitignore new tooling artefacts in the same PR that introduces the tool.** Audit what the tool writes to disk on first use and add paths to `.gitignore` *before* opening the PR. For the Praxis stack: Next.js/Vite/Bun (`.next/`, `.vite/`, `.turbo/`, `dist/`, `build/`, `*.tsbuildinfo`); Drizzle/Kysely (`drizzle/.snapshot/`); Docker (`.docker-build/`); Playwright (`playwright-report/`, `test-results/`); Vitest (`coverage/`); editors (`.idea/`, `.vscode/`, `.DS_Store`).
+
+## Shipping infrastructure work
+
+- **Pre-merge local validation** for any PR touching `services/**`, `apps/**`, `packages/**`, `infrastructure/**`, or `.github/workflows/**`:
+  ```bash
+  pnpm lint && pnpm -r --if-present typecheck && pnpm test && pnpm -r --if-present build
+  caddy validate --config infrastructure/caddy/Caddyfile --adapter caddyfile
+  systemd-analyze verify infrastructure/deploy/*.service
+  ```
+  CI runs the first line; the Caddy + systemd checks are local-only and easy to forget. A bad unit file fails *after* SSH-restart, not in CI.
+- **"Operator follow-ups" section in every infrastructure PR.** Bullet-point what the human has to do on the VPS / DNS provider / package registry that the workflow can't (DNS records, GHCR visibility flip, env-file additions, sudoers extensions). The runbook records these once they're done.
+- **One runbook per deployable** at `docs/runbooks/deploy-<service>.md`. Topology, daily ops (status/logs/restart/rollback), and a "Setup history" section that captures the one-time bootstrap so a future VPS rebuild is reproducible. See `docs/runbooks/deploy-{web,postgres,orchestrator}.md` for the shape.
 
 ## Shipping infrastructure work
 
@@ -183,16 +187,25 @@ by Claude Code's Edit tool under --dangerously-skip-permissions.
 
 ---
 
-## Autonomous workflow
+## Praxis workflow
 
-This project uses an autonomous development agent. Key facts:
+Human-driven, Story-at-a-time. The deterministic helpers named below replace agent guesswork at each step:
 
-- Tasks live in `roadmap/roadmap.yml`. Render with `node roadmap/render.mjs`.
-- Branches follow `auto/<TASK-ID>-<slug>`.
-- Roadmap status changes travel through the PR (branch-as-payload) — never committed directly to main.
-- Every 5 consecutive successful tasks, the agent opens a self-improvement PR with auto-merge enabled. The PR is the audit trail; revert a bad refinement with `gh pr revert` (or `/autonomous-approve`, now a guided revert helper).
-- CI required checks: `ci` (typecheck + lint + test + build). Optional: `e2e`.
-- Auto-merge enabled on main; branch protection requires `ci`.
+1. **Claim a Story.** Load `acceptance_criteria`, `user_flow`, `out_of_scope` from `roadmap/roadmap.yml`. `node scripts/select-task.mjs --print-story <TASK-ID>` resolves task → Story.
+2. **Plan.** Agent presents `/plan`; operator approves PR shape + architectural calls. Cut branch `auto/<TASK-ID>-<slug>`.
+3. **Per task: implement → commit → mark done** via `node scripts/roadmap-update-task.mjs <TASK-ID> --status done --pr <URL> --completed-now` (surgical YAML mutation; the `posttool-roadmap-render.mjs` hook re-renders `ROADMAP.md`).
+4. **Terminal task — gate the Story before its commit:**
+   ```bash
+   node scripts/story-remaining.mjs <STORY-ID> <TASK-ID>          # → 0 = terminal
+   node scripts/story-acceptance-check.mjs <STORY-ID>             # exit 0 = ship
+   node scripts/update-story-feature-complete.mjs <TASK-ID> verified
+   ```
+   Acceptance check is two layers (scripted stub-grep + LLM verdict vs AC). The `stub-scan.mjs` PostToolUse hook is the fail-fast layer; this script is the review gate. Exit 1 = fix and re-run.
+5. **Open the PR** (one per Story). CI required: `ci` (typecheck + lint + test + build); `e2e` runs alongside. Auto-merge on `main`; branch protection requires `ci`.
+6. **GitHub Issues mirror Stories + Tasks** via `scripts/sync-issues.mjs`. The PR closes them on merge.
+7. **Operator merges.** Deploy workflows at `.github/workflows/deploy-<service>.yml` auto-fire on `main` pushes touching the service's paths.
+8. **Externally verify** the live URL / `docker ps` / log tail before declaring done (see tier-1 "Verify externally after deploys").
 
-See `ARCHITECTURE.md` for the system shape and `docs/project_plan.md` for the full
-POC scope. Per-service runbooks live at `docs/runbooks/deploy-*.md`.
+The rest of `scripts/` and `.claude/skills/autonomous-*` are inherited from the project's initial scaffolding and are not used in the current flow; left in tree pending a future prune.
+
+See `ARCHITECTURE.md` for system shape, `docs/project_plan.md` for full POC scope, and `docs/runbooks/deploy-*.md` for per-service ops.
