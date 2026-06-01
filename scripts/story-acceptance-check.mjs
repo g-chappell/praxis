@@ -169,7 +169,11 @@ export function llmVerdict(story, diff) {
   }
 
   const prompt = buildPrompt(story, diff || '(no diff available)');
-  const args = ['--dangerously-skip-permissions', '--allowed-tools', AC_TOOLS, '-p', prompt];
+  // Scope tools read-only via --allowed-tools rather than bypassing permissions
+  // wholesale. In headless `-p` mode any tool outside the allowlist is
+  // auto-denied (not prompted), so the run stays non-interactive — and unlike
+  // --dangerously-skip-permissions it works under root, which refuses that flag.
+  const args = ['--allowed-tools', AC_TOOLS, '-p', prompt];
   const result = spawnSync('claude', args, {
     cwd: ROOT,
     encoding: 'utf8',
