@@ -23,11 +23,18 @@ ExecStartPre=/usr/bin/docker pull ghcr.io/g-chappell/praxis-orchestrator:latest
 # --network praxis-net puts the container on the same bridge as
 # praxis-db so DATABASE_URL can use `praxis-db` as the hostname.
 # --env-file passes /etc/praxis/praxis.env (DATABASE_URL,
-# BETTER_AUTH_*, RESEND_*). See docs/runbooks/deploy-postgres.md for
-# the env-file format conventions.
+# BETTER_AUTH_*, RESEND_*, MINIO_*). See docs/runbooks/deploy-postgres.md
+# for the env-file format conventions.
+#
+# SECURITY: -v /var/run/docker.sock gives the orchestrator control of the host
+# Docker daemon so it can manage per-project sandbox containers and run the
+# idle sweep (STORY-07: DockerSandbox). This is root-equivalent host access —
+# the pragmatic POC choice; harden later (rootless Docker / socket proxy /
+# dedicated sandbox host) under its own ADR.
 ExecStart=/usr/bin/docker run --rm --name praxis-orchestrator \
   --network praxis-net \
   --env-file /etc/praxis/praxis.env \
+  -v /var/run/docker.sock:/var/run/docker.sock \
   -p 127.0.0.1:4001:4001 \
   ghcr.io/g-chappell/praxis-orchestrator:latest
 
