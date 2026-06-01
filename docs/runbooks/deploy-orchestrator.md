@@ -16,9 +16,9 @@ GHCR linkage, sudoers conventions).
                             │
                             ▼
                 ┌──────────────────────────┐
-                │  Caddy on :80 + :443     │   shared with web,
-                │  TLS via ACME            │   colonize, pirate-battle,
-                │  /etc/caddy/Caddyfile    │   dashboard (ADR-0004)
+                │  Caddy on :80 + :443     │   shared with praxis-web
+                │  TLS via ACME            │   and three pre-existing
+                │  /etc/caddy/Caddyfile    │   tenants (ADR-0004)
                 └────────────┬─────────────┘
                              │ HTTP, 127.0.0.1:4001 (or WS upgrade)
                              ▼

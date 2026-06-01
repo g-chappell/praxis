@@ -12,15 +12,13 @@ state.
 
 Pre-flight check during STORY-02 TASK-008 prereq setup revealed:
 
-- **The VPS already runs three other apps** under `*.blacksail.dev`:
-  - `colonize.blacksail.dev` → docker container on `127.0.0.1:3000`
-  - `pirate-battle.blacksail.dev` → `127.0.0.1:3001`
-  - `dashboard.blacksail.dev` → `127.0.0.1:4000` (autodev-mcp HTTP API)
+- **The VPS already runs three pre-existing tenant apps** under
+  `*.blacksail.dev`, occupying host ports `:3000`, `:3001`, and `:4000`.
 - **nginx was the reverse-proxy + TLS terminator**, with all three
   certs issued and auto-renewed by **certbot** via its nginx plugin.
 - Caddy was installed but failed to start because nginx held `:80`/`:443`.
 - The original Praxis plan to use `127.0.0.1:3000` would have collided
-  with Colonize.
+  with one of the pre-existing tenants.
 
 ADR-0001's deploy topology was still right (single VPS, Caddy +
 Docker), but the assumption of a clean host was wrong, and three
@@ -34,12 +32,12 @@ decisions had to be made on the fly:
 ## Decision
 
 **Migrate the whole VPS reverse proxy from nginx to Caddy.** Caddy
-serves all four apps (Colonize, Pirate-Battle, Dashboard, Praxis) and
+serves all four apps (Praxis + the three pre-existing tenants) and
 manages all TLS via its built-in ACME client. certbot is retired.
 
 `praxis-web` runs its container on host port **`:3002`** (next free
-after `:3000` Colonize and `:3001` Pirate-Battle); the container's
-internal port stays `:3000` (Next.js default).
+after the pre-existing tenants on `:3000` and `:3001`); the
+container's internal port stays `:3000` (Next.js default).
 
 ### Implementation
 
@@ -79,7 +77,7 @@ internal port stays `:3000` (Next.js default).
     cron + timer are disabled but `/etc/letsencrypt/` remains on disk.
   - **Port `:3002` is Praxis's host port.** Subsequent stories
     (orchestrator at `api.blacksail.dev`, MinIO, etc.) should pick
-    `:4001+` to avoid the existing `:4000` autodev-mcp.
+    `:4001+` to avoid the pre-existing tenant on `:4000`.
   - **The `caddy` system user has read access to `/etc/letsencrypt/`
     via ACL.** Once certbot is fully removed, this can be revoked.
 - **Reversibility:** to go back to nginx for any app, restart its
