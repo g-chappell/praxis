@@ -58,12 +58,12 @@ export default async function SettingsPage({
 
         {searchParams.connected && isConnected ? (
           <p className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">
-            Connected to Anthropic ✓
+            Connected to Claude Code ✓
           </p>
         ) : null}
         {searchParams.disconnected && !isConnected ? (
           <p className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
-            Disconnected from Anthropic.
+            Disconnected from Claude Code.
           </p>
         ) : null}
         {errorMessage ? (
@@ -72,7 +72,7 @@ export default async function SettingsPage({
 
         <section className="space-y-3 rounded-lg border p-5">
           <div className="space-y-1">
-            <h2 className="font-medium">Anthropic</h2>
+            <h2 className="font-medium">Claude Code</h2>
             <p className="text-sm text-muted-foreground">
               Connect your Claude subscription so the agent runs on your plan.
             </p>
@@ -81,7 +81,7 @@ export default async function SettingsPage({
           {isConnected ? (
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-green-700">Connected to Anthropic ✓</p>
+                <p className="text-sm font-medium text-green-700">Connected to Claude Code ✓</p>
                 {connectedAt ? (
                   <p className="text-xs text-muted-foreground">
                     Connected {connectedAt.toLocaleDateString()}
@@ -92,7 +92,7 @@ export default async function SettingsPage({
             </div>
           ) : (
             <Button asChild>
-              <a href="/api/oauth/anthropic/authorize">Connect Anthropic</a>
+              <a href="/api/oauth/anthropic/authorize">Connect to Claude Code</a>
             </Button>
           )}
         </section>

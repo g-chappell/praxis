@@ -243,7 +243,7 @@ speaks to Claude Code over JSON-RPC, and the first end-to-end
 hello-world session that joins all three.
 
 - **STORY-06** — Anthropic OAuth flow with encrypted token storage  [:white_check_mark: verified]
-  > A signed-in user clicks "Connect Anthropic" on /settings, completes
+  > A signed-in user clicks "Connect to Claude Code" on /settings, completes
   > OAuth, and the platform stores access + refresh tokens encrypted
   > in oauth_tokens. On agent invocation, the orchestrator retrieves
   > the prompting user's token, refreshes if needed, and passes it
@@ -253,10 +253,10 @@ hello-world session that joins all three.
   - When the access token is within 60s of expiry, a refresh is performed automatically before any agent spawn.
   **User flow:**
   1. User goes to /settings
-  2. Clicks 'Connect Anthropic'
+  2. Clicks 'Connect to Claude Code'
   3. Redirected to Anthropic OAuth
   4. Consents to scopes
-  5. Redirected back to /settings showing 'Connected to Anthropic ✓'
+  5. Redirected back to /settings showing 'Connected to Claude Code ✓'
   **Out of scope:**
   - OpenAI OAuth (next phase, alongside Codex).
   - Per-team token sharing.

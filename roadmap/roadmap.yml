@@ -391,7 +391,7 @@ epics:
       - id: STORY-06
         title: "Anthropic OAuth flow with encrypted token storage"
         description: |
-          A signed-in user clicks "Connect Anthropic" on /settings, completes
+          A signed-in user clicks "Connect to Claude Code" on /settings, completes
           OAuth, and the platform stores access + refresh tokens encrypted
           in oauth_tokens. On agent invocation, the orchestrator retrieves
           the prompting user's token, refreshes if needed, and passes it
@@ -403,10 +403,10 @@ epics:
           - "When the access token is within 60s of expiry, a refresh is performed automatically before any agent spawn."
         user_flow:
           - "User goes to /settings"
-          - "Clicks 'Connect Anthropic'"
+          - "Clicks 'Connect to Claude Code'"
           - "Redirected to Anthropic OAuth"
           - "Consents to scopes"
-          - "Redirected back to /settings showing 'Connected to Anthropic ✓'"
+          - "Redirected back to /settings showing 'Connected to Claude Code ✓'"
         out_of_scope:
           - "OpenAI OAuth (next phase, alongside Codex)."
           - "Per-team token sharing."
