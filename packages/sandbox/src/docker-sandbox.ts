@@ -372,13 +372,14 @@ export class DockerSandbox implements Sandbox {
         // Best-effort; the named volume still holds state for a local restart.
       }
     }
+    // remove(force) stops a running container and removes it in one call.
+    // Tolerate "already gone" (404) and "removal already in progress" (409),
+    // which race when stop() and the daemon's own cleanup overlap.
     try {
-      await container.stop({ t: 5 });
-    } catch {
-      // already stopped or gone — fall through to remove
+      await container.remove({ force: true, v: false });
+    } catch (err) {
+      if (!isAlreadyGone(err)) throw err;
     }
-    // Remove the container but keep the named project volume for restart.
-    await container.remove({ force: true, v: false });
     this.activity.delete(handle.projectId);
   }
 
@@ -417,6 +418,13 @@ export class DockerSandbox implements Sandbox {
     }
     return idle;
   }
+}
+
+/** True for dockerode errors meaning the container is already gone or being
+ *  removed — safe to treat stop() as succeeded. */
+function isAlreadyGone(err: unknown): boolean {
+  const code = (err as { statusCode?: number } | null)?.statusCode;
+  return code === 404 || code === 409;
 }
 
 function parseInotifyLine(line: string): FileEvent | null {
