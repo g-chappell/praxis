@@ -31,10 +31,16 @@ ExecStartPre=/usr/bin/docker pull ghcr.io/g-chappell/praxis-orchestrator:latest
 # idle sweep (STORY-07: DockerSandbox). This is root-equivalent host access —
 # the pragmatic POC choice; harden later (rootless Docker / socket proxy /
 # dedicated sandbox host) under its own ADR.
+#
+# --group-add 988 = the host's `docker` group gid, so the container's non-root
+# `bun` user can read the socket (mode srw-rw---- root:docker) without running
+# as root. HOST-SPECIFIC: confirm with `getent group docker` on a new host and
+# update this number (or the socket access will fail with a connect error).
 ExecStart=/usr/bin/docker run --rm --name praxis-orchestrator \
   --network praxis-net \
   --env-file /etc/praxis/praxis.env \
   -v /var/run/docker.sock:/var/run/docker.sock \
+  --group-add 988 \
   -p 127.0.0.1:4001:4001 \
   ghcr.io/g-chappell/praxis-orchestrator:latest
 
