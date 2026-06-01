@@ -29,6 +29,9 @@ COPY services/orchestrator/package.json services/orchestrator/package.json
 # manifest so pnpm install can wire the workspace symlink. Same gotcha
 # as apps/web's Dockerfile.
 COPY packages/db/package.json packages/db/package.json
+# @praxis/sandbox (workspace:*) — DockerSandbox + the idle sweep. Its manifest
+# pulls in dockerode/minio/tar-stream during install.
+COPY packages/sandbox/package.json packages/sandbox/package.json
 
 # engine-strict is on at repo root, but Alpine's Node lags newer transitive
 # deps (e.g. @noble/hashes needs Node 20.19+). Bun is the actual runtime;
@@ -38,6 +41,7 @@ RUN pnpm install --frozen-lockfile --config.engine-strict=false --filter @praxis
 COPY tsconfig.base.json ./
 COPY services/orchestrator ./services/orchestrator
 COPY packages/db ./packages/db
+COPY packages/sandbox ./packages/sandbox
 
 USER bun
 EXPOSE 4001
