@@ -539,7 +539,7 @@ epics:
         tasks:
           - id: TASK-024
             title: "Pick an OSS ACP client lib (or write a minimal one)"
-            status: in-progress
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/acp-host"]

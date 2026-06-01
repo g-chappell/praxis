@@ -10,9 +10,9 @@ _Created: 2026-05-31_
 
 - **Features verified:** 7 / 19 (37%)
 - **Total tasks:** 53
-- **Done:** 23 (43%)
+- **Done:** 24 (45%)
 - **Ready:** 29
-- **In progress:** 1
+- **In progress:** 0
 - **Blocked:** 0
 
 ---
@@ -332,7 +332,7 @@ hello-world session that joins all three.
   **Out of scope:**
   - Multi-user attribution (handled at the orchestrator layer in STORY-12).
   - Codex support (next phase).
-  - :large_orange_diamond: **TASK-024** — Pick an OSS ACP client lib (or write a minimal one)  `high` `small` _(packages/acp-host)_  
+  - :white_check_mark: **TASK-024** — Pick an OSS ACP client lib (or write a minimal one)  `high` `small` _(packages/acp-host)_  
     _depends on: TASK-001_
     > Evaluate published Node ACP libraries. Pick one or implement a
     > ~300-line JSON-RPC stdio client covering initialize, prompt,
