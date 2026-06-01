@@ -539,7 +539,7 @@ epics:
         tasks:
           - id: TASK-024
             title: "Pick an OSS ACP client lib (or write a minimal one)"
-            status: ready
+            status: in-progress
             priority: high
             complexity: small
             workspaces: ["packages/acp-host"]
@@ -549,7 +549,7 @@ epics:
               session/update, request_permission, complete, shutdown.
               Record the decision as ADR-0003.
             depends_on: [TASK-001]
-            attempt_count: 0
+            attempt_count: 1
             task_acceptance:
               - "Choice recorded in docs/decisions/0003-*.md with Consequences and Alternatives."
           - id: TASK-025
