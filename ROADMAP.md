@@ -548,7 +548,7 @@ URLs surfaced through a wildcard Caddy domain.
   - Persistent preview URLs across sessions (Plus tier, productisation).
   - Custom user domains.
   - :black_circle: **TASK-037** — Caddy on-demand TLS for *.preview.<domain>  `high` `medium` _(infrastructure/caddy)_  
-    _depends on: TASK-007_
+    _depends on: TASK-007, TASK-027_
     > Wildcard Caddy block with on_demand TLS and an ask endpoint
     > that the orchestrator answers (returns 200 iff the subdomain
     > maps to a live sandbox).
