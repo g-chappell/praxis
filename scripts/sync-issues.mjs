@@ -8,11 +8,19 @@
 // roadmap.yml is the canonical source; this script never reads from GitHub
 // to mutate the roadmap.
 //
+// State is reconciled too: an issue whose roadmap item is complete (a TASK
+// with status: done, a STORY with feature_complete: verified or all tasks
+// done, an EPIC with all stories complete) is closed as completed. This is
+// the canonical way Story/Task issues get closed — do NOT rely on a PR's
+// "Closes #N" (the agent writes roadmap IDs, not issue numbers). Closing is
+// one-directional; completed→reopened regressions are handled manually.
+//
 // Usage:
 //   node scripts/sync-issues.mjs           # apply changes
 //   node scripts/sync-issues.mjs --dry-run # log what would happen
 //   node scripts/sync-issues.mjs --no-project   # skip project board step
 //   node scripts/sync-issues.mjs --no-subissues # skip sub-issue linking step
+//   node scripts/sync-issues.mjs --no-close     # skip closing completed issues
 
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
@@ -30,6 +38,7 @@ const PROJECT_NUMBER = 3;
 const DRY_RUN = process.argv.includes('--dry-run');
 const SKIP_PROJECT = process.argv.includes('--no-project');
 const SKIP_SUBISSUES = process.argv.includes('--no-subissues');
+const SKIP_CLOSE = process.argv.includes('--no-close');
 
 function sh(cmd, { write = false } = {}) {
   if (DRY_RUN && write) {
@@ -60,11 +69,12 @@ log(`Loaded roadmap: ${epics.length} epics`);
 // ----- discover existing issues -----
 log('Fetching existing repo issues…');
 const existingIssues = ghJson(
-  `gh issue list --repo ${REPO} --state all --limit 1000 --json number,title,labels,milestone,body`,
+  `gh issue list --repo ${REPO} --state all --limit 1000 --json number,title,labels,milestone,body,state`,
 ).map((i) => ({
   ...i,
   labelNames: (i.labels || []).map((l) => l.name).sort(),
   milestoneTitle: i.milestone?.title ?? null,
+  state: (i.state || 'OPEN').toUpperCase(),
 }));
 
 const idRe = /^(EPIC-\d+|STORY-\d+|TASK-\d+):/;
@@ -173,6 +183,7 @@ function ensureIssue({ id, title, labels, milestone }) {
     milestone: milestone ? { title: milestone.title } : null,
     milestoneTitle: milestone?.title ?? null,
     body: '',
+    state: 'OPEN',
   });
   return num;
 }
@@ -380,6 +391,40 @@ if (!SKIP_PROJECT) {
     });
     log(`  added: ${id} (#${num}) → board`);
   }
+}
+
+// ----- Pass E: reconcile open/closed state from roadmap completion -----
+if (!SKIP_CLOSE) {
+  log('\n=== Pass E: close completed issues ===');
+
+  const isTaskComplete = (task) => task.status === 'done';
+  const isStoryComplete = (story) =>
+    story.feature_complete === 'verified' ||
+    (Array.isArray(story.tasks) && story.tasks.length > 0 && story.tasks.every(isTaskComplete));
+  const isEpicComplete = (epic) =>
+    Array.isArray(epic.stories) && epic.stories.length > 0 && epic.stories.every(isStoryComplete);
+
+  let closed = 0;
+  function closeIfComplete(id, complete) {
+    if (!complete) return;
+    const num = idToNum.get(id);
+    if (!num || num < 0) return;
+    const existing = issueByRoadmapId.get(id);
+    if (existing?.state === 'CLOSED') return; // already closed — idempotent
+    sh(`gh issue close ${num} --repo ${REPO} --reason completed`, { write: true });
+    if (existing) existing.state = 'CLOSED';
+    closed += 1;
+    log(`  closed: ${id} (#${num})`);
+  }
+
+  for (const epic of epics) {
+    for (const story of epic.stories) {
+      for (const task of story.tasks) closeIfComplete(task.id, isTaskComplete(task));
+      closeIfComplete(story.id, isStoryComplete(story));
+    }
+    closeIfComplete(epic.id, isEpicComplete(epic));
+  }
+  log(`  ${closed} issue(s) ${DRY_RUN ? 'would be ' : ''}closed.`);
 }
 
 log('\nDone.');
