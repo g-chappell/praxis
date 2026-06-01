@@ -889,7 +889,7 @@ epics:
               Wildcard Caddy block with on_demand TLS and an ask endpoint
               that the orchestrator answers (returns 200 iff the subdomain
               maps to a live sandbox).
-            depends_on: [TASK-007]
+            depends_on: [TASK-007, TASK-027]
             attempt_count: 0
             task_acceptance:
               - "Caddy validates and obtains a wildcard cert for the placeholder domain."
