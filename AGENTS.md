@@ -202,7 +202,7 @@ Human-driven, Story-at-a-time. The deterministic helpers named below replace age
    ```
    Acceptance check is two layers (scripted stub-grep + LLM verdict vs AC). The `stub-scan.mjs` PostToolUse hook is the fail-fast layer; this script is the review gate. Exit 1 = fix and re-run.
 5. **Open the PR** (one per Story). CI required: `ci` (typecheck + lint + test + build); `e2e` runs alongside. Auto-merge on `main`; branch protection requires `ci`.
-6. **GitHub Issues mirror Stories + Tasks** via `scripts/sync-issues.mjs`. The PR closes them on merge.
+6. **GitHub Issues mirror Stories + Tasks** via `scripts/sync-issues.mjs`. On merge to `main`, the `sync-issues` workflow re-runs it and **closes any issue whose roadmap item is complete** (TASK `done`, STORY `feature_complete: verified`, EPIC all-stories-complete). Closure is driven by roadmap status, NOT by a PR's `Closes #N` — so just mark the roadmap done (steps 3–4) and the merge handles the issues. (The project-board step needs a PAT, so it's local-only.)
 7. **Operator merges.** Deploy workflows at `.github/workflows/deploy-<service>.yml` auto-fire on `main` pushes touching the service's paths.
 8. **Externally verify** the live URL / `docker ps` / log tail before declaring done (see tier-1 "Verify externally after deploys").
 
