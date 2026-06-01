@@ -464,6 +464,8 @@ epics:
           Docker. Implement DockerSandbox via dockerode against a base
           image with Node 20, Claude Code CLI, git, and common build tools.
           Idle shutdown after 30 minutes; resource limits per §6.
+        verified_at: '2026-06-01T14:49:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Integration tests cover start/exec/spawn/writeFile/readFile/watchFiles/exposePort/stop against a real Docker daemon and pass in CI."
           - "After 30 minutes of no exec/spawn activity, the container is stopped automatically; the next start() restores from object storage (stubbed in tests)."
@@ -474,7 +476,7 @@ epics:
         tasks:
           - id: TASK-021
             title: "packages/sandbox: define the Sandbox TypeScript interface"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/sandbox"]
@@ -488,7 +490,7 @@ epics:
               - "Interface compiles with no `any`; exported from package index."
           - id: TASK-022
             title: "DockerSandbox via dockerode + base image"
-            status: ready
+            status: done
             priority: high
             complexity: large
             workspaces: ["packages/sandbox", "infrastructure/docker"]
@@ -503,7 +505,7 @@ epics:
               - "All Sandbox methods have integration tests against the real Docker daemon and pass."
           - id: TASK-023
             title: "Idle-shutdown daemon + state persistence to MinIO"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/sandbox", "services/orchestrator"]

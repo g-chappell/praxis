@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 6 / 19 (32%)
+- **Features verified:** 7 / 19 (37%)
 - **Total tasks:** 53
-- **Done:** 20 (38%)
-- **Ready:** 33
+- **Done:** 23 (43%)
+- **Ready:** 30
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -283,7 +283,7 @@ hello-world session that joins all three.
     - Forcing expires_at into the past triggers a successful refresh before the next agent spawn.
     - STORY-06 acceptance_criteria satisfied.
 
-- **STORY-07** — Sandbox interface + DockerSandbox implementation
+- **STORY-07** — Sandbox interface + DockerSandbox implementation  [:white_check_mark: verified]
   > Define the Sandbox interface from project_plan.md §6 in
   > packages/sandbox so consumers depend on the abstraction, not on
   > Docker. Implement DockerSandbox via dockerode against a base
@@ -295,14 +295,14 @@ hello-world session that joins all three.
   **Out of scope:**
   - E2B, Firecracker, Daytona implementations (later phases).
   - Per-template sandbox base images (handled in STORY-14).
-  - :black_circle: **TASK-021** — packages/sandbox: define the Sandbox TypeScript interface  `high` `small` _(packages/sandbox)_  
+  - :white_check_mark: **TASK-021** — packages/sandbox: define the Sandbox TypeScript interface  `high` `small` _(packages/sandbox)_  
     _depends on: TASK-001_
     > Copy the interface from project_plan.md §6 verbatim. Add
     > SandboxHandle, ExecOptions, ExecResult, SpawnOptions,
     > ProcessHandle, FileEvent, Unsubscribe types.
     _Task AC:_
     - Interface compiles with no `any`; exported from package index.
-  - :black_circle: **TASK-022** — DockerSandbox via dockerode + base image  `high` `large` _(packages/sandbox, infrastructure/docker)_  
+  - :white_check_mark: **TASK-022** — DockerSandbox via dockerode + base image  `high` `large` _(packages/sandbox, infrastructure/docker)_  
     _depends on: TASK-021_
     > infrastructure/docker/sandbox-base/Dockerfile based on node:20-bookworm
     > with claude-code CLI, git, build-essential, python3. DockerSandbox
@@ -310,7 +310,7 @@ hello-world session that joins all three.
     > (Memory 2g, CpuQuota for 1 CPU, StorageOpt 5g).
     _Task AC:_
     - All Sandbox methods have integration tests against the real Docker daemon and pass.
-  - :black_circle: **TASK-023** :checkered_flag: — Idle-shutdown daemon + state persistence to MinIO  `high` `medium` _(packages/sandbox, services/orchestrator)_  
+  - :white_check_mark: **TASK-023** :checkered_flag: — Idle-shutdown daemon + state persistence to MinIO  `high` `medium` _(packages/sandbox, services/orchestrator)_  
     _depends on: TASK-022_
     > Track last activity per sandbox; cron-style sweep every minute
     > stops idle ones. On stop, tar the project volume and PUT to
