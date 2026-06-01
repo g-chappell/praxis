@@ -104,6 +104,7 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 - Edit one file at a time. Run typecheck + targeted tests after each edit before moving to the next.
 - Read the full file/component before modifying it. Verify all sibling elements, handlers, and conditional branches survive the edit.
 - Never skip tests after a change — even a "trivial" one. UI changes especially need explicit verification.
+- **Verify externally after deploys and config changes.** CI green ≠ live serving. After a deploy or VPS config change (Caddy reload, env-file edit, sudoers, systemd unit, image push), probe the live URL / `docker ps` / log tail to confirm the change took effect. "Never skip tests" covers in-process testing; this is the deploy-layer analogue.
 - If you notice unrelated brokenness, flag it; do not fix in the same PR.
 - Trust internal code and framework guarantees. Only validate at system boundaries (user input, external APIs).
 - Default to writing no comments. Only add when the **why** is non-obvious.
