@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 7 / 19 (37%)
 - **Total tasks:** 53
-- **Done:** 25 (47%)
-- **Ready:** 28
+- **Done:** 26 (49%)
+- **Ready:** 27
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -347,7 +347,7 @@ hello-world session that joins all three.
     > session/update kind. Forward request_permission to a callback.
     _Task AC:_
     - Unit tests cover happy-path prompt, tool-permission, and shutdown.
-  - :black_circle: **TASK-026** :checkered_flag: — End-to-end integration test: prompt round-trip in a real sandbox  `high` `medium` _(packages/acp-host, packages/sandbox)_  
+  - :white_check_mark: **TASK-026** :checkered_flag: — End-to-end integration test: prompt round-trip in a real sandbox  `high` `medium` _(packages/acp-host, packages/sandbox)_  
     _depends on: TASK-025, TASK-022_
     > CI job that starts a DockerSandbox, runs AcpHost.spawnAndPrompt
     > with a test token, and asserts a streamed text response within

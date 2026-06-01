@@ -23,8 +23,13 @@ RUN apt-get update \
     inotify-tools \
   && rm -rf /var/lib/apt/lists/*
 
-# Claude Code CLI — the agent runs inside the sandbox on the user's token.
-RUN npm install -g @anthropic-ai/claude-code
+# The agent stack inside the sandbox (ADR-0009):
+#  - @anthropic-ai/claude-code: the Claude Code CLI / Agent SDK runtime.
+#  - @agentclientprotocol/claude-agent-acp: the ACP adapter the AcpHost
+#    (packages/acp-host) speaks to over stdio. It authenticates with the
+#    platform ANTHROPIC_API_KEY injected at spawn time — never a subscription
+#    OAuth token. Pinned so the protocol surface can't drift under us.
+RUN npm install -g @anthropic-ai/claude-code @agentclientprotocol/claude-agent-acp@0.39.0
 
 # Project files live here, mounted from a per-project Docker volume.
 WORKDIR /workspace
