@@ -162,3 +162,60 @@ test('mutation preserves the total line count for field edits only', () => {
   const after = out.text.split('\n').length;
   assert.equal(before, after);
 });
+
+// A "lean" task block as hand-written for roadmap.yml story tasks: no
+// pr / completed / last_attempted (those only exist on autonomous-cycle tasks).
+// Stamping these must INSERT the field, not throw — this is the bug that broke
+// new-branch.sh (--last-attempted-now) when claiming a story task.
+const LEAN = `version: 1
+meta:
+  project: Test
+  branch_prefix: auto/
+epics:
+  - id: EPIC-01
+    title: First epic
+    stories:
+      - id: STORY-01
+        title: First story
+        tasks:
+          - id: TASK-010
+            title: Lean task
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: []
+            description: |
+              No stamp fields.
+            depends_on: []
+            attempt_count: 0
+            task_acceptance:
+              - "Does the thing."
+`;
+
+test('applyMutations inserts last_attempted when absent (new-branch.sh path)', () => {
+  const out = applyMutations(LEAN, 'TASK-010', {
+    mutations: { status: 'in-progress' },
+    flags: { incAttempt: true, stampLastAttempted: true },
+  });
+  assert.equal(out.ok, true);
+  assert.match(out.text, /- id: TASK-010[\s\S]*?status: in-progress/);
+  assert.match(out.text, /- id: TASK-010[\s\S]*?attempt_count: 1/);
+  assert.match(
+    out.text,
+    /- id: TASK-010[\s\S]*?last_attempted: '\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:00Z'/,
+  );
+  // inserted at the child indent (12 spaces)
+  assert.match(out.text, /\n {12}last_attempted: '/);
+});
+
+test('applyMutations inserts pr + completed when absent (finalize path)', () => {
+  const out = applyMutations(LEAN, 'TASK-010', {
+    mutations: { status: 'done', pr: 'https://github.com/x/y/pull/7' },
+    flags: { stampCompleted: true },
+  });
+  assert.equal(out.ok, true);
+  assert.match(out.text, /- id: TASK-010[\s\S]*?pr: https:\/\/github\.com\/x\/y\/pull\/7/);
+  assert.match(out.text, /- id: TASK-010[\s\S]*?completed: '\d{4}-\d{2}-\d{2}T/);
+  // the existing task_acceptance list survives the insert
+  assert.match(out.text, /- id: TASK-010[\s\S]*?task_acceptance:[\s\S]*?Does the thing/);
+});

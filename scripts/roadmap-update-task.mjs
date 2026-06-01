@@ -131,6 +131,23 @@ function setKey(lines, block, key, value) {
   lines[hit.idx] = `${' '.repeat(hit.indent)}${key}: ${formatYamlString(value)}`;
 }
 
+// Like setKey, but if the field doesn't exist yet, insert it. Optional fields
+// (pr, last_attempted, completed) aren't pre-declared on every task block, so
+// stamping them must not throw — it just adds the line. Inserts after
+// attempt_count (present on every task); YAML mapping key order is not
+// significant. Callers must pass a freshly-found block (inserts shift indices).
+function setOrInsertKey(lines, block, key, value) {
+  const hit = findKeyLine(lines, block, key);
+  if (hit) {
+    lines[hit.idx] = `${' '.repeat(hit.indent)}${key}: ${formatYamlString(value)}`;
+    return;
+  }
+  const childIndent = block.baseIndent + 2;
+  const anchor = findKeyLine(lines, block, 'attempt_count');
+  const insertAt = anchor ? anchor.idx + 1 : block.start + 1;
+  lines.splice(insertAt, 0, `${' '.repeat(childIndent)}${key}: ${formatYamlString(value)}`);
+}
+
 function bumpAttemptCount(lines, block) {
   const hit = findKeyLine(lines, block, 'attempt_count');
   if (!hit) throw new Error('attempt_count not found in task block');
@@ -158,11 +175,15 @@ export function applyMutations(text, taskId, { mutations, flags }) {
     return { ok: true, title: hit?.value?.trim() ?? '' };
   }
 
-  if ('status' in mutations) setKey(lines, block, 'status', mutations.status);
-  if ('pr' in mutations) setKey(lines, block, 'pr', mutations.pr);
-  if (flags.incAttempt) bumpAttemptCount(lines, block);
-  if (flags.stampLastAttempted) setKey(lines, block, 'last_attempted', nowIsoMinute());
-  if (flags.stampCompleted) setKey(lines, block, 'completed', nowIsoMinute());
+  // Re-find the block before each mutation: setOrInsertKey can splice in a new
+  // line, which shifts indices, so a block captured once would go stale.
+  if ('status' in mutations) setKey(lines, findTaskBlock(lines, taskId), 'status', mutations.status);
+  if ('pr' in mutations) setOrInsertKey(lines, findTaskBlock(lines, taskId), 'pr', mutations.pr);
+  if (flags.incAttempt) bumpAttemptCount(lines, findTaskBlock(lines, taskId));
+  if (flags.stampLastAttempted)
+    setOrInsertKey(lines, findTaskBlock(lines, taskId), 'last_attempted', nowIsoMinute());
+  if (flags.stampCompleted)
+    setOrInsertKey(lines, findTaskBlock(lines, taskId), 'completed', nowIsoMinute());
 
   return { ok: true, text: lines.join('\n') };
 }
