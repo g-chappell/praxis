@@ -529,6 +529,8 @@ epics:
           the sandbox, negotiates the ACP session over stdio, and exposes
           prompt(text, attribution) returning an async iterator of
           ACP events (text chunks, tool calls, file changes).
+        verified_at: '2026-06-01T19:43:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Given a running sandbox and a valid token, prompt('hello') yields at least one text-chunk event and completes without error."
           - "Tool-permission events surface to the caller for approval; denial cancels the turn cleanly."

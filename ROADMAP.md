@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 7 / 19 (37%)
+- **Features verified:** 8 / 19 (42%)
 - **Total tasks:** 53
 - **Done:** 26 (49%)
 - **Ready:** 27
@@ -320,7 +320,7 @@ hello-world session that joins all three.
     - End-to-end test: write file, force idle, observe stop, start, file is present.
     - STORY-07 acceptance_criteria satisfied.
 
-- **STORY-08** — ACP host module in packages/acp-host
+- **STORY-08** — ACP host module in packages/acp-host  [:white_check_mark: verified]
   > Implement the ACP host code in packages/acp-host. Given a sandbox
   > handle and an Anthropic OAuth token, it spawns Claude Code inside
   > the sandbox, negotiates the ACP session over stdio, and exposes
