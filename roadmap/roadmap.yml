@@ -391,27 +391,29 @@ epics:
       - id: STORY-06
         title: "Anthropic OAuth flow with encrypted token storage"
         description: |
-          A signed-in user clicks "Connect Anthropic" on /settings, completes
+          A signed-in user clicks "Connect to Claude Code" on /settings, completes
           OAuth, and the platform stores access + refresh tokens encrypted
           in oauth_tokens. On agent invocation, the orchestrator retrieves
           the prompting user's token, refreshes if needed, and passes it
           to Claude Code via environment.
+        verified_at: '2026-06-01T11:01:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "After connecting, a row exists in oauth_tokens with encrypted access/refresh tokens; decrypting yields valid tokens."
           - "When the access token is within 60s of expiry, a refresh is performed automatically before any agent spawn."
         user_flow:
           - "User goes to /settings"
-          - "Clicks 'Connect Anthropic'"
+          - "Clicks 'Connect to Claude Code'"
           - "Redirected to Anthropic OAuth"
           - "Consents to scopes"
-          - "Redirected back to /settings showing 'Connected to Anthropic ✓'"
+          - "Redirected back to /settings showing 'Connected to Claude Code ✓'"
         out_of_scope:
           - "OpenAI OAuth (next phase, alongside Codex)."
           - "Per-team token sharing."
         tasks:
           - id: TASK-018
             title: "Anthropic OAuth client + /api/oauth/anthropic/{authorize,callback}"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -425,7 +427,7 @@ epics:
               - "Round-trip from /settings → consent → /settings produces a row in oauth_tokens for the signed-in user."
           - id: TASK-019
             title: "Token encryption at rest"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/crypto", "apps/web"]
@@ -439,7 +441,7 @@ epics:
               - "Round-trip encrypt → store → fetch → decrypt yields the original token."
           - id: TASK-020
             title: "Refresh-on-expiry + 'Connected to Anthropic' UI"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web", "services/orchestrator"]
