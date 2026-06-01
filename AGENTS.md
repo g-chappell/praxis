@@ -120,6 +120,7 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 - **ADRs in `docs/decisions/`** for any decision that crosses component boundaries, introduces a new external dependency, or chooses between non-obvious alternatives. Half a page is enough. Sequential numbering, format: Context / Decision / Consequences / Alternatives.
 - **Two open standards are load-bearing.** Anything ACP- or MCP-related changes only with an ADR and confirmation from both contributors.
 - **Branch-as-payload.** Roadmap status changes travel through the PR, never committed directly to main. Branch naming: `auto/<TASK-ID>-<slug>` for autonomous-cycle PRs; `<initials>/<slug>` for human PRs.
+- **One Story → one PR, per-task commits.** A Story's tasks land on the same branch as separate commits; the terminal task's commit closes the Story. Don't open one PR per task — review fatigue, merge churn, and broken intermediate states make it worse than the bundled review.
 - **Two abstractions are sacred.** The `Sandbox` interface (packages/sandbox) and the `AcpHost` layer (packages/acp-host) exist so downstream choices stay reversible. Don't bypass them, don't leak Docker or Anthropic specifics into consumers, and require an ADR before changing their shape.
 - **Secrets and OAuth tokens** are encrypted at rest via `packages/crypto`. Never log raw tokens. The master key (`PRAXIS_MASTER_KEY`) lives only in `.env` and the VPS systemd environment.
 - **Idle shutdown is non-negotiable** for sandboxes (30 min default). Resource limits per project_plan.md §6 — don't relax without an ADR.
@@ -137,9 +138,30 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
   - **Vitest:** `coverage/`
   - **Editors:** `.idea/`, `.vscode/` (unless intentionally shared), `.DS_Store`
 
+## Shipping infrastructure work
+
+- **Pre-merge local validation** for any PR touching `services/**`, `apps/**`, `packages/**`, `infrastructure/**`, or `.github/workflows/**`:
+  ```bash
+  pnpm lint && pnpm -r --if-present typecheck && pnpm test && pnpm -r --if-present build
+  caddy validate --config infrastructure/caddy/Caddyfile --adapter caddyfile
+  systemd-analyze verify infrastructure/deploy/*.service
+  ```
+  CI runs the first line; the Caddy + systemd checks are local-only and easy to forget. A bad unit file fails *after* SSH-restart, not in CI.
+- **"Operator follow-ups" section in every infrastructure PR.** Bullet-point what the human has to do on the VPS / DNS provider / package registry that the workflow can't (DNS records, GHCR visibility flip, env-file additions, sudoers extensions). The runbook records these once they're done.
+- **One runbook per deployable** at `docs/runbooks/deploy-<service>.md`. Topology, daily ops (status/logs/restart/rollback), and a "Setup history" section that captures the one-time bootstrap so a future VPS rebuild is reproducible. See `docs/runbooks/deploy-{web,postgres,orchestrator}.md` for the shape.
+
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <!-- Tier 3 — TECH-COUPLED RULES. Evolves with the stack. -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+## Cross-cutting conventions
+
+Topic cookbooks. Read the relevant file before touching that layer:
+
+- **`docs/conventions/deploy.md`** — VPS shape, `praxis-net` Docker bridge, port allocation, Caddy composite at `/etc/caddy/Caddyfile`, env-file format quirks (ASCII-only, no inline comments), systemd unit skeleton, GHCR image policy (tags, build context, first-push 403, `GIT_SHA` arg), CI deploy workflow shape, sudoers fragment, operator follow-ups.
+- **`docs/conventions/database.md`** — Drizzle as source of truth, two import surfaces (`@praxis/db` schema-only vs `@praxis/db/client` lazy proxy), lazy initialization pattern for env-dependent modules (also applies to auth and mail), codegen drift check, no-mocking-the-DB rule.
+- **`docs/conventions/auth-and-mail.md`** — Better Auth schema hybrid (ADR-0005), `pnpm.overrides` for kysely on Node 20, lazy auth singleton, middleware matcher precision, Playwright cold-compile pre-warm, mailer interface (Dev / Resend / loud-fail in prod), Resend domain verification two-step, API key rotation procedure.
+- **`ARCHITECTURE.md`** — system shape, post-EPIC-01. Link to it; don't duplicate the diagram here.
 
 ## Testing patterns
 
@@ -149,35 +171,14 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 - **No mocks of the database in tests that touch persistence.** Use an ephemeral Postgres via `docker-compose.dev.yml` or testcontainers.
 - **No mocks of ACP.** The OSS ACP host fixture runs a real Claude Code subprocess with a recorded transcript for deterministic tests; full-stack tests use the real CLI.
 
-## Architecture notes
-
-- The Orchestrator owns active sessions. WebSocket hub, prompt queue, ACP communication, sandbox lifecycle — all in `services/orchestrator`. Postgres is the persistence layer, not the coordination layer.
-- One WebSocket per user per project room. Server → client messages: `agent_event`, `partner_prompted`, `file_changed`, `git_state_updated`, `presence`, `sandbox_state`, `queue_position`, `error`.
-- Each user's prompt is wrapped with an attribution header (invisible to the agent, recoverable from the transcript) before being sent over ACP. The ACP session is shared between users in the same project; the queue ensures one active turn at a time.
-- Caddy serves three things on this VPS: `app.<domain>` → Next.js, `api.<domain>` → orchestrator (HTTP + /ws), and `*.preview.<domain>` → on-demand-allocated sandbox ports.
-- Project state is captured to MinIO/R2 on sandbox stop and restored on the next start; sandboxes are otherwise ephemeral.
-
 <!--
-When either section above grows past ~10 multi-paragraph bullets, split
-subsystem-specific rules into a **nested AGENTS.md** placed under the
-subsystem's directory (e.g. `services/orchestrator/AGENTS.md`,
-`packages/acp-host/AGENTS.md`, `apps/web/AGENTS.md`), with a sibling
-`CLAUDE.md` of one line: `@AGENTS.md`. Claude Code loads nested
-CLAUDE.md files on demand when a file in or below that directory is
-read (load_reason `nested_traversal`); other ACP-speaking agents load
-the AGENTS.md directly. Either way the root AGENTS.md stays thin and
-subsystem content only enters context when relevant.
-
-Why nested AGENTS.md (with a thin sibling CLAUDE.md) and not
-`.claude/rules/` or `docs/notes/` with `@-imports`:
-- `@-imports` inside `.claude/rules/*.md` do NOT resolve — the import
-  line is delivered as literal text, the referenced file never loads.
-- `.claude/` paths are rejected by the Claude Code CLI's Edit tool
-  under `--dangerously-skip-permissions`, so the autonomous cycle
-  cannot refine anything stored there.
-- Nested AGENTS.md avoids both — loads automatically (via the sibling
-  CLAUDE.md @-import for Claude Code, and natively for AGENTS-aware
-  agents), lives outside `.claude/`, editable by the cycle.
+When tier-2 or tier-3 grows past ~10 multi-paragraph bullets, split
+subsystem-specific rules into a nested AGENTS.md under that subsystem
+(e.g. `services/orchestrator/AGENTS.md`) with a sibling one-line
+`CLAUDE.md: @AGENTS.md`. Do NOT use `.claude/rules/` or `docs/notes/`
+with @-imports: @-imports inside `.claude/rules/*.md` are delivered
+as literal text (never resolved), and `.claude/` paths are rejected
+by Claude Code's Edit tool under --dangerously-skip-permissions.
 -->
 
 ---
@@ -194,4 +195,4 @@ This project uses an autonomous development agent. Key facts:
 - Auto-merge enabled on main; branch protection requires `ci`.
 
 See `ARCHITECTURE.md` for the system shape and `docs/project_plan.md` for the full
-POC scope. `docs/RUNBOOK.md` for ops procedures is on the post-STORY-01 backlog.
+POC scope. Per-service runbooks live at `docs/runbooks/deploy-*.md`.

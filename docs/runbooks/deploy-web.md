@@ -15,8 +15,8 @@ This runbook covers **manual operations** on a configured host plus a
                             │
                             ▼
                 ┌──────────────────────────┐
-                │  Caddy on :80 + :443     │   shared with colonize,
-                │  TLS via ACME            │   pirate-battle, dashboard
+                │  Caddy on :80 + :443     │   shared with three
+                │  TLS via ACME            │   pre-existing tenants
                 │  /etc/caddy/Caddyfile    │   (see ADR-0004)
                 └────────────┬─────────────┘
                              │ HTTP, 127.0.0.1:3002
@@ -40,18 +40,12 @@ Caddy probes every 30s and parks an unhealthy upstream.
 
 ## Multi-tenant context
 
-This VPS hosts four apps under `*.blacksail.dev`:
-
-| Host | Container port | Owner repo |
-|---|---|---|
-| `colonize.blacksail.dev` | `127.0.0.1:3000` | `g-chappell/colonize` |
-| `pirate-battle.blacksail.dev` | `127.0.0.1:3001` | `g-chappell/pirate-battle` |
-| `praxis.blacksail.dev` | `127.0.0.1:3002` | `g-chappell/praxis` (this repo) |
-| `dashboard.blacksail.dev` | `127.0.0.1:4000` | `g-chappell/autodev-mcp` |
-
-The host's `/etc/caddy/Caddyfile` is composite: one block per app.
-This repo owns the Praxis block (`infrastructure/caddy/Caddyfile`);
-the other blocks are mirrored from their respective repos.
+This VPS hosts `praxis.blacksail.dev` (host port `:3002`, this repo)
+alongside three pre-existing tenant apps on `:3000`, `:3001`, and
+`:4000`. The host's `/etc/caddy/Caddyfile` is composite: one block
+per app. This repo owns the Praxis block
+(`infrastructure/caddy/Caddyfile`); the other blocks are mirrored
+from their respective external repos and are not Praxis's concern.
 
 See **ADR-0004** for the migration history (nginx → Caddy, certbot →
 Caddy ACME) and the port-allocation convention.

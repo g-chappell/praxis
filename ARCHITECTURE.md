@@ -2,7 +2,9 @@
 
 System shape for the POC. Mirrors `docs/project_plan.md` §2 with the
 divergences from STORY-01 already incorporated (single-VPS deploy, no
-Cloudflare Pages — see ADR-0001).
+Cloudflare Pages — see ADR-0001) and EPIC-01 deployment realities
+reflected throughout (multi-tenant VPS via Caddy — ADR-0004; Better
+Auth schema hybrid — ADR-0005).
 
 ## High-level shape
 
@@ -40,13 +42,32 @@ Cloudflare Pages — see ADR-0001).
        └─────────────────────┘  └──────────────────────┘
 ```
 
-All three boxes — `apps/web`, the orchestrator, the per-project sandbox
+All four boxes — `apps/web`, the orchestrator, the per-project sandbox
 containers, and Postgres — live on the same VPS for the POC. Caddy
 terminates TLS and routes by hostname:
 
-- `app.<domain>` → `apps/web` (Next.js)
-- `api.<domain>` → orchestrator (HTTP + `/ws` WebSocket upgrade)
-- `*.preview.<domain>` → on-demand-allocated sandbox ports
+- `praxis.<domain>` → `apps/web` (Next.js, port `:3002`)
+- `api.<domain>` → orchestrator (HTTP + `/ws` WebSocket upgrade, port `:4001`)
+- `*.preview.<domain>` → on-demand-allocated sandbox ports (future, STORY-07+)
+
+## Current deployment (post-EPIC-01)
+
+What's actually live on the VPS today. Everything below is a Docker
+container on the shared `praxis-net` bridge, managed by systemd, and
+sharing `/etc/praxis/praxis.env`.
+
+| Container | Image | Public URL | Story | Status |
+|---|---|---|---|---|
+| `praxis-web` | `ghcr.io/g-chappell/praxis-web:latest` | `https://praxis.blacksail.dev` | STORY-02 / 04 | Live — sign-in works end to end |
+| `praxis-orchestrator` | `ghcr.io/g-chappell/praxis-orchestrator:latest` | `https://api.praxis.blacksail.dev` | STORY-05 | Live — `/health` + `/ws` ping/pong |
+| `praxis-db` | `postgres:16-alpine` | (internal, bound `127.0.0.1:5432`) | STORY-03 | Live — schema migrated, Better Auth tables present |
+
+Caddy at `:80`+`:443` serves the composite (Praxis + other VPS
+tenants — see ADR-0004). TLS via Caddy's built-in ACME.
+
+Mail goes out via Resend (apex `praxis.blacksail.dev`, see ADR-0005
+addendum and `docs/conventions/auth-and-mail.md`). Sign-in is magic
+link, no password storage.
 
 ## Core principles
 
@@ -68,28 +89,34 @@ terminates TLS and routes by hostname:
 
 ## Where each subsystem lives in the repo
 
-| Subsystem | Workspace | Status (post-STORY-01) |
+| Subsystem | Workspace | Status (post-EPIC-01) |
 |---|---|---|
-| Frontend | `apps/web` | scaffolded in STORY-02 |
-| Orchestrator | `services/orchestrator` | scaffolded in STORY-05 |
-| Postgres schema + types | `packages/db` | STORY-03 |
-| Sandbox interface + `DockerSandbox` | `packages/sandbox` | STORY-07 |
-| ACP host module | `packages/acp-host` | STORY-08 |
-| OAuth token encryption | `packages/crypto` | STORY-06 |
+| Frontend (landing, dashboard, auth) | `apps/web` | **Live** — STORY-02, STORY-04 |
+| Orchestrator (HTTP + WS) | `services/orchestrator` | **Live** — STORY-05 |
+| Postgres schema + Drizzle client | `packages/db` | **Live** — STORY-03 |
+| Sandbox interface + `DockerSandbox` | `packages/sandbox` | Future — STORY-07 |
+| ACP host module | `packages/acp-host` | Future — STORY-08 |
+| OAuth token encryption | `packages/crypto` | Future — STORY-06 |
 | Shared types | `packages/shared` | as needed |
-| POC template | `templates/react-threejs-scene` | STORY-14 |
-| Reverse proxy config | `infrastructure/caddy` | STORY-02 / STORY-13 |
-| Sandbox base image | `infrastructure/docker` | STORY-07 |
-| systemd units + deploy scripts | `infrastructure/deploy` | STORY-02 / STORY-05 |
-| MCP servers (image-gen) | `infrastructure/mcp-servers` | STORY-15 |
+| POC template | `templates/react-threejs-scene` | Future — STORY-14 |
+| Reverse proxy config | `infrastructure/caddy` | **Live** — STORY-02 / STORY-05 |
+| Sandbox base image | `infrastructure/docker` | Future — STORY-07 |
+| systemd units + deploy scripts | `infrastructure/deploy` | **Live** — STORY-02 / STORY-03 / STORY-05 |
+| MCP servers (image-gen) | `infrastructure/mcp-servers` | Future — STORY-15 |
 
 ## Read further
 
-- `docs/project_plan.md` — full engineering spec, data model, week-by-week
-  POC roadmap, deferred work.
-- `docs/executive_summary.md` — product context: who Praxis is for, what
-  the six pillars are, what's in the POC vs the post-POC phase.
-- `docs/development_strategy.md` — two-person async working agreement.
-- `docs/decisions/` — ADRs. Read these before changing anything that an
+- `AGENTS.md` — agent-context: tier-1 universal rules, tier-2 project
+  conventions, tier-3 tech-coupled rules + cross-cutting cookbook
+  pointers.
+- `docs/conventions/` — topic cookbooks split out of AGENTS.md tier-3:
+  `deploy.md`, `database.md`, `auth-and-mail.md`.
+- `docs/runbooks/` — per-deployable ops procedures: `deploy-web.md`,
+  `deploy-postgres.md`, `deploy-orchestrator.md`.
+- `docs/decisions/` — ADRs. Read these before changing anything an
   ADR touches; supersede via a new ADR rather than silent change.
-- `AGENTS.md` — agent-context: rules, conventions, key commands.
+- `docs/project_plan.md` — full engineering spec, data model,
+  week-by-week POC roadmap, deferred work.
+- `docs/executive_summary.md` — product context: who Praxis is for,
+  what the six pillars are, what's in the POC vs the post-POC phase.
+- `docs/development_strategy.md` — two-person async working agreement.
