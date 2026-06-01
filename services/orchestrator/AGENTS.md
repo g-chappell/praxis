@@ -45,6 +45,16 @@ This file documents conventions specific to this workspace.
 - `DATABASE_URL` is read at first DB access (lazy proxy). Module-load
   time does not require it.
 
+## Agent credentials (ADR-0009)
+
+When this service gains agent-spawn logic (STORY-09), it drives the agent
+through `@praxis/acp-host` (`AcpHost`) and authenticates it with the
+**platform Anthropic API key** — fetched server-side via the EPIC-05 accessor
+(`getActivePlatformKey`, STORY-21) and passed to the sandbox **only** as
+`ANTHROPIC_API_KEY`. Never forward a per-user subscription OAuth token to the
+agent; never log the key. Record per-turn usage from `turn-complete` events
+for metering (STORY-22).
+
 ## /health response shape
 
 Locked in TASK-016. Do not break the shape without an ADR — uptime

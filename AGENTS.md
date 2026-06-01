@@ -73,7 +73,7 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 
 ## Never do
 
-- Modify OAuth token handling (`packages/crypto`, `oauth_tokens` table, refresh flow) without explicit review.
+- Modify OAuth token handling (`packages/crypto`, `oauth_tokens`, refresh flow) without review; or mishandle the **platform Anthropic API key** (ADR-0009) — it powers all inference, encrypted via `packages/crypto`, admin-managed (EPIC-05): never log/commit it or return it in plaintext, and pass it to the agent only as `ANTHROPIC_API_KEY` (never a per-user OAuth token).
 - Commit secrets (`.env`, credentials, OAuth client secrets). The deny list in `.claude/settings.json` blocks `Read`/`Write`/`Edit` on `.env*` — don't try to work around it.
 - Bypass the `Sandbox` interface (packages/sandbox) or the `AcpHost` (packages/acp-host) by importing Docker / Anthropic SDKs from consumer code. The abstractions exist so we can swap implementations.
 - Relax sandbox idle shutdown (30 min default) or resource limits (1 CPU, 2 GB memory, 5 GB disk) without an ADR.
@@ -120,10 +120,10 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 
 - **AGENTS.md is the primary cross-tool agent-context file.** `CLAUDE.md` is one line: `@AGENTS.md`. Per-workspace `AGENTS.md` files override at sub-folder scope; the sibling `CLAUDE.md` in each workspace is also a single `@AGENTS.md` import. Keep root AGENTS.md under 200 lines; push detail into `docs/conventions/` or `ARCHITECTURE.md`.
 - **ADRs in `docs/decisions/`** for any decision that crosses component boundaries, introduces a new external dependency, or chooses between non-obvious alternatives. Half a page is enough. Sequential numbering, format: Context / Decision / Consequences / Alternatives.
-- **Two open standards are load-bearing.** Anything ACP- or MCP-related changes only with an ADR and confirmation from both contributors.
+- **Two open standards are load-bearing.** Anything ACP- or MCP-related changes only with an ADR and confirmation from both contributors. ACP transport + the billing model are settled in **ADR-0009**: Claude speaks ACP via the `@agentclientprotocol/claude-agent-acp` adapter (no native ACP mode), and inference runs on a **platform-owned API key**, not per-user subscription OAuth (hosted multiplayer can't use a personal subscription). `AcpHost` is the swap point for native-ACP agents (Codex) later.
 - **Branch-as-payload.** Roadmap status changes travel through the PR, never committed directly to main. Branch naming: `auto/<TASK-ID>-<slug>` is the convention for every Story PR (the `auto/` prefix is historical — it does not imply autonomous run). Ad-hoc human PRs use `<initials>/<slug>`.
 - **Two abstractions are sacred.** The `Sandbox` interface (packages/sandbox) and the `AcpHost` layer (packages/acp-host) exist so downstream choices stay reversible. Don't bypass them, don't leak Docker or Anthropic specifics into consumers, and require an ADR before changing their shape.
-- **Secrets and OAuth tokens** are encrypted at rest via `packages/crypto`. Never log raw tokens. The master key (`PRAXIS_MASTER_KEY`) lives only in `.env` and the VPS systemd environment.
+- **Secrets, OAuth tokens, and the platform API key** are encrypted at rest via `packages/crypto`. Never log raw tokens/keys. The master key (`PRAXIS_MASTER_KEY`) lives only in `.env` and the VPS systemd environment. The platform Anthropic API key is admin-managed (EPIC-05): pasted once, stored ciphertext-only, surfaced masked, rotatable; admin surfaces are role-gated server-side.
 - **Idle shutdown is non-negotiable** for sandboxes (30 min default). Resource limits per project_plan.md §6 — don't relax without an ADR.
 
 ## Scaffolding hygiene
