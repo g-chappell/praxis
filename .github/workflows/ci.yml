@@ -172,9 +172,14 @@ jobs:
           cache: 'pnpm'
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: Sandbox integration tests
+      - name: Sandbox + ACP-host integration tests
         env:
           RUN_DOCKER_TESTS: '1'
+          # The live ACP round-trip (packages/acp-host) also needs a real key.
+          # Absent the secret it skips cleanly; determinism comes from the
+          # recorded-agent unit tests. Set ANTHROPIC_API_KEY in repo secrets to
+          # exercise the real agent here.
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         # Run the Docker-heavy files one at a time — parallel workers contend
         # for the daemon on the runner and make container ops flaky.
-        run: pnpm exec vitest run packages/sandbox --no-file-parallelism
+        run: pnpm exec vitest run packages/sandbox packages/acp-host --no-file-parallelism

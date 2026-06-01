@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 7 / 19 (37%)
+- **Features verified:** 8 / 19 (42%)
 - **Total tasks:** 53
-- **Done:** 23 (43%)
-- **Ready:** 30
+- **Done:** 26 (49%)
+- **Ready:** 27
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -320,7 +320,7 @@ hello-world session that joins all three.
     - End-to-end test: write file, force idle, observe stop, start, file is present.
     - STORY-07 acceptance_criteria satisfied.
 
-- **STORY-08** — ACP host module in packages/acp-host
+- **STORY-08** — ACP host module in packages/acp-host  [:white_check_mark: verified]
   > Implement the ACP host code in packages/acp-host. Given a sandbox
   > handle and an Anthropic OAuth token, it spawns Claude Code inside
   > the sandbox, negotiates the ACP session over stdio, and exposes
@@ -332,22 +332,22 @@ hello-world session that joins all three.
   **Out of scope:**
   - Multi-user attribution (handled at the orchestrator layer in STORY-12).
   - Codex support (next phase).
-  - :black_circle: **TASK-024** — Pick an OSS ACP client lib (or write a minimal one)  `high` `small` _(packages/acp-host)_  
+  - :white_check_mark: **TASK-024** — Pick an OSS ACP client lib (or write a minimal one)  `high` `small` _(packages/acp-host)_  
     _depends on: TASK-001_
     > Evaluate published Node ACP libraries. Pick one or implement a
     > ~300-line JSON-RPC stdio client covering initialize, prompt,
     > session/update, request_permission, complete, shutdown.
-    > Record the decision as ADR-0003.
+    > Record the decision as ADR-0009.
     _Task AC:_
-    - Choice recorded in docs/decisions/0003-*.md with Consequences and Alternatives.
-  - :black_circle: **TASK-025** — AcpHost.spawnAndPrompt(sandbox, token, prompt) → AsyncIterable<AcpEvent>  `high` `large` _(packages/acp-host)_  
+    - Choice recorded in docs/decisions/0009-*.md with Consequences and Alternatives.
+  - :white_check_mark: **TASK-025** — AcpHost.spawnAndPrompt(sandbox, token, prompt) → AsyncIterable<AcpEvent>  `high` `large` _(packages/acp-host)_  
     _depends on: TASK-021, TASK-024_
     > Spawn `claude-code --acp` inside the sandbox via Sandbox.spawn.
     > Pipe stdin/stdout JSON-RPC. Emit typed events for each ACP
     > session/update kind. Forward request_permission to a callback.
     _Task AC:_
     - Unit tests cover happy-path prompt, tool-permission, and shutdown.
-  - :black_circle: **TASK-026** :checkered_flag: — End-to-end integration test: prompt round-trip in a real sandbox  `high` `medium` _(packages/acp-host, packages/sandbox)_  
+  - :white_check_mark: **TASK-026** :checkered_flag: — End-to-end integration test: prompt round-trip in a real sandbox  `high` `medium` _(packages/acp-host, packages/sandbox)_  
     _depends on: TASK-025, TASK-022_
     > CI job that starts a DockerSandbox, runs AcpHost.spawnAndPrompt
     > with a test token, and asserts a streamed text response within

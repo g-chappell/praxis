@@ -101,6 +101,22 @@ importers:
 
   infrastructure/deploy: {}
 
+  packages/acp-host:
+    dependencies:
+      '@agentclientprotocol/sdk':
+        specifier: ^0.23.0
+        version: 0.23.0(zod@4.4.3)
+      '@praxis/sandbox':
+        specifier: workspace:*
+        version: link:../sandbox
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.6
+        version: 20.19.41
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   packages/crypto:
     dependencies:
       libsodium-wrappers:
@@ -193,6 +209,11 @@ importers:
         version: 2.1.9(@types/node@20.19.41)
 
 packages:
+
+  '@agentclientprotocol/sdk@0.23.0':
+    resolution: {integrity: sha512-wIGDQMSXwhoSPNCJflSQvf4WeSU2Jq1bbPRAwwb49euo9qMcND5Pb80hD7hVfuAwz9ZvvDuzVrNTOZrvKPR9Eg==}
+    peerDependencies:
+      zod: ^3.25.0 || ^4.0.0
 
   '@alloc/quick-lru@5.2.0':
     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
@@ -2943,6 +2964,10 @@ packages:
     resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
 
 snapshots:
+
+  '@agentclientprotocol/sdk@0.23.0(zod@4.4.3)':
+    dependencies:
+      zod: 4.4.3
 
   '@alloc/quick-lru@5.2.0': {}
 

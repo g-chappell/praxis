@@ -529,6 +529,8 @@ epics:
           the sandbox, negotiates the ACP session over stdio, and exposes
           prompt(text, attribution) returning an async iterator of
           ACP events (text chunks, tool calls, file changes).
+        verified_at: '2026-06-01T19:43:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Given a running sandbox and a valid token, prompt('hello') yields at least one text-chunk event and completes without error."
           - "Tool-permission events surface to the caller for approval; denial cancels the turn cleanly."
@@ -539,7 +541,7 @@ epics:
         tasks:
           - id: TASK-024
             title: "Pick an OSS ACP client lib (or write a minimal one)"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/acp-host"]
@@ -547,14 +549,14 @@ epics:
               Evaluate published Node ACP libraries. Pick one or implement a
               ~300-line JSON-RPC stdio client covering initialize, prompt,
               session/update, request_permission, complete, shutdown.
-              Record the decision as ADR-0003.
+              Record the decision as ADR-0009.
             depends_on: [TASK-001]
-            attempt_count: 0
+            attempt_count: 1
             task_acceptance:
-              - "Choice recorded in docs/decisions/0003-*.md with Consequences and Alternatives."
+              - "Choice recorded in docs/decisions/0009-*.md with Consequences and Alternatives."
           - id: TASK-025
             title: "AcpHost.spawnAndPrompt(sandbox, token, prompt) → AsyncIterable<AcpEvent>"
-            status: ready
+            status: done
             priority: high
             complexity: large
             workspaces: ["packages/acp-host"]
@@ -568,7 +570,7 @@ epics:
               - "Unit tests cover happy-path prompt, tool-permission, and shutdown."
           - id: TASK-026
             title: "End-to-end integration test: prompt round-trip in a real sandbox"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/acp-host", "packages/sandbox"]
