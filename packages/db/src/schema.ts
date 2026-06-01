@@ -14,6 +14,7 @@ import {
   boolean,
   index,
   jsonb,
+  pgEnum,
   pgTable,
   primaryKey,
   text,
@@ -21,6 +22,10 @@ import {
   unique,
   uuid,
 } from 'drizzle-orm/pg-core';
+
+// Authorization role on a user. 'admin' unlocks the /admin area (EPIC-05).
+// Seeded for the platform's contributors; everyone else defaults to 'user'.
+export const userRole = pgEnum('user_role', ['user', 'admin']);
 
 // ─── users ────────────────────────────────────────────────────────────
 // Praxis-canonical identity table. STORY-01's `display_name` stays;
@@ -34,6 +39,7 @@ export const users = pgTable('users', {
   emailVerified: boolean('email_verified').notNull().default(false),
   displayName: text('display_name'),
   image: text('image'),
+  role: userRole('role').notNull().default('user'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
