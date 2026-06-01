@@ -71,3 +71,5 @@ export interface Sandbox {
   exposePort(handle: SandboxHandle, port: number): Promise<string>;
   stop(handle: SandboxHandle): Promise<void>;
 }
+
+export { DockerSandbox, type DockerSandboxConfig } from './docker-sandbox.js';
