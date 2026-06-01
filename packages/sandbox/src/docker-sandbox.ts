@@ -4,7 +4,7 @@
 
 import { randomBytes } from 'node:crypto';
 import * as posix from 'node:path/posix';
-import { PassThrough, type Duplex } from 'node:stream';
+import { PassThrough, Readable, type Duplex } from 'node:stream';
 
 import Docker from 'dockerode';
 import * as tar from 'tar-stream';
@@ -20,6 +20,7 @@ import type {
   SpawnOptions,
   Unsubscribe,
 } from './index.js';
+import type { ObjectStore } from './object-store.js';
 
 const WORKDIR = '/workspace';
 const MEMORY_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB (§6)
@@ -33,6 +34,9 @@ export interface DockerSandboxConfig {
   /** Per-container disk cap, e.g. "5G". Only honored when the storage driver
    *  supports StorageOpt (xfs+pquota) — silently unenforced on overlayfs. */
   diskLimit?: string;
+  /** Durable snapshot store. When set, stop() snapshots /workspace and start()
+   *  restores it into a fresh volume. Omit to disable persistence. */
+  store?: ObjectStore;
   /** Override the dockerode instance (tests/alt sockets). */
   docker?: Docker;
 }
@@ -64,16 +68,24 @@ export class DockerSandbox implements Sandbox {
   private readonly image: string;
   private readonly network?: string;
   private readonly diskLimit?: string;
+  private readonly store?: ObjectStore;
+  /** Last exec/spawn activity per projectId, for idle detection. */
+  private readonly activity = new Map<string, number>();
 
   constructor(config: DockerSandboxConfig = {}) {
     this.docker = config.docker ?? new Docker();
     this.image = config.image ?? 'praxis-sandbox-base:latest';
     this.network = config.network;
     this.diskLimit = config.diskLimit;
+    this.store = config.store;
   }
 
   private container(handle: SandboxHandle): Docker.Container {
     return this.docker.getContainer(handle.containerId);
+  }
+
+  private touch(projectId: string): void {
+    this.activity.set(projectId, Date.now());
   }
 
   private async findByName(name: string): Promise<Docker.Container | null> {
@@ -100,6 +112,8 @@ export class DockerSandbox implements Sandbox {
     const name = `praxis-sandbox-${projectId}`;
     const volume = `praxis-project-${projectId}`;
 
+    this.touch(projectId);
+
     const existing = await this.findByName(name);
     if (existing) {
       const info = await existing.inspect();
@@ -122,17 +136,39 @@ export class DockerSandbox implements Sandbox {
       },
     });
     await container.start();
-    // Initialise git in the project dir if the volume is fresh.
+    const handle: SandboxHandle = { projectId, containerId: (await container.inspect()).Id };
+
+    // Restore from the durable snapshot when the volume is fresh (first run, or
+    // the local volume was reclaimed). A populated volume is left untouched.
+    if (this.store && (await this.isWorkspaceEmpty(container))) {
+      await this.restore(handle, container);
+    }
+    // Initialise git in the project dir if still fresh after any restore.
     await this.execSimple(container, [
       'bash',
       '-lc',
       'cd /workspace && [ -d .git ] || git init -q',
     ]);
-    const info = await container.inspect();
-    return { projectId, containerId: info.Id };
+    return handle;
+  }
+
+  private async isWorkspaceEmpty(container: Docker.Container): Promise<boolean> {
+    const exec = await container.exec({
+      Cmd: ['bash', '-lc', '[ -z "$(ls -A /workspace 2>/dev/null)" ] && echo empty || echo no'],
+      AttachStdout: true,
+      AttachStderr: false,
+    });
+    const stream = await exec.start({ hijack: true, stdin: false });
+    const out = new PassThrough();
+    const chunks: Buffer[] = [];
+    this.docker.modem.demuxStream(stream, out, new PassThrough());
+    out.on('data', (d: Buffer) => chunks.push(d));
+    await new Promise<void>((resolve) => stream.on('end', resolve));
+    return Buffer.concat(chunks).toString('utf8').trim() === 'empty';
   }
 
   async exec(handle: SandboxHandle, cmd: string, opts: ExecOptions = {}): Promise<ExecResult> {
+    this.touch(handle.projectId);
     const container = this.container(handle);
     const base = ['bash', '-lc', cmd];
     const wrapped =
@@ -164,6 +200,7 @@ export class DockerSandbox implements Sandbox {
   }
 
   async spawn(handle: SandboxHandle, cmd: string, opts: SpawnOptions = {}): Promise<ProcessHandle> {
+    this.touch(handle.projectId);
     const container = this.container(handle);
     const token = id();
     const pidFile = `/tmp/praxis-${token}.pid`;
@@ -327,6 +364,14 @@ export class DockerSandbox implements Sandbox {
 
   async stop(handle: SandboxHandle): Promise<void> {
     const container = this.container(handle);
+    // Snapshot the project to durable storage before tearing the container down.
+    if (this.store) {
+      try {
+        await this.snapshot(handle, container);
+      } catch {
+        // Best-effort; the named volume still holds state for a local restart.
+      }
+    }
     try {
       await container.stop({ t: 5 });
     } catch {
@@ -334,6 +379,43 @@ export class DockerSandbox implements Sandbox {
     }
     // Remove the container but keep the named project volume for restart.
     await container.remove({ force: true, v: false });
+    this.activity.delete(handle.projectId);
+  }
+
+  /** Tar /workspace out of the container and PUT it to the object store. */
+  private async snapshot(handle: SandboxHandle, container: Docker.Container): Promise<void> {
+    if (!this.store) return;
+    const archive = (await container.getArchive({ path: WORKDIR })) as NodeJS.ReadableStream;
+    await this.store.putSnapshot(handle.projectId, Readable.from(archive));
+  }
+
+  /** Restore a project's snapshot tarball into the container's /workspace. */
+  private async restore(handle: SandboxHandle, container: Docker.Container): Promise<boolean> {
+    if (!this.store) return false;
+    const snap = await this.store.getSnapshot(handle.projectId);
+    if (!snap) return false;
+    // getArchive(/workspace) tars entries as `workspace/…`; extract at `/`.
+    await container.putArchive(snap as unknown as NodeJS.ReadableStream, { path: '/' });
+    return true;
+  }
+
+  /**
+   * Running sandboxes whose last exec/spawn activity is older than `idleMs`.
+   * Sandboxes started by a previous process (no in-memory activity) fall back
+   * to their container start time, so they age out rather than persist forever.
+   */
+  async listIdle(idleMs: number, now: number = Date.now()): Promise<SandboxHandle[]> {
+    const list = await this.docker.listContainers({
+      filters: { label: ['praxis.projectId'], status: ['running'] },
+    });
+    const idle: SandboxHandle[] = [];
+    for (const c of list) {
+      const projectId = c.Labels['praxis.projectId'];
+      if (!projectId) continue;
+      const last = this.activity.get(projectId) ?? c.Created * 1000;
+      if (now - last > idleMs) idle.push({ projectId, containerId: c.Id });
+    }
+    return idle;
   }
 }
 

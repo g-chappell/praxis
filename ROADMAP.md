@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 6 / 18 (33%)
-- **Total tasks:** 52
+- **Features verified:** 6 / 19 (32%)
+- **Total tasks:** 53
 - **Done:** 20 (38%)
-- **Ready:** 32
+- **Ready:** 33
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -397,6 +397,27 @@ hello-world session that joins all three.
     _Task AC:_
     - Integration test: write marker file, stop session, restart, marker present.
     - STORY-09 acceptance_criteria satisfied.
+
+- **STORY-19** — Sandbox outbound network egress allowlist
+  > Restrict sandbox containers to an outbound allowlist (Anthropic API,
+  > OpenAI API, npm, PyPI, GitHub read-only) with no inbound except the
+  > exposed preview port, per project_plan.md §6. Deferred from STORY-07,
+  > whose acceptance criteria covered the Sandbox interface, DockerSandbox,
+  > and idle/persistence but not network policy.
+  **Acceptance criteria:**
+  - A sandbox container can reach api.anthropic.com and registry.npmjs.org but not an arbitrary disallowed host.
+  - No inbound connections succeed except the port published via exposePort.
+  **Out of scope:**
+  - Per-user / per-template network policy (a single allowlist for the POC).
+  - :black_circle: **TASK-053** :checkered_flag: — Egress allowlist for sandbox containers  `med` `medium` _(packages/sandbox, infrastructure/docker)_  
+    _depends on: TASK-022_
+    > Enforce an outbound allowlist on DockerSandbox containers (filtered
+    > Docker network / egress proxy / firewall sidecar). Block all inbound
+    > except the port published via exposePort. Document the policy and
+    > how to extend the allowlist.
+    _Task AC:_
+    - Integration test: allowed host reachable, disallowed host blocked, from inside a sandbox.
+    - STORY-19 acceptance_criteria satisfied.
 
 ## EPIC-03 — Workspace UI
 

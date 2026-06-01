@@ -30,14 +30,36 @@ Applied by `DockerSandbox` via `HostConfig`, not the image:
   off by default (`diskLimit` config opt-in) to avoid failing container creates.
   Revisit if/when the host moves to an xfs-backed Docker root.
 
+## Snapshot persistence (MinIO)
+
+Idle sandboxes are stopped and removed after 30 min (the orchestrator's idle
+sweep). Before removal, `DockerSandbox` tars `/workspace` and PUTs it to an
+`ObjectStore` (ADR-0008); on the next `start()` with a fresh volume it restores
+from there. The backend is MinIO, configured from env (read by
+`MinioObjectStore.fromEnv()`):
+
+| Env var | Notes |
+| --- | --- |
+| `MINIO_ENDPOINT` | host (no scheme), e.g. `minio` on `praxis-net` |
+| `MINIO_PORT` / `MINIO_USE_SSL` | optional |
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | credentials |
+| `MINIO_BUCKET` | default `praxis-sandboxes` (one bucket, key per project) |
+
+With these unset the orchestrator logs `persistence: none` and falls back to
+local-volume persistence only (state survives restart on the same host, but not
+a volume prune / host rebuild).
+
 ## Operator follow-ups (per host)
 
 - [ ] Build the image on the VPS (command above) before the orchestrator starts
       creating sandboxes. CI builds it for the integration tests but does not
       push it; for prod, either build on the VPS or add a GHCR push + pull step
       when the orchestrator's sandbox path lands.
-- [ ] (Later) Network egress allowlist — deferred follow-up task, not yet
-      applied to sandbox containers.
+- [ ] **Provision MinIO** (container + bucket) and add `MINIO_*` to
+      `/etc/praxis/praxis.env` to enable durable snapshots. Until then,
+      persistence is volume-only.
+- [ ] (Later) Network egress allowlist — deferred to STORY-19 / TASK-053, not
+      yet applied to sandbox containers.
 
 ## Setup history
 

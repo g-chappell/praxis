@@ -73,3 +73,10 @@ export interface Sandbox {
 }
 
 export { DockerSandbox, type DockerSandboxConfig } from './docker-sandbox.js';
+export { IdleSweeper, type IdleSweeperOptions } from './idle-sweeper.js';
+export {
+  type ObjectStore,
+  InMemoryObjectStore,
+  MinioObjectStore,
+  type MinioObjectStoreConfig,
+} from './object-store.js';
