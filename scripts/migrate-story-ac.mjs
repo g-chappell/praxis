@@ -9,8 +9,7 @@
 // Without acceptance_criteria, the autonomous cycle's Step 8.5 can't run
 // and the Story will sit at `feature_complete: pending` forever. This
 // script is the one-time migration for projects that adopted the
-// feature-first schema after their roadmap was already populated
-// (colonize, pirate-battle).
+// feature-first schema after their roadmap was already populated.
 //
 // Usage:
 //   node scripts/migrate-story-ac.mjs                # list Stories needing AC
