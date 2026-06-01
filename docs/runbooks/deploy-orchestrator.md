@@ -1,0 +1,188 @@
+# Deploy: orchestrator on the Praxis VPS
+
+How `services/orchestrator` runs in production: a Bun + Hono container
+managed by systemd, on the shared `praxis-net` Docker network, fronted
+by Caddy at `api.praxis.blacksail.dev`. Continuous-deploy is wired via
+`.github/workflows/deploy-orchestrator.yml`.
+
+This runbook mirrors the shape of `deploy-web.md` and `deploy-postgres.md`;
+read those first for the shared multi-tenant context (Caddy composite,
+GHCR linkage, sudoers conventions).
+
+## Topology
+
+```
+                  https://api.praxis.blacksail.dev
+                            │
+                            ▼
+                ┌──────────────────────────┐
+                │  Caddy on :80 + :443     │   shared with web,
+                │  TLS via ACME            │   colonize, pirate-battle,
+                │  /etc/caddy/Caddyfile    │   dashboard (ADR-0004)
+                └────────────┬─────────────┘
+                             │ HTTP, 127.0.0.1:4001 (or WS upgrade)
+                             ▼
+                  ┌──────────────────────┐
+                  │ praxis-orchestrator  │
+                  │   .service           │
+                  └──────────┬───────────┘
+                             │ docker run --rm --network praxis-net
+                             ▼
+                  ┌──────────────────────┐
+                  │  oven/bun:1.1-alpine │
+                  │  + Hono routes       │
+                  │  /health, /ws        │
+                  │  reaches praxis-db   │
+                  │  via Docker DNS      │
+                  └──────────────────────┘
+```
+
+Health endpoint: `http://127.0.0.1:4001/health` → `{ ok: true, version,
+gitSha, uptimeSec }`. Caddy probes every 30s; deploy workflow's smoke
+test hits the public URL.
+
+## Daily operations
+
+### Status
+
+```bash
+sudo systemctl status praxis-orchestrator.service
+docker ps --filter name=praxis-orchestrator
+curl -sf http://127.0.0.1:4001/health
+curl -sf https://api.praxis.blacksail.dev/health   # via Caddy
+```
+
+### Tail logs
+
+```bash
+journalctl -u praxis-orchestrator.service -f   # systemd-level
+docker logs -f praxis-orchestrator             # pino JSON to stdout
+```
+
+In dev mode the pino-pretty transport renders human-readable lines; in
+prod it's strict JSON for log shippers.
+
+### Restart / redeploy
+
+```bash
+sudo systemctl restart praxis-orchestrator.service
+# ExecStartPre pulls :latest before each start.
+```
+
+### Roll back to a specific commit's image
+
+```bash
+docker tag ghcr.io/g-chappell/praxis-orchestrator:sha-abc1234 \
+           ghcr.io/g-chappell/praxis-orchestrator:latest
+sudo systemctl restart praxis-orchestrator.service
+```
+
+### Update the Caddy block
+
+The host file at `/etc/caddy/Caddyfile` is a hand-mirrored composite
+(see ADR-0004). To pick up changes from this repo's
+`infrastructure/caddy/Caddyfile`:
+
+```bash
+sudo nano /etc/caddy/Caddyfile          # paste/edit the api.* block
+sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+sudo systemctl reload caddy
+```
+
+## CI deploy workflow
+
+`.github/workflows/deploy-orchestrator.yml` triggers on push to `main`
+that touches `services/orchestrator/**`, `packages/db/**`,
+`infrastructure/deploy/praxis-orchestrator.service`, or the workflow
+file itself. It:
+
+1. Builds the image from `services/orchestrator/Dockerfile` (build
+   context = repo root; `--build-arg GIT_SHA=${{ github.sha }}` is baked
+   in so `/health` reports the commit).
+2. Pushes three tags to `ghcr.io/g-chappell/praxis-orchestrator`:
+   `:latest`, `:sha-<short>`, `:main`.
+3. SSHes to the VPS as `deploy` and runs
+   `sudo systemctl restart praxis-orchestrator.service`.
+4. Smoke-tests `https://${{ vars.API_DOMAIN }}/health` via
+   `scripts/healthcheck.sh`.
+
+---
+
+## Setup history (one-time work, done 2026-06-01)
+
+This section records what was done to get the host into its current
+state. Most steps are not idempotent and shouldn't be re-run on a
+configured host. Kept here for audit and reproducibility.
+
+### What was added
+
+1. **Shared Docker network `praxis-net`** — already existed from
+   STORY-04. Nothing new here.
+
+2. **systemd unit** at `/etc/systemd/system/praxis-orchestrator.service`
+   (mirrors `infrastructure/deploy/praxis-orchestrator.service` in this
+   repo) and enabled. Container binds host port `:4001`, joins
+   `praxis-net`, reads `/etc/praxis/praxis.env` via `--env-file`.
+
+3. **Sudoers extension** at `/etc/sudoers.d/praxis-deploy` added the
+   praxis-orchestrator restart grant alongside the existing entries:
+
+   ```
+   deploy ALL=(root) NOPASSWD: \
+     /bin/systemctl restart praxis-web.service, \
+     /bin/systemctl reload caddy.service, \
+     /bin/systemctl restart praxis-postgres.service, \
+     /bin/systemctl restart praxis-orchestrator.service
+   ```
+
+4. **Caddy block** for `api.praxis.blacksail.dev` appended to
+   `/etc/caddy/Caddyfile` (host file is composite per ADR-0004).
+   Caddy auto-handled WebSocket upgrades via the `reverse_proxy`
+   directive — no extra config.
+
+5. **GitHub Actions variable `API_DOMAIN=api.praxis.blacksail.dev`**
+   added so the workflow's smoke test points at the right hostname.
+
+### Install steps (re-run on a fresh VPS)
+
+```bash
+# 1. Network (idempotent; already there from STORY-04)
+sudo docker network create praxis-net 2>/dev/null || true
+
+# 2. Install unit
+sudo cp infrastructure/deploy/praxis-orchestrator.service /etc/systemd/system/
+
+# 3. Extend sudoers (see step 3 above)
+sudo visudo -f /etc/sudoers.d/praxis-deploy
+
+# 4. Append the Caddy block (see infrastructure/caddy/Caddyfile)
+sudo nano /etc/caddy/Caddyfile
+sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+sudo systemctl reload caddy
+
+# 5. Reload + enable
+sudo systemctl daemon-reload
+sudo systemctl enable --now praxis-orchestrator.service
+
+# 6. Smoke test
+curl -sf http://127.0.0.1:4001/health
+curl -sf https://api.praxis.blacksail.dev/health
+```
+
+### What the operator still needs to do
+
+Three items the executor cannot do from the VPS:
+
+1. **DNS** — add an `A` record for `api.praxis.blacksail.dev` pointing
+   at `72.61.207.12`. Caddy will issue the TLS cert on the first
+   request that lands after DNS propagates.
+
+2. **GHCR package visibility (optional)** — make
+   `ghcr.io/g-chappell/praxis-orchestrator` public via the package
+   settings page so the VPS pulls don't need GHCR auth. Same pattern
+   as `praxis-web`.
+
+3. **GHCR package → repo link** — after the first workflow build,
+   connect the package to the `praxis` repo via the package settings
+   page so `GITHUB_TOKEN` retains write permissions for subsequent
+   pushes.
