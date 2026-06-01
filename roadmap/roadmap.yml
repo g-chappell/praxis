@@ -547,11 +547,11 @@ epics:
               Evaluate published Node ACP libraries. Pick one or implement a
               ~300-line JSON-RPC stdio client covering initialize, prompt,
               session/update, request_permission, complete, shutdown.
-              Record the decision as ADR-0003.
+              Record the decision as ADR-0009.
             depends_on: [TASK-001]
             attempt_count: 1
             task_acceptance:
-              - "Choice recorded in docs/decisions/0003-*.md with Consequences and Alternatives."
+              - "Choice recorded in docs/decisions/0009-*.md with Consequences and Alternatives."
           - id: TASK-025
             title: "AcpHost.spawnAndPrompt(sandbox, token, prompt) → AsyncIterable<AcpEvent>"
             status: ready

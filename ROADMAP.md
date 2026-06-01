@@ -337,9 +337,9 @@ hello-world session that joins all three.
     > Evaluate published Node ACP libraries. Pick one or implement a
     > ~300-line JSON-RPC stdio client covering initialize, prompt,
     > session/update, request_permission, complete, shutdown.
-    > Record the decision as ADR-0003.
+    > Record the decision as ADR-0009.
     _Task AC:_
-    - Choice recorded in docs/decisions/0003-*.md with Consequences and Alternatives.
+    - Choice recorded in docs/decisions/0009-*.md with Consequences and Alternatives.
   - :black_circle: **TASK-025** — AcpHost.spawnAndPrompt(sandbox, token, prompt) → AsyncIterable<AcpEvent>  `high` `large` _(packages/acp-host)_  
     _depends on: TASK-021, TASK-024_
     > Spawn `claude-code --acp` inside the sandbox via Sandbox.spawn.
