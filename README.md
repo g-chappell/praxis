@@ -4,7 +4,7 @@ A collaborative build platform where pairs of people create, deploy, and learn t
 
 ## Vision
 
-Praxis turns "we have an idea, but neither of us can really code" into a working prototype within an afternoon. It hosts Claude Code and OpenAI Codex in a managed multiplayer environment, with template-driven project starters, in-sandbox preview deployment, and a contextual educational layer.
+Praxis turns "we have an idea, but neither of us can really code" into a working prototype within an afternoon. It hosts Claude Code today (with OpenAI Codex planned via the ACP host abstraction) in a managed multiplayer environment, with template-driven project starters, in-sandbox preview deployment, and a contextual educational layer.
 
 The platform is designed for pairs. Two people building something together with AI agents is a revealing way to test collaboration, contributions, and idea viability. Every user builds a portfolio of projects, skills, and completed learning that serves as visible evidence of capability.
 
@@ -27,15 +27,19 @@ The platform is designed for pairs. Two people building something together with 
 | **Embedded learning** | Educational content woven into the workspace with progress tracking |
 | **Profile and portfolio** | User profiles showing projects, skills, and learning history |
 
-## Tech Stack
+## Tech stack
 
-- **Frontend:** Next.js 14 (App Router), shadcn/ui, Tailwind, Monaco editor
-- **Hosting:** Cloudflare Pages
-- **Backend:** Bun + Hono on Fly.io
-- **Database:** Postgres
-- **Auth:** Better Auth or Lucia with OAuth for Anthropic/OpenAI
-- **Sandboxing:** E2B (swappable)
-- **Agent harnesses:** Claude Code + OpenAI Codex behind abstraction layer
+POC status as of EPIC-01 close (all stack choices reversible behind the ACP host + Sandbox abstractions; see ADRs in `docs/decisions/`).
+
+- **Frontend:** Next.js 14 (App Router), shadcn/ui, Tailwind. (Workspace UI with Monaco editor is post-POC.)
+- **Hosting:** Single VPS, Caddy + Docker, auto-deploy on merge. (ADR-0001 / ADR-0004.)
+- **Backend:** Bun + Hono in `services/orchestrator`.
+- **Database:** Postgres 16 with Drizzle ORM. (ADR-0005.)
+- **Auth:** Better Auth, magic-link sign-in via Resend.
+- **Sandboxing:** Docker via the `Sandbox` interface in `packages/sandbox`. (E2B / Firecracker swap-in is post-POC.)
+- **Agent harnesses:** Claude Code today, behind the `AcpHost` layer in `packages/acp-host`. Codex via the same interface is the next harness.
+
+For the actual deployed shape see [ARCHITECTURE.md](ARCHITECTURE.md); for development conventions see [AGENTS.md](AGENTS.md).
 
 ## Business Model
 
@@ -50,4 +54,8 @@ Bring Your Own Subscription — users link their own Anthropic and OpenAI accoun
 
 ## Documentation
 
-See [docs/executive_summary.md](docs/executive_summary.md) for the full executive summary and detailed product definition / implementation plan [docs/project_plan.md](docs/project_plan.md).
+- [docs/executive_summary.md](docs/executive_summary.md) — product context: who Praxis is for, the six pillars, POC vs post-POC phase
+- [docs/project_plan.md](docs/project_plan.md) — full engineering spec, data model, week-by-week POC roadmap
+- [ARCHITECTURE.md](ARCHITECTURE.md) — current system shape, what's deployed today
+- [AGENTS.md](AGENTS.md) — agent-context rules, conventions, key commands (also `docs/conventions/` + `docs/runbooks/`)
+- [docs/decisions/](docs/decisions/) — ADRs covering deploy topology, lint/format choice, auth schema, and other crossing-component decisions

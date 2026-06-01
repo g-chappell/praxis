@@ -30,17 +30,17 @@ If there's nothing to discuss, the call is short. If there's a lot, the structur
 
 ## Branching strategy
 
-**Trunk-based development.** `main` is always deployable.
+**Trunk-based development.** `main` is always deployable. Auto-merge enabled; branch protection requires the `ci` check.
 
-- Short-lived feature branches off `main`
-- Branch naming: `<initials>/<short-description>` (e.g. `gw/magic-link-auth`)
-- Open PRs early as drafts to signal direction
-- Keep PRs small (target under ~400 lines diff); break bigger work into smaller PRs
-- The other contributor reviews; for non-architectural PRs, "ship it" is enough
-- If the other side is unavailable for over 24 hours and the change is non-architectural, self-merge with a note on the PR
-- Architectural changes (schema, new external dependencies, ACP/sandbox interfaces, security-relevant code) require the other contributor's review before merge — no self-merge exceptions
+- Short-lived branches off `main`
+- **Story PRs use `auto/<TASK-ID>-<slug>`** (the prefix is convention, not a claim of autonomous run — see AGENTS.md tier-2). Ad-hoc human PRs use `<initials>/<slug>` (e.g. `gw/fix-typo`).
+- **One Story → one PR, per-task commits.** Per AGENTS.md tier-1: a Story's tasks land on the same branch as separate commits; the terminal task's commit closes the Story. Don't size PRs by line count; size them by Story scope. Refine over-large Stories via `/roadmap-add` rather than splitting the PR.
+- Open PRs early as drafts to signal direction.
+- The other contributor reviews; for non-architectural PRs, "ship it" is enough.
+- If the other side is unavailable for over 24 hours and the change is non-architectural, self-merge with a note on the PR.
+- Architectural changes (schema, new external dependencies, ACP/sandbox interfaces, security-relevant code) require the other contributor's review before merge — no self-merge exceptions.
 
-**CI.** Lint (Biome), TypeScript type check, a small smoke test. Must pass before merge. Under two minutes per PR.
+**CI.** Required check is `ci` (Prettier + ESLint, `tsc --noEmit` across workspaces, Vitest, production build). `e2e` (Playwright sign-in flow) runs alongside as a non-blocking signal. Lint + format choice is Prettier 3 + ESLint 9 per ADR-0003 (Biome was the original pick and was reversed). Target under two minutes for `ci`; `e2e` adds another 60–90 seconds.
 
 ---
 
@@ -62,17 +62,17 @@ Component ownership reduces conflict on shared surfaces. Each component has a pr
 
 The split is a starting suggestion based on natural component boundaries. Refine it in the first sync if it doesn't match your strengths or interests.
 
-**Task management on GitHub.** The roadmap and task list live on a GitHub Projects board. Issues are the unit of work; the project board's columns track state. The `In Progress` column is the source of truth for what's actively being worked on — check it before starting an issue. If you both want to work on the same area, resolve it in the weekly call or async chat.
+**Task management.** The roadmap lives in `roadmap/roadmap.yml` in this repo — Stories with `acceptance_criteria`, `user_flow`, `out_of_scope`, and child Tasks. That YAML is the source of truth; `node roadmap/render.mjs` produces a human-readable `ROADMAP.md`, and `node scripts/sync-issues.mjs` mirrors Stories + Tasks to GitHub Issues so the GH UI stays useful for review and discussion. Branch-as-payload: status changes (`ready` → `in_progress` → `done`) travel through the PR via `node scripts/roadmap-update-task.mjs`, never committed directly to main.
 
-Both contributors configure GitHub's official MCP server (`github/github-mcp-server`) in their Claude Code and Codex setups, so agents working on this codebase can read and update the board directly — move tickets, create issues from work-in-progress, update field values, link PRs to issues, post status updates. The board is the canonical task surface; there is no local `TODO.md` or roadmap JSON to keep in sync with it.
+If you both want to work on the same area, claim a Story explicitly and resolve overlap in the weekly call or async chat. Per AGENTS.md tier-1, work strictly outside the Story's scope is forbidden — refine via `/roadmap-add` first.
 
 ---
 
 ## Documentation conventions
 
-The codebase follows the cross-tool documentation conventions described in the Project Plan: AGENTS.md as the primary agent-context file at the root and per major sub-folder, CLAUDE.md as a thin importer of AGENTS.md, `.claude/skills/` for project-specific Claude Code skills, ADRs in `docs/decisions/` for any decision that crosses component boundaries or introduces a new external dependency.
+`AGENTS.md` at the root is the primary cross-tool agent-context file; `CLAUDE.md` is a one-line importer of it. Per-workspace `AGENTS.md` files override at sub-folder scope (e.g. `services/orchestrator/AGENTS.md`). Topic-specific cookbooks live in `docs/conventions/` (deploy, database, auth-and-mail). Per-deployable ops procedures live in `docs/runbooks/`. ADRs in `docs/decisions/` cover any decision that crosses component boundaries or introduces a new external dependency.
 
-Both contributors maintain these files as the codebase evolves. The discipline pays off — both for the two of you and for any AI agents working on the code, including Claude Code and Codex sessions you'll inevitably run yourselves.
+Both contributors maintain these files as the codebase evolves. The discipline pays off — both for the two of you and for any AI agents working on the code.
 
 **Two rules of thumb.** First: if you've explained the same thing twice, write it down. Second: if you find yourself disagreeing with a decision someone made a week ago, check whether there's an ADR; if not, that's the gap to fix.
 
