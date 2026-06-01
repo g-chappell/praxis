@@ -464,6 +464,8 @@ epics:
           Docker. Implement DockerSandbox via dockerode against a base
           image with Node 20, Claude Code CLI, git, and common build tools.
           Idle shutdown after 30 minutes; resource limits per §6.
+        verified_at: '2026-06-01T14:49:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Integration tests cover start/exec/spawn/writeFile/readFile/watchFiles/exposePort/stop against a real Docker daemon and pass in CI."
           - "After 30 minutes of no exec/spawn activity, the container is stopped automatically; the next start() restores from object storage (stubbed in tests)."
@@ -474,7 +476,7 @@ epics:
         tasks:
           - id: TASK-021
             title: "packages/sandbox: define the Sandbox TypeScript interface"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/sandbox"]
@@ -488,7 +490,7 @@ epics:
               - "Interface compiles with no `any`; exported from package index."
           - id: TASK-022
             title: "DockerSandbox via dockerode + base image"
-            status: ready
+            status: done
             priority: high
             complexity: large
             workspaces: ["packages/sandbox", "infrastructure/docker"]
@@ -503,7 +505,7 @@ epics:
               - "All Sandbox methods have integration tests against the real Docker daemon and pass."
           - id: TASK-023
             title: "Idle-shutdown daemon + state persistence to MinIO"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/sandbox", "services/orchestrator"]
@@ -647,6 +649,39 @@ epics:
             task_acceptance:
               - "Integration test: write marker file, stop session, restart, marker present."
               - "STORY-09 acceptance_criteria satisfied."
+
+      - id: STORY-19
+        title: "Sandbox outbound network egress allowlist"
+        description: |
+          Restrict sandbox containers to an outbound allowlist (Anthropic API,
+          OpenAI API, npm, PyPI, GitHub read-only) with no inbound except the
+          exposed preview port, per project_plan.md §6. Deferred from STORY-07,
+          whose acceptance criteria covered the Sandbox interface, DockerSandbox,
+          and idle/persistence but not network policy.
+        acceptance_criteria:
+          - "A sandbox container can reach api.anthropic.com and registry.npmjs.org but not an arbitrary disallowed host."
+          - "No inbound connections succeed except the port published via exposePort."
+        user_flow: null
+        out_of_scope:
+          - "Per-user / per-template network policy (a single allowlist for the POC)."
+        tasks:
+          - id: TASK-053
+            title: "Egress allowlist for sandbox containers"
+            status: ready
+            priority: med
+            complexity: medium
+            workspaces: ["packages/sandbox", "infrastructure/docker"]
+            description: |
+              Enforce an outbound allowlist on DockerSandbox containers (filtered
+              Docker network / egress proxy / firewall sidecar). Block all inbound
+              except the port published via exposePort. Document the policy and
+              how to extend the allowlist.
+            depends_on: [TASK-022]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Integration test: allowed host reachable, disallowed host blocked, from inside a sandbox."
+              - "STORY-19 acceptance_criteria satisfied."
 
   - id: EPIC-03
     title: "Workspace UI"

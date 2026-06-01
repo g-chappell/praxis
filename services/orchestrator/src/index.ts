@@ -6,6 +6,7 @@
 
 import { app } from './app';
 import { logger } from './logger';
+import { startIdleSweep } from './sandbox-sweep';
 import { websocket, wsRoute } from './routes/ws';
 import { VERSION } from './version';
 
@@ -23,4 +24,5 @@ export default {
 
 if (import.meta.main) {
   logger.info({ port: PORT, version: VERSION }, 'orchestrator.boot');
+  startIdleSweep();
 }

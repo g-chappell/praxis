@@ -124,6 +124,20 @@ configured host. Kept here for audit and reproducibility.
    repo) and enabled. Container binds host port `:4001`, joins
    `praxis-net`, reads `/etc/praxis/praxis.env` via `--env-file`.
 
+   > **STORY-07 update — Docker socket.** The unit now also mounts
+   > `-v /var/run/docker.sock:/var/run/docker.sock` so the orchestrator can
+   > manage sandbox containers + run the idle sweep. The deploy workflow
+   > restarts the service but does NOT copy the `.service` file, so after
+   > this lands you must re-apply the unit on the VPS:
+   > ```bash
+   > sudo cp /opt/praxis/infrastructure/deploy/praxis-orchestrator.service /etc/systemd/system/
+   > sudo systemctl daemon-reload && sudo systemctl restart praxis-orchestrator
+   > docker inspect praxis-orchestrator --format '{{range .Mounts}}{{.Source}}{{"\n"}}{{end}}' | grep docker.sock
+   > ```
+   > Verify: `docker logs praxis-orchestrator | grep sandbox` shows
+   > `sandbox.idle_sweep_start` with no `sandbox.sweep_failed`. Security
+   > caveat (root-equivalent host access) is noted in the unit file.
+
 3. **Sudoers extension** at `/etc/sudoers.d/praxis-deploy` added the
    praxis-orchestrator restart grant alongside the existing entries:
 
