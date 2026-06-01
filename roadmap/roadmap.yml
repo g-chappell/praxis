@@ -1244,6 +1244,8 @@ epics:
           (seeded for the two contributors). Navigation, layout, and the
           authorization boundary that later admin features (API keys, usage,
           budgets) mount into. Establishes "who is an admin" once, in Postgres.
+        verified_at: '2026-06-01T21:05:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "A non-admin who navigates to /admin is denied (redirect or 403); an admin sees the admin dashboard."
           - "The two contributor accounts are admins via a seeded role persisted in Postgres; role survives a fresh migrate+seed."
@@ -1257,7 +1259,7 @@ epics:
         tasks:
           - id: TASK-054
             title: "Add a role to the users schema + migration + seed the two contributors as admin"
-            status: in-progress
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]

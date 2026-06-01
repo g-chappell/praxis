@@ -8,11 +8,11 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 8 / 24 (33%)
+- **Features verified:** 9 / 24 (38%)
 - **Total tasks:** 66
-- **Done:** 28 (42%)
+- **Done:** 29 (44%)
 - **Ready:** 37
-- **In progress:** 1
+- **In progress:** 0
 - **Blocked:** 0
 
 ---
@@ -768,7 +768,7 @@ metering with budget enforcement so real spend stays bounded. This epic is
 also the foundation future admin capabilities (user management, feature
 flags, observability) mount into.
 
-- **STORY-20** — Admin area shell with role-based access
+- **STORY-20** — Admin area shell with role-based access  [:white_check_mark: verified]
   > An admin-only section in apps/web, gated by a role on the users table
   > (seeded for the two contributors). Navigation, layout, and the
   > authorization boundary that later admin features (API keys, usage,
@@ -783,7 +783,7 @@ flags, observability) mount into.
   **Out of scope:**
   - The individual admin features themselves (keys: STORY-21; usage: STORY-22/23).
   - Multi-role hierarchies / fine-grained permissions beyond admin vs not.
-  - :large_orange_diamond: **TASK-054** — Add a role to the users schema + migration + seed the two contributors as admin  `high` `small` _(packages/db)_  
+  - :white_check_mark: **TASK-054** — Add a role to the users schema + migration + seed the two contributors as admin  `high` `small` _(packages/db)_  
     _depends on: TASK-011_
     > Add a `role` column (enum: 'user' | 'admin', default 'user') to the
     > users table in packages/db schema; generate the migration and run
