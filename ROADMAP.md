@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 5 / 18 (28%)
+- **Features verified:** 6 / 18 (33%)
 - **Total tasks:** 52
-- **Done:** 17 (33%)
-- **Ready:** 35
+- **Done:** 20 (38%)
+- **Ready:** 32
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -242,7 +242,7 @@ Sandbox abstraction with a Docker implementation, the ACP host that
 speaks to Claude Code over JSON-RPC, and the first end-to-end
 hello-world session that joins all three.
 
-- **STORY-06** — Anthropic OAuth flow with encrypted token storage
+- **STORY-06** — Anthropic OAuth flow with encrypted token storage  [:white_check_mark: verified]
   > A signed-in user clicks "Connect Anthropic" on /settings, completes
   > OAuth, and the platform stores access + refresh tokens encrypted
   > in oauth_tokens. On agent invocation, the orchestrator retrieves
@@ -260,21 +260,21 @@ hello-world session that joins all three.
   **Out of scope:**
   - OpenAI OAuth (next phase, alongside Codex).
   - Per-team token sharing.
-  - :black_circle: **TASK-018** — Anthropic OAuth client + /api/oauth/anthropic/{authorize,callback}  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-018** — Anthropic OAuth client + /api/oauth/anthropic/{authorize,callback}  `high` `medium` _(apps/web)_  
     _depends on: TASK-014_
     > Register a platform OAuth client with Anthropic (manual, captured
     > in docs/runbooks/anthropic-oauth.md). Implement state-cookie CSRF
     > protection, code exchange, and persistence into oauth_tokens.
     _Task AC:_
     - Round-trip from /settings → consent → /settings produces a row in oauth_tokens for the signed-in user.
-  - :black_circle: **TASK-019** — Token encryption at rest  `high` `medium` _(packages/crypto, apps/web)_  
+  - :white_check_mark: **TASK-019** — Token encryption at rest  `high` `medium` _(packages/crypto, apps/web)_  
     _depends on: TASK-018_
     > packages/crypto: libsodium-based encrypt/decrypt using a 32-byte
     > key derived from PRAXIS_MASTER_KEY env. Document key rotation
     > in docs/runbooks/key-rotation.md.
     _Task AC:_
     - Round-trip encrypt → store → fetch → decrypt yields the original token.
-  - :black_circle: **TASK-020** :checkered_flag: — Refresh-on-expiry + 'Connected to Anthropic' UI  `high` `small` _(apps/web, services/orchestrator)_  
+  - :white_check_mark: **TASK-020** :checkered_flag: — Refresh-on-expiry + 'Connected to Anthropic' UI  `high` `small` _(apps/web, services/orchestrator)_  
     _depends on: TASK-019_
     > Shared helper: getValidAnthropicToken(userId) refreshes if
     > expires_at < now+60s. Settings page shows connection status,
