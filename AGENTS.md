@@ -142,6 +142,18 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 - **"Operator follow-ups" section in every infrastructure PR.** Bullet-point what the human has to do on the VPS / DNS provider / package registry that the workflow can't (DNS records, GHCR visibility flip, env-file additions, sudoers extensions). The runbook records these once they're done.
 - **One runbook per deployable** at `docs/runbooks/deploy-<service>.md`. Topology, daily ops (status/logs/restart/rollback), and a "Setup history" section that captures the one-time bootstrap so a future VPS rebuild is reproducible. See `docs/runbooks/deploy-{web,postgres,orchestrator}.md` for the shape.
 
+## Shipping infrastructure work
+
+- **Pre-merge local validation** for any PR touching `services/**`, `apps/**`, `packages/**`, `infrastructure/**`, or `.github/workflows/**`:
+  ```bash
+  pnpm lint && pnpm -r --if-present typecheck && pnpm test && pnpm -r --if-present build
+  caddy validate --config infrastructure/caddy/Caddyfile --adapter caddyfile
+  systemd-analyze verify infrastructure/deploy/*.service
+  ```
+  CI runs the first line; the Caddy + systemd checks are local-only and easy to forget. A bad unit file fails *after* SSH-restart, not in CI.
+- **"Operator follow-ups" section in every infrastructure PR.** Bullet-point what the human has to do on the VPS / DNS provider / package registry that the workflow can't (DNS records, GHCR visibility flip, env-file additions, sudoers extensions). The runbook records these once they're done.
+- **One runbook per deployable** at `docs/runbooks/deploy-<service>.md`. Topology, daily ops (status/logs/restart/rollback), and a "Setup history" section that captures the one-time bootstrap so a future VPS rebuild is reproducible. See `docs/runbooks/deploy-{web,postgres,orchestrator}.md` for the shape.
+
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <!-- Tier 3 — TECH-COUPLED RULES. Evolves with the stack. -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
