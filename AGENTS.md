@@ -87,10 +87,11 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 
 ## Universal rules
 
-- **Implement to the Story, not the literal Task body.** Each task you pick is one slice of a Story. Read the Story's `acceptance_criteria`, `user_flow`, and `out_of_scope` from `roadmap/roadmap.yml` BEFORE writing any code (the autonomous cycle's Step 5 picker emits the parent `storyId`; Step 7 prose tells you to load it). Your work must move the Story toward "all AC satisfied" — never produce stubs, placeholders, or mock data that would fail an AC if exercised end-to-end. Adding work strictly outside the Story's scope is still forbidden — refine via `/roadmap-add` first.
+- **Implement to the Story, not the literal Task body.** Each task you pick is one slice of a Story. Read the Story's `acceptance_criteria`, `user_flow`, and `out_of_scope` from `roadmap/roadmap.yml` BEFORE writing any code. Your work must move the Story toward "all AC satisfied" — never produce stubs, placeholders, or mock data that would fail an AC if exercised end-to-end. Adding work strictly outside the Story's scope is still forbidden — refine via `/roadmap-add` first.
+- **One Story → one PR, per-task commits.** A Story's tasks land on the same branch as separate commits; the terminal task's commit closes the Story. If a Story proves too large mid-flight, refine via `/roadmap-add` into smaller Stories rather than splitting the PR.
 - **No stubs, no placeholders. Ever.** If during implementation you discover the current task can't be completed without producing a stub/placeholder, **do not ship the stub**. Two paths:
-  1. Auto-add follow-up tasks via `node scripts/roadmap-followup.mjs <TASK-ID> --reason "<why>" --add-tasks "<title>;<title>"` and continue the current task only if its own `task_acceptance` can be met WITHOUT the stub. The new follow-ups land in the same PR under the same Story; `select-task.mjs` picks them first in the next cycle.
-  2. Mark the task `status: blocked` with a clear `blocked_reason` and stop the cycle if the gap is ambiguous (design decision needed) or the current task itself can't satisfy its `task_acceptance` without the stub.
+  1. Add follow-up tasks via `/roadmap-add` (or edit `roadmap.yml` directly) and continue the current task only if its own `task_acceptance` can be met WITHOUT the stub. The new follow-ups land in the same PR under the same Story.
+  2. Mark the task `status: blocked` with a clear `blocked_reason` and stop if the gap is ambiguous (design decision needed) or the current task itself can't satisfy its `task_acceptance` without the stub.
 
   A "stub" is any of:
   - A function that returns a hardcoded placeholder string (`"Coming soon"`, `"TODO"`, `"lorem ipsum"`, `"TBD"`)
@@ -99,7 +100,7 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
   - An exported symbol that throws `"not implemented"` or returns `null`/`undefined` while the caller's contract requires a value
   - A route, button, or menu item that renders nothing or no-ops on click
 
-  The `stub-scan.mjs` PostToolUse hook catches the obvious cases at edit time (fail-fast). The Step 8.5 acceptance check (`scripts/story-acceptance-check.mjs`) re-scans the full branch diff and runs an LLM judgment against the Story's AC before the PR opens — both layers run.
+  Two layers catch stubs. The `stub-scan.mjs` PostToolUse hook fires on every Write/Edit (fail-fast at the keystroke). Before opening the PR that closes a Story, run `node scripts/story-acceptance-check.mjs <STORY-ID>` — it greps the full branch diff for stub patterns AND runs an LLM judgment against the Story's `acceptance_criteria`. Exit 0 = ship; exit 1 = fix and re-run.
 - Edit one file at a time. Run typecheck + targeted tests after each edit before moving to the next.
 - Read the full file/component before modifying it. Verify all sibling elements, handlers, and conditional branches survive the edit.
 - Never skip tests after a change — even a "trivial" one. UI changes especially need explicit verification.
@@ -108,7 +109,7 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 - Default to writing no comments. Only add when the **why** is non-obvious.
 - Never introduce security vulnerabilities (command injection, XSS, SQL injection, OWASP top 10). Fix immediately if you notice.
 - Do not take destructive git actions (force-push to main, hard-reset, amend published commits) without explicit user approval.
-- Never commit secrets (.env, credentials). Warn if a user asks to.
+- Never commit secrets (.env, credentials). Warn if a user asks to. **If a secret has been seen by anyone other than the operator** (chat transcript, screenshot, shared terminal, paste service), **rotate it immediately** — assume compromise. Same rule, two cases: don't commit, and respond fast when it leaks.
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <!-- Tier 2 — PROJECT CONVENTIONS. Edit freely. autonomous-review may append. -->
