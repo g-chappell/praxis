@@ -18,10 +18,11 @@ RUN corepack enable && corepack prepare pnpm@9.15.5 --activate
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/web/package.json apps/web/package.json
-# apps/web depends on @praxis/db (workspace:*) — copy its manifest so
-# pnpm install can wire the workspace symlink. The actual source ships
-# in the builder stage below.
+# apps/web depends on @praxis/db and @praxis/crypto (workspace:*) — copy
+# their manifests so pnpm install can wire the workspace symlinks. The
+# actual source ships in the builder stage below.
 COPY packages/db/package.json packages/db/package.json
+COPY packages/crypto/package.json packages/crypto/package.json
 
 RUN pnpm install --frozen-lockfile --filter @praxis/web...
 
@@ -35,9 +36,11 @@ RUN corepack enable && corepack prepare pnpm@9.15.5 --activate
 COPY --from=deps /app /app
 COPY tsconfig.base.json ./
 COPY apps/web ./apps/web
-# Bring @praxis/db's source in too so Next.js's webpack can resolve
-# `@praxis/db` and `@praxis/db/client` at build time.
+# Bring @praxis/db's and @praxis/crypto's source in too so Next.js's
+# webpack can resolve `@praxis/db`, `@praxis/db/client`, and
+# `@praxis/crypto` at build time.
 COPY packages/db ./packages/db
+COPY packages/crypto ./packages/crypto
 
 RUN pnpm --filter @praxis/web build
 
