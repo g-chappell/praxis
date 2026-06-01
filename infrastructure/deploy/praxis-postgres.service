@@ -17,11 +17,13 @@ TimeoutStopSec=30
 ExecStartPre=-/usr/bin/docker rm -f praxis-db
 ExecStartPre=/usr/bin/docker pull postgres:16-alpine
 
-# Bind to 127.0.0.1 — the orchestrator (STORY-05+) connects via the
-# loopback. Never expose Postgres to the public internet.
-# Named volume praxis_pg_data lives under /var/lib/docker/volumes/ and
-# persists across container restarts.
+# --network praxis-net puts the container on the shared Praxis bridge
+# so praxis-web can reach it by hostname `praxis-db` (Docker built-in
+# DNS). The -p 127.0.0.1:5432 host mapping stays for ops/debug from
+# the host (psql, pg_dump backups via the sibling backup.service).
+# Never expose Postgres to the public internet.
 ExecStart=/usr/bin/docker run --rm --name praxis-db \
+  --network praxis-net \
   --env-file /etc/praxis/praxis-postgres.env \
   -p 127.0.0.1:5432:5432 \
   -v praxis_pg_data:/var/lib/postgresql/data \

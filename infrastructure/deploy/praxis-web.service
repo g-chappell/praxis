@@ -24,7 +24,12 @@ ExecStartPre=/usr/bin/docker pull ghcr.io/g-chappell/praxis-web:latest
 # --env-file passes /etc/praxis/praxis.env into the container at runtime
 # (DATABASE_URL for @praxis/db, BETTER_AUTH_SECRET/URL for Better Auth,
 # RESEND_API_KEY/FROM for the mailer). See docs/runbooks/deploy-web.md.
+# --network praxis-net puts the container on the same bridge as
+# praxis-db, so DATABASE_URL can use `praxis-db` as the hostname.
+# Docker's built-in DNS resolves container names within a custom
+# network. See docs/runbooks/deploy-postgres.md.
 ExecStart=/usr/bin/docker run --rm --name praxis-web \
+  --network praxis-net \
   --env-file /etc/praxis/praxis.env \
   -p 127.0.0.1:3002:3000 \
   ghcr.io/g-chappell/praxis-web:latest
