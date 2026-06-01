@@ -1,26 +1,26 @@
 // Praxis orchestrator entrypoint. Bun-only runtime.
 //
-// Layout: a single Hono app exported as default + a Bun.serve port pulled
-// from the PORT env var. TASK-016 mounts /health and /ws on this app;
-// TASK-015 just stands up the empty server.
+// Loads the HTTP app + mounts the WebSocket route (which requires Bun
+// globals). For in-process testing under Node, import { app } from
+// './app' instead — keeps tests Node-compatible.
 
-import { Hono } from 'hono';
-
+import { app } from './app';
+import { logger } from './logger';
+import { websocket, wsRoute } from './routes/ws';
 import { VERSION } from './version';
 
-const app = new Hono();
+app.route('/ws', wsRoute);
 
 // Roadmap text said :4000 but the autodev-mcp dashboard owns :4000
 // on this VPS. See ADR-0004 port-allocation note.
 const PORT = Number(process.env.PORT ?? 4001);
 
-app.get('/', (c) => c.text(`praxis-orchestrator ${VERSION}`));
-
 export default {
   fetch: app.fetch,
   port: PORT,
+  websocket,
 };
 
 if (import.meta.main) {
-  console.log(`orchestrator listening on :${PORT}`);
+  logger.info({ port: PORT, version: VERSION }, 'orchestrator.boot');
 }
