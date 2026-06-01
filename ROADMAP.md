@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 8 / 24 (33%)
 - **Total tasks:** 66
-- **Done:** 26 (39%)
-- **Ready:** 39
+- **Done:** 28 (42%)
+- **Ready:** 37
 - **In progress:** 1
 - **Blocked:** 0
 
@@ -792,7 +792,7 @@ flags, observability) mount into.
     _Task AC:_
     - users.role exists with a migration; pnpm db:codegen is clean.
     - A seed marks the two contributor emails as admin idempotently.
-  - :black_circle: **TASK-055** — /admin route group with role-gated middleware and layout shell  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-055** — /admin route group with role-gated middleware and layout shell  `high` `medium` _(apps/web)_  
     _depends on: TASK-054, TASK-014_
     > Add an /admin route group with a server-side authorization check
     > (admin role required) reusing the Better Auth session. Provide the
@@ -800,7 +800,7 @@ flags, observability) mount into.
     > users hit the sign-in flow.
     _Task AC:_
     - Middleware/route guard denies non-admins and allows admins (covered by a test).
-  - :black_circle: **TASK-056** :checkered_flag: — Admin dashboard landing with sections index  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-056** :checkered_flag: — Admin dashboard landing with sections index  `med` `small` _(apps/web)_  
     _depends on: TASK-055_
     > The /admin landing page: a sections index linking to API keys and
     > usage, with clear empty states for sections that land in later

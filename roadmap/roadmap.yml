@@ -1273,7 +1273,7 @@ epics:
               - "A seed marks the two contributor emails as admin idempotently."
           - id: TASK-055
             title: "/admin route group with role-gated middleware and layout shell"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -1288,7 +1288,7 @@ epics:
               - "Middleware/route guard denies non-admins and allows admins (covered by a test)."
           - id: TASK-056
             title: "Admin dashboard landing with sections index"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
