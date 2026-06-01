@@ -178,7 +178,11 @@ configured host. Kept here for audit and reproducibility.
 4. **systemd unit** for `praxis-web.service` installed at
    `/etc/systemd/system/praxis-web.service` (mirrors
    `infrastructure/deploy/praxis-web.service` in this repo) and
-   enabled. Container binds host port `:3002`.
+   enabled. Container binds host port `:3002` AND joins the
+   `praxis-net` Docker network so it can reach `praxis-db` by
+   hostname. Reads `/etc/praxis/praxis.env` via `--env-file` —
+   see the "two conventions" note in `deploy-postgres.md` about
+   that file's format (ASCII-only, no inline comments).
 
 5. **Deploy user** for the CI workflow:
 

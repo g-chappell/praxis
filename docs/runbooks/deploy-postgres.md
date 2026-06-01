@@ -114,20 +114,23 @@ sudo install -d -m 0750 /etc/praxis
 sudo cp infrastructure/deploy/praxis-postgres.env.example /etc/praxis/praxis-postgres.env
 sudo nano /etc/praxis/praxis-postgres.env       # set POSTGRES_PASSWORD
 
-# 2. Install units
+# 2. Create the shared Docker network (idempotent)
+sudo docker network create praxis-net 2>/dev/null || true
+
+# 3. Install units
 sudo cp infrastructure/deploy/praxis-postgres.service /etc/systemd/system/
 sudo cp infrastructure/deploy/praxis-postgres-backup.service /etc/systemd/system/
 sudo cp infrastructure/deploy/praxis-postgres-backup.timer /etc/systemd/system/
 
-# 3. Extend sudoers (see "What was added" → "Sudoers extension" above).
+# 4. Extend sudoers (see "What was added" → "Sudoers extension" above).
 sudo visudo -f /etc/sudoers.d/praxis-deploy
 
-# 4. Reload + enable
+# 5. Reload + enable
 sudo systemctl daemon-reload
 sudo systemctl enable --now praxis-postgres.service
 sudo systemctl enable --now praxis-postgres-backup.timer
 
-# 5. Smoke test
+# 6. Smoke test
 docker exec -t praxis-db pg_isready -U praxis -d praxis
 docker exec -t praxis-db psql -U praxis -d praxis -c '\dt'   # empty, no error
 ```
@@ -137,13 +140,30 @@ docker exec -t praxis-db psql -U praxis -d praxis -c '\dt'   # empty, no error
 Sibling env file `/etc/praxis/praxis.env` (also NOT committed) carries:
 
 ```bash
-DATABASE_URL=postgres://praxis:<password>@127.0.0.1:5432/praxis
+DATABASE_URL=postgres://praxis:<password>@praxis-db:5432/praxis
+BETTER_AUTH_SECRET=<openssl rand -hex 32>
+BETTER_AUTH_URL=https://praxis.blacksail.dev
+RESEND_API_KEY=<from resend.com>
+RESEND_FROM=noreply@praxis.blacksail.dev
 ```
 
-Consumed by the orchestrator's systemd unit (STORY-05/TASK-017) via
-`EnvironmentFile=/etc/praxis/praxis.env`. `praxis-postgres.env` only
+Consumed by `praxis-web.service` (and later the orchestrator) via
+`--env-file /etc/praxis/praxis.env`. `praxis-postgres.env` only
 carries Postgres-internal settings (user/db/password); the URL form
 lives separately so app-level env can grow independently.
+
+### Two conventions worth knowing about `praxis.env`
+
+1. **`praxis-db` is the hostname, not `127.0.0.1`.** Containers on the
+   shared `praxis-net` Docker network resolve each other by container
+   name (built-in DNS). `127.0.0.1` from inside a container is the
+   container itself, not the host, so it can't reach Postgres' host-side
+   port binding. Hence the `praxis-db` hostname.
+2. **The file must be ASCII-only with no inline comments.** Docker's
+   `--env-file` parser silently stops reading after some non-ASCII
+   characters (em-dashes, smart quotes), so a stray "—" in a comment
+   line drops every subsequent variable from the container's env.
+   Keep `/etc/praxis/praxis.env` strictly `KEY=VALUE` lines.
 
 ## Local dev
 
