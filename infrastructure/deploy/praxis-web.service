@@ -20,7 +20,12 @@ ExecStartPre=/usr/bin/docker pull ghcr.io/g-chappell/praxis-web:latest
 # ADR-0004 port-allocation note). Container's internal port stays :3000
 # (Next.js default; bound by the Dockerfile's EXPOSE + HOSTNAME env).
 # Bound to 127.0.0.1 so only Caddy reaches it.
+#
+# --env-file passes /etc/praxis/praxis.env into the container at runtime
+# (DATABASE_URL for @praxis/db, BETTER_AUTH_SECRET/URL for Better Auth,
+# RESEND_API_KEY/FROM for the mailer). See docs/runbooks/deploy-web.md.
 ExecStart=/usr/bin/docker run --rm --name praxis-web \
+  --env-file /etc/praxis/praxis.env \
   -p 127.0.0.1:3002:3000 \
   ghcr.io/g-chappell/praxis-web:latest
 

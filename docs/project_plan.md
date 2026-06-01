@@ -351,15 +351,45 @@ For the POC, file-level locking is sufficient. Character-level co-editing via Yj
 POC subset. Anything not needed for the POC is not built.
 
 ```sql
+-- NOTE: STORY-04 added Better Auth (`session`, `verification`, plus
+-- `email_verified` / `image` / `updated_at` on `users`) and DROPPED
+-- `auth_sessions` and `magic_link_tokens`. See ADR-0005 for the
+-- override; canonical schema lives in `packages/db/src/schema.ts`.
+
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT UNIQUE NOT NULL,
+  email_verified BOOLEAN NOT NULL DEFAULT false,        -- added STORY-04
   display_name TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
+  image TEXT,                                            -- added STORY-04
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()                   -- added STORY-04
 );
 
-CREATE TABLE auth_sessions (id UUID PRIMARY KEY, user_id UUID REFERENCES users(id), expires_at TIMESTAMPTZ);
-CREATE TABLE magic_link_tokens (token TEXT PRIMARY KEY, user_id UUID REFERENCES users(id), expires_at TIMESTAMPTZ);
+-- STORY-04 (Better Auth) owns these two:
+CREATE TABLE session (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ NOT NULL,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+CREATE TABLE verification (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  identifier TEXT NOT NULL,
+  value TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- DROPPED (see ADR-0005):
+-- CREATE TABLE auth_sessions ...
+-- CREATE TABLE magic_link_tokens ...
 
 CREATE TABLE oauth_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
