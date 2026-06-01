@@ -312,33 +312,38 @@ export class DockerSandbox implements Sandbox {
     let stopped = false;
 
     void (async () => {
-      const wrapped =
-        `echo $$ > ${pidFile}; ` +
-        `exec inotifywait -m -r -q -e create,modify,delete,move --format '%e|%w%f' ${WORKDIR}`;
-      const exec = await container.exec({
-        Cmd: ['bash', '-lc', wrapped],
-        AttachStdout: true,
-        AttachStderr: true,
-      });
-      stream = (await exec.start({ hijack: true, stdin: false })) as Duplex;
-      if (stopped) {
-        stream.destroy();
-        return;
-      }
-      const out = new PassThrough();
-      this.docker.modem.demuxStream(stream, out, new PassThrough());
-      let buf = '';
-      out.on('data', (d: Buffer) => {
-        buf += d.toString('utf8');
-        let nl: number;
-        while ((nl = buf.indexOf('\n')) >= 0) {
-          const line = buf.slice(0, nl);
-          buf = buf.slice(nl + 1);
-          const ev = parseInotifyLine(line);
-          if (ev && !stopped) cb(ev);
+      try {
+        const wrapped =
+          `echo $$ > ${pidFile}; ` +
+          `exec inotifywait -m -r -q -e create,modify,delete,move --format '%e|%w%f' ${WORKDIR}`;
+        const exec = await container.exec({
+          Cmd: ['bash', '-lc', wrapped],
+          AttachStdout: true,
+          AttachStderr: true,
+        });
+        stream = (await exec.start({ hijack: true, stdin: false })) as Duplex;
+        if (stopped) {
+          stream.destroy();
+          return;
         }
-      });
-      pid = await this.readPid(container, pidFile).catch(() => undefined);
+        const out = new PassThrough();
+        this.docker.modem.demuxStream(stream, out, new PassThrough());
+        let buf = '';
+        out.on('data', (d: Buffer) => {
+          buf += d.toString('utf8');
+          let nl: number;
+          while ((nl = buf.indexOf('\n')) >= 0) {
+            const line = buf.slice(0, nl);
+            buf = buf.slice(nl + 1);
+            const ev = parseInotifyLine(line);
+            if (ev && !stopped) cb(ev);
+          }
+        });
+        pid = await this.readPid(container, pidFile).catch(() => undefined);
+      } catch {
+        // The container was torn down mid-setup, or the exec failed — there is
+        // nothing to watch. Never surface as an unhandled rejection.
+      }
     })();
 
     return () => {

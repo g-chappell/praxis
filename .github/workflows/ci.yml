@@ -169,4 +169,6 @@ jobs:
       - name: Sandbox integration tests
         env:
           RUN_DOCKER_TESTS: '1'
-        run: pnpm exec vitest run packages/sandbox
+        # Run the Docker-heavy files one at a time — parallel workers contend
+        # for the daemon on the runner and make container ops flaky.
+        run: pnpm exec vitest run packages/sandbox --no-file-parallelism

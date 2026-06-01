@@ -144,15 +144,25 @@ describeDocker('DockerSandbox (real Docker)', () => {
   it(
     'stop removes the container but the volume persists across restart',
     async () => {
-      await sandbox.writeFile(handle, 'persist.txt', 'durable');
-      await sandbox.stop(handle);
+      // Dedicated project so this destructive test never tears down the shared
+      // container the other tests (and afterAll) rely on.
+      const pid = `${projectId}-stop`;
+      let h = await sandbox.start(pid, 'react-threejs-scene');
+      await sandbox.writeFile(h, 'persist.txt', 'durable');
+      await sandbox.stop(h);
       const list = await docker.listContainers({
         all: true,
-        filters: { name: [`praxis-sandbox-${projectId}`] },
+        filters: { name: [`praxis-sandbox-${pid}`] },
       });
       expect(list.length).toBe(0);
-      handle = await sandbox.start(projectId, 'react-threejs-scene');
-      expect(await sandbox.readFile(handle, 'persist.txt')).toBe('durable');
+      h = await sandbox.start(pid, 'react-threejs-scene');
+      expect(await sandbox.readFile(h, 'persist.txt')).toBe('durable');
+      await sandbox.stop(h);
+      try {
+        await docker.getVolume(`praxis-project-${pid}`).remove({ force: true });
+      } catch {
+        /* ignore */
+      }
     },
     T,
   );
