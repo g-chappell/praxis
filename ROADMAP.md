@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 7 / 19 (37%)
 - **Total tasks:** 53
-- **Done:** 24 (45%)
-- **Ready:** 29
+- **Done:** 25 (47%)
+- **Ready:** 28
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -340,7 +340,7 @@ hello-world session that joins all three.
     > Record the decision as ADR-0009.
     _Task AC:_
     - Choice recorded in docs/decisions/0009-*.md with Consequences and Alternatives.
-  - :black_circle: **TASK-025** — AcpHost.spawnAndPrompt(sandbox, token, prompt) → AsyncIterable<AcpEvent>  `high` `large` _(packages/acp-host)_  
+  - :white_check_mark: **TASK-025** — AcpHost.spawnAndPrompt(sandbox, token, prompt) → AsyncIterable<AcpEvent>  `high` `large` _(packages/acp-host)_  
     _depends on: TASK-021, TASK-024_
     > Spawn `claude-code --acp` inside the sandbox via Sandbox.spawn.
     > Pipe stdin/stdout JSON-RPC. Emit typed events for each ACP

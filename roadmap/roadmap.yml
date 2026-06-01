@@ -554,7 +554,7 @@ epics:
               - "Choice recorded in docs/decisions/0009-*.md with Consequences and Alternatives."
           - id: TASK-025
             title: "AcpHost.spawnAndPrompt(sandbox, token, prompt) → AsyncIterable<AcpEvent>"
-            status: ready
+            status: done
             priority: high
             complexity: large
             workspaces: ["packages/acp-host"]
