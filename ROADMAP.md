@@ -11,8 +11,8 @@ _Created: 2026-05-31_
 - **Features verified:** 8 / 24 (33%)
 - **Total tasks:** 66
 - **Done:** 26 (39%)
-- **Ready:** 40
-- **In progress:** 0
+- **Ready:** 39
+- **In progress:** 1
 - **Blocked:** 0
 
 ---
@@ -783,7 +783,7 @@ flags, observability) mount into.
   **Out of scope:**
   - The individual admin features themselves (keys: STORY-21; usage: STORY-22/23).
   - Multi-role hierarchies / fine-grained permissions beyond admin vs not.
-  - :black_circle: **TASK-054** — Add a role to the users schema + migration + seed the two contributors as admin  `high` `small` _(packages/db)_  
+  - :large_orange_diamond: **TASK-054** — Add a role to the users schema + migration + seed the two contributors as admin  `high` `small` _(packages/db)_  
     _depends on: TASK-011_
     > Add a `role` column (enum: 'user' | 'admin', default 'user') to the
     > users table in packages/db schema; generate the migration and run

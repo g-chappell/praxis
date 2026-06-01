@@ -1257,7 +1257,7 @@ epics:
         tasks:
           - id: TASK-054
             title: "Add a role to the users schema + migration + seed the two contributors as admin"
-            status: ready
+            status: in-progress
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -1267,7 +1267,7 @@ epics:
               codegen. Seed the two contributor accounts as 'admin' via an
               idempotent seed/migration so a fresh VPS rebuild reproduces it.
             depends_on: [TASK-011]
-            attempt_count: 0
+            attempt_count: 1
             task_acceptance:
               - "users.role exists with a migration; pnpm db:codegen is clean."
               - "A seed marks the two contributor emails as admin idempotently."
