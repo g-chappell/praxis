@@ -8,6 +8,7 @@ import {
   createState,
   exchangeCode,
   getRedirectUri,
+  parsePastedCode,
   refreshTokens,
 } from './anthropic-oauth';
 
@@ -51,9 +52,32 @@ describe('buildAuthorizeUrl', () => {
     expect(url.searchParams.get('scope')).toContain('user:inference');
   });
 
+  it('defaults the redirect URI to the Anthropic console callback', () => {
+    expect(getRedirectUri()).toBe('https://console.anthropic.com/oauth/code/callback');
+  });
+
   it('honors a configured redirect URI override', () => {
     process.env.ANTHROPIC_OAUTH_REDIRECT_URI = 'https://override.test/cb';
     expect(getRedirectUri()).toBe('https://override.test/cb');
+  });
+});
+
+describe('parsePastedCode', () => {
+  it('splits code#state', () => {
+    expect(parsePastedCode('the-code#the-state')).toEqual({
+      code: 'the-code',
+      state: 'the-state',
+    });
+  });
+
+  it('tolerates a bare code and surrounding whitespace', () => {
+    expect(parsePastedCode('  just-a-code  ')).toEqual({ code: 'just-a-code', state: null });
+  });
+
+  it('extracts the code from an accidentally-pasted full URL', () => {
+    expect(
+      parsePastedCode('https://console.anthropic.com/oauth/code/callback?code=abc123'),
+    ).toEqual({ code: 'abc123', state: null });
   });
 });
 
@@ -80,6 +104,18 @@ describe('exchangeCode', () => {
     expect(body.grant_type).toBe('authorization_code');
     expect(body.code).toBe('the-code');
     expect(body.code_verifier).toBe('the-verifier');
+    expect(body.redirect_uri).toBe('https://console.anthropic.com/oauth/code/callback');
+  });
+
+  it('echoes state in the token request when provided', async () => {
+    const fetchMock = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        new Response(JSON.stringify({ access_token: 'acc', expires_in: 60 }), { status: 200 }),
+      );
+    await exchangeCode({ code: 'c', verifier: 'v', state: 'st8' });
+    const body = JSON.parse(String(fetchMock.mock.calls[0]![1]!.body));
+    expect(body.state).toBe('st8');
   });
 
   it('throws when access_token is missing', async () => {
