@@ -124,11 +124,14 @@ configured host. Kept here for audit and reproducibility.
    repo) and enabled. Container binds host port `:4001`, joins
    `praxis-net`, reads `/etc/praxis/praxis.env` via `--env-file`.
 
-   > **STORY-07 update — Docker socket.** The unit now also mounts
-   > `-v /var/run/docker.sock:/var/run/docker.sock` so the orchestrator can
-   > manage sandbox containers + run the idle sweep. The deploy workflow
-   > restarts the service but does NOT copy the `.service` file, so after
-   > this lands you must re-apply the unit on the VPS:
+   > **STORY-07 update — Docker socket.** The unit now mounts
+   > `-v /var/run/docker.sock:/var/run/docker.sock` **and** `--group-add 988`
+   > (the host `docker` group gid — confirm with `getent group docker`) so the
+   > orchestrator can manage sandbox containers + run the idle sweep. Without
+   > the group-add the container's non-root `bun` user can't read the socket
+   > and the sweep logs `sandbox.sweep_failed`. The deploy workflow restarts
+   > the service but does NOT copy the `.service` file, so after this lands you
+   > must re-apply the unit on the VPS:
    > ```bash
    > sudo cp /opt/praxis/infrastructure/deploy/praxis-orchestrator.service /etc/systemd/system/
    > sudo systemctl daemon-reload && sudo systemctl restart praxis-orchestrator
