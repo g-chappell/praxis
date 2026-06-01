@@ -1,11 +1,11 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { eq, and } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 import { oauthTokens } from '@praxis/db';
 import { db } from '@praxis/db/client';
 
-import { Button } from '@/components/ui/button';
+import { ConnectClaudeCode } from '@/components/connect-claude-code';
 import { DisconnectAnthropicButton } from '@/components/disconnect-anthropic-button';
 import { PROVIDER } from '@/lib/anthropic-oauth';
 import { getAuth } from '@/lib/auth';
@@ -17,18 +17,7 @@ export const metadata = {
   title: 'Settings — Praxis',
 };
 
-const ERROR_MESSAGES: Record<string, string> = {
-  state_mismatch: 'Sign-in could not be verified (state mismatch). Please try again.',
-  missing_oauth_params: 'The connection was interrupted. Please try again.',
-  exchange_failed: 'Anthropic rejected the connection. Please try again.',
-  access_denied: 'You declined the connection.',
-};
-
-export default async function SettingsPage({
-  searchParams,
-}: {
-  searchParams: { connected?: string; error?: string; disconnected?: string };
-}) {
+export default async function SettingsPage() {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session?.user) {
     redirect('/signin');
@@ -42,9 +31,6 @@ export default async function SettingsPage({
 
   const isConnected = Boolean(token);
   const connectedAt = token?.connectedAt ?? null;
-  const errorMessage = searchParams.error
-    ? (ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong. Please try again.')
-    : null;
 
   return (
     <main className="flex min-h-screen flex-col items-center px-6 py-12">
@@ -55,20 +41,6 @@ export default async function SettingsPage({
             Signed in as <span className="font-medium">{session.user.email}</span>.
           </p>
         </div>
-
-        {searchParams.connected && isConnected ? (
-          <p className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">
-            Connected to Claude Code ✓
-          </p>
-        ) : null}
-        {searchParams.disconnected && !isConnected ? (
-          <p className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground">
-            Disconnected from Claude Code.
-          </p>
-        ) : null}
-        {errorMessage ? (
-          <p className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-800">{errorMessage}</p>
-        ) : null}
 
         <section className="space-y-3 rounded-lg border p-5">
           <div className="space-y-1">
@@ -91,9 +63,7 @@ export default async function SettingsPage({
               <DisconnectAnthropicButton />
             </div>
           ) : (
-            <Button asChild>
-              <a href="/api/oauth/anthropic/authorize">Connect to Claude Code</a>
-            </Button>
+            <ConnectClaudeCode />
           )}
         </section>
       </div>

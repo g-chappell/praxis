@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 import { SignOutButton } from '@/components/sign-out-button';
+import { Button } from '@/components/ui/button';
 import { getAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -30,7 +32,12 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground">
           Signed in as <span className="font-medium">{session.user.email}</span>.
         </p>
-        <SignOutButton />
+        <div className="flex items-center justify-center gap-3">
+          <Button asChild>
+            <Link href="/settings">Settings</Link>
+          </Button>
+          <SignOutButton />
+        </div>
       </div>
     </main>
   );

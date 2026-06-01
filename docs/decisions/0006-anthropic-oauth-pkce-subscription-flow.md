@@ -23,15 +23,22 @@ handling is load-bearing security (see AGENTS.md "Never do").
 
 ## Decision
 
-Implement the **PKCE public-client** flow.
+Implement the **PKCE public-client, code-paste** flow — the same one the Claude
+Code CLI uses.
 
 - No client secret. CSRF protection is a `state` cookie *plus* the PKCE
-  `code_verifier` (httpOnly, 10-min TTL), both verified on callback.
-- Client ID and redirect URI are env-configurable (`ANTHROPIC_OAUTH_CLIENT_ID`,
-  `ANTHROPIC_OAUTH_REDIRECT_URI`), defaulting to the Claude Code public client
-  and `${BETTER_AUTH_URL}/api/oauth/anthropic/callback`. This lets the operator
-  register a Praxis-specific public client without a code change.
-- Tokens are encrypted at rest with `@praxis/crypto` (ADR-adjacent: `oauth_tokens`,
+  `code_verifier` (httpOnly, 15-min TTL), verified at exchange time.
+- **The public Claude Code client only allow-lists Anthropic's own
+  `https://console.anthropic.com/oauth/code/callback` redirect** — it rejects an
+  arbitrary Praxis web callback (verified live: *"Redirect URI … is not supported
+  by client"*). So we cannot auto-redirect back to Praxis. Instead: authorize →
+  Anthropic renders the code → the user pastes it into `/settings` →
+  `POST /api/oauth/anthropic/exchange` completes it.
+- Client ID and redirect URI stay env-configurable (`ANTHROPIC_OAUTH_CLIENT_ID`,
+  `ANTHROPIC_OAUTH_REDIRECT_URI`). If a Praxis-specific client that allow-lists a
+  real web callback is ever provisioned, setting those two vars restores a
+  seamless redirect with no code change.
+- Tokens are encrypted at rest with `@praxis/crypto` (`oauth_tokens`,
   `PRAXIS_MASTER_KEY`) and never logged.
 - `getValidAnthropicToken(userId)` refreshes when the access token is within 60s
   of expiry; the orchestrator calls it at agent-spawn time and passes the token
@@ -44,10 +51,9 @@ Flow, endpoints, env, and operator follow-ups are documented in
 
 - Matches reality and §6's "user's own subscription" intent; no secret to store
   or rotate for the OAuth client itself.
-- The default public client's allow-listed redirect URIs are outside our control.
-  An operator must verify the live round-trip accepts the Praxis callback (or
-  register a public client / set `ANTHROPIC_OAUTH_REDIRECT_URI`). Captured as an
-  operator follow-up in the runbook; the consent round-trip can't run in CI.
+- One extra manual step (copy/paste the code) vs a seamless redirect — the cost
+  of using the public client. Removable later via a registered client (env only).
+- The consent + paste round-trip can't run in CI; it's a live-verify step.
 - OpenAI/Codex OAuth (next phase) is a *different* flow — do not assume this one
   generalizes; it will get its own ADR.
 - Swapping to a confidential-client flow later (if Anthropic ships one) is an

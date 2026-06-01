@@ -1,25 +1,33 @@
 # Runbook: Anthropic (Claude) OAuth
 
 How a Praxis user connects their own Claude subscription so the orchestrator
-can drive Claude Code on their plan. Implements the **PKCE public-client**
-"Sign in with Claude" flow (see ADR-0006), not a confidential authorization-code
-flow — there is no client secret.
+can drive Claude Code on their plan. Implements the **PKCE public-client,
+code-paste** flow — the same one the Claude Code CLI uses (see ADR-0006). No
+client secret.
+
+> **Why code-paste and not a seamless redirect?** The public Claude Code OAuth
+> client only allow-lists Anthropic's own `console.anthropic.com/oauth/code/callback`
+> redirect; it rejects an arbitrary Praxis web callback (*"Redirect URI … is not
+> supported by client"*). So the user copies the code Anthropic shows them and
+> pastes it back into Praxis.
 
 ## Flow
 
 ```
-/settings → "Connect Anthropic"
+/settings → "Connect to Claude Code"  (client component opens a new tab)
   → GET /api/oauth/anthropic/authorize
       mints CSRF state + PKCE verifier/challenge
-      sets httpOnly cookies (anthropic_oauth_state, anthropic_oauth_verifier)
-      302 → https://claude.ai/oauth/authorize?...&code_challenge=...&state=...
+      sets httpOnly cookies (anthropic_oauth_state, anthropic_oauth_verifier; 15-min TTL)
+      302 → https://claude.ai/oauth/authorize?...&redirect_uri=console.../oauth/code/callback&...
   → user consents on claude.ai
-  → 302 → GET /api/oauth/anthropic/callback?code=...&state=...
-      verifies state == cookie (timing-safe)
-      POST https://console.anthropic.com/v1/oauth/token  (code + code_verifier)
+  → Anthropic renders an authorization code (shown as `code#state`)
+  → user copies it, returns to the Praxis /settings tab, pastes it
+  → POST /api/oauth/anthropic/exchange  { code }
+      reads verifier + state cookies; verifies any pasted state (timing-safe)
+      POST https://console.anthropic.com/v1/oauth/token  (code + state + code_verifier)
       encrypts access/refresh via @praxis/crypto
       upserts oauth_tokens (unique on user_id, provider='anthropic')
-      302 → /settings?connected=1
+      → { ok: true }; the page refreshes to "Connected to Claude Code ✓"
 ```
 
 At agent-spawn time the orchestrator calls `getValidAnthropicToken(userId)`,
@@ -28,55 +36,51 @@ token to Claude Code via `CLAUDE_CODE_OAUTH_TOKEN`.
 
 ## Configuration
 
-These are read by `apps/web/lib/anthropic-oauth.ts`:
+Read by `apps/web/lib/anthropic-oauth.ts`:
 
 | Env var | Default | Notes |
 | --- | --- | --- |
-| `ANTHROPIC_OAUTH_CLIENT_ID` | Claude Code public client ID | Override if a Praxis-specific public client is registered. |
-| `ANTHROPIC_OAUTH_REDIRECT_URI` | `${BETTER_AUTH_URL}/api/oauth/anthropic/callback` | Must match exactly what Anthropic has allow-listed for the client. |
+| `ANTHROPIC_OAUTH_CLIENT_ID` | Claude Code public client ID | Override only if a Praxis-specific client is provisioned. |
+| `ANTHROPIC_OAUTH_REDIRECT_URI` | `https://console.anthropic.com/oauth/code/callback` | Setting a real web callback (allow-listed by a registered client) restores a seamless redirect — but the route handlers currently implement the paste flow; a registered client would also need the callback route re-added. |
 | `PRAXIS_MASTER_KEY` | — | 32-byte base64 key for token encryption. See `key-rotation.md`. |
 
 No client secret is required (PKCE).
 
 ## Operator follow-ups
 
-- [ ] **Confirm the redirect URI is accepted.** The default public client may
-      only allow-list `https://console.anthropic.com/oauth/code/callback`. Verify
-      that `https://praxis.blacksail.dev/api/oauth/anthropic/callback` is accepted
-      by walking the flow live (below). If Anthropic rejects the redirect_uri,
-      either register a public client that allow-lists the Praxis callback and set
-      `ANTHROPIC_OAUTH_CLIENT_ID`, or set `ANTHROPIC_OAUTH_REDIRECT_URI` to an
-      accepted value.
 - [ ] **Add `PRAXIS_MASTER_KEY`** to `/etc/praxis/praxis.env` (ASCII-only, no
-      inline comment — see `key-rotation.md`).
+      inline comment — see `key-rotation.md`). Required before connect works.
 
 ## Verify live (tier-1 deploy rule — CI can't run consent)
 
-1. Sign in, open `https://app.<domain>/settings`.
-2. Click **Connect Anthropic** → consent on claude.ai → land back on `/settings`
-   showing **Connected to Anthropic ✓**.
-3. Confirm the row exists and decrypts:
+1. Sign in, open `https://praxis.blacksail.dev/settings`.
+2. Click **Connect to Claude Code** → a new tab opens to claude.ai → consent.
+3. Copy the code Anthropic shows; return to the `/settings` tab; paste it; click
+   **Finish connecting**. The page should flip to **Connected to Claude Code ✓**.
+4. Confirm the row exists:
 
    ```bash
-   # On the VPS, against the project DB:
-   psql "$DATABASE_URL" -c \
+   # On the VPS:
+   docker exec praxis-db psql -U praxis -d praxis -c \
      "select user_id, provider, expires_at, connected_at from oauth_tokens where provider='anthropic';"
    ```
 
    A row with non-null `access_token_encrypted` proves persistence; decryption is
    exercised by the refresh path on the next agent spawn.
 
-## Failure modes surfaced on /settings
+## Failure modes (returned by /api/oauth/anthropic/exchange, shown inline on /settings)
 
-| `?error=` | Cause |
+| `error` | Cause |
 | --- | --- |
-| `state_mismatch` | CSRF state cookie didn't match — stale tab, or forged callback. |
-| `missing_oauth_params` | Cookies expired (10 min TTL) or callback hit without a code. |
-| `exchange_failed` | Anthropic rejected the code exchange (bad redirect_uri / client). |
-| `access_denied` | User declined consent on claude.ai. |
+| `connection_expired` | The state/verifier cookies expired (15-min TTL) or the attempt was never started. Start again. |
+| `missing_code` | Empty paste. |
+| `state_mismatch` | The pasted code's embedded state didn't match the cookie — stale tab or wrong attempt. |
+| `exchange_failed` | Anthropic rejected the code (mistyped/partial paste, wrong client, expired code). |
+| `unauthorized` | The Praxis session expired. |
 
 ## Related
 
-- ADR-0006 — PKCE subscription OAuth decision.
+- ADR-0006 — PKCE subscription OAuth (code-paste) decision.
 - `docs/runbooks/key-rotation.md` — the key protecting these tokens.
-- `apps/web/lib/anthropic-oauth.ts`, `app/api/oauth/anthropic/*`.
+- `apps/web/lib/anthropic-oauth.ts`, `app/api/oauth/anthropic/{authorize,exchange,disconnect}`,
+  `components/connect-claude-code.tsx`.

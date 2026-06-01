@@ -1,9 +1,12 @@
-// Anthropic (Claude) subscription OAuth — PKCE public-client flow.
+// Anthropic (Claude) subscription OAuth — PKCE public-client, code-paste flow.
 //
-// Lets a user connect their own Claude Pro/Max plan so the orchestrator
-// can drive Claude Code on their subscription. This is the "Sign in with
-// Claude" flow (public client + PKCE, no client secret), not a confidential
-// authorization-code flow — see ADR-0006 and docs/runbooks/anthropic-oauth.md.
+// Lets a user connect their own Claude Pro/Max plan so the orchestrator can
+// drive Claude Code on their subscription. This is the same flow the Claude
+// Code CLI uses: the public client only allow-lists Anthropic's own
+// `console.anthropic.com/oauth/code/callback` redirect, so we can't auto-
+// redirect back to Praxis. Instead the user authorizes, Anthropic shows an
+// authorization code, and the user pastes it into Praxis to finish. See
+// ADR-0006 and docs/runbooks/anthropic-oauth.md.
 //
 // Tokens returned here are encrypted via @praxis/crypto before they touch
 // the database; nothing in this module logs raw tokens.
@@ -13,6 +16,10 @@ import { createHash, randomBytes } from 'node:crypto';
 const DEFAULT_CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
 const AUTHORIZE_URL = 'https://claude.ai/oauth/authorize';
 const TOKEN_URL = 'https://console.anthropic.com/v1/oauth/token';
+// The public client allow-lists this redirect (it renders the auth code for
+// the user to copy). A registered Praxis client could allow-list a real web
+// callback instead — override with ANTHROPIC_OAUTH_REDIRECT_URI.
+const MANUAL_REDIRECT_URI = 'https://console.anthropic.com/oauth/code/callback';
 const SCOPES = 'org:create_api_key user:profile user:inference';
 
 export const STATE_COOKIE = 'anthropic_oauth_state';
@@ -27,17 +34,27 @@ export function getClientId(): string {
   return process.env.ANTHROPIC_OAUTH_CLIENT_ID ?? DEFAULT_CLIENT_ID;
 }
 
-/** Public callback URL Anthropic redirects to after consent. */
+/** Redirect URI sent on authorize + token exchange (they must match). */
 export function getRedirectUri(): string {
-  if (process.env.ANTHROPIC_OAUTH_REDIRECT_URI) {
-    return process.env.ANTHROPIC_OAUTH_REDIRECT_URI;
+  return process.env.ANTHROPIC_OAUTH_REDIRECT_URI ?? MANUAL_REDIRECT_URI;
+}
+
+/**
+ * Parse the value the user pastes back from Anthropic's consent page. The
+ * console callback renders the code as `code#state`; tolerate a bare code,
+ * surrounding whitespace, or an accidentally-pasted full URL with `?code=`.
+ */
+export function parsePastedCode(raw: string): { code: string; state: string | null } {
+  let value = raw.trim();
+  if (value.includes('://')) {
+    try {
+      value = new URL(value).searchParams.get('code') ?? value;
+    } catch {
+      /* not a URL — fall through */
+    }
   }
-  const base =
-    process.env.BETTER_AUTH_URL ??
-    (process.env.NODE_ENV === 'production'
-      ? 'https://praxis.blacksail.dev'
-      : 'http://localhost:3000');
-  return `${base}/api/oauth/anthropic/callback`;
+  const [code, state] = value.split('#');
+  return { code: (code ?? '').trim(), state: state ? state.trim() : null };
 }
 
 export interface Pkce {
@@ -97,6 +114,7 @@ function parseTokenResponse(raw: RawTokenResponse): AnthropicTokens {
 export async function exchangeCode(input: {
   code: string;
   verifier: string;
+  state?: string | null;
 }): Promise<AnthropicTokens> {
   const res = await fetch(TOKEN_URL, {
     method: 'POST',
@@ -104,6 +122,8 @@ export async function exchangeCode(input: {
     body: JSON.stringify({
       grant_type: 'authorization_code',
       code: input.code,
+      // The Claude Code OAuth token endpoint expects `state` echoed back here.
+      ...(input.state ? { state: input.state } : {}),
       client_id: getClientId(),
       redirect_uri: getRedirectUri(),
       code_verifier: input.verifier,
