@@ -7,19 +7,76 @@
   },
   "language": "TypeScript",
   "framework": "Next.js (apps/web) + Bun/Hono (services/orchestrator)",
+  "_workspacesNote": "Each entry carries scoped typecheck/test commands so the post-edit hook checks only the edited workspace (seconds), not the whole monorepo (~22s, which overran the hook timeout). pnpm/vitest path filters avoid hardcoding package names. Edits outside any workspace fall back to the project-level `commands` below.",
   "workspaces": [
-    "apps/web",
-    "services/orchestrator",
-    "packages/db",
-    "packages/sandbox",
-    "packages/acp-host",
-    "packages/crypto",
-    "packages/shared",
-    "templates/react-threejs-scene",
-    "infrastructure/caddy",
-    "infrastructure/docker",
-    "infrastructure/deploy",
-    "infrastructure/mcp-servers"
+    {
+      "path": "apps/web",
+      "commands": {
+        "typecheck": "pnpm --if-present typecheck",
+        "test": "pnpm exec vitest run --root ../.. apps/web"
+      }
+    },
+    {
+      "path": "services/orchestrator",
+      "commands": {
+        "typecheck": "pnpm --if-present typecheck",
+        "test": "pnpm exec vitest run --root ../.. services/orchestrator"
+      }
+    },
+    {
+      "path": "packages/db",
+      "commands": {
+        "typecheck": "pnpm --if-present typecheck",
+        "test": "pnpm exec vitest run --root ../.. packages/db"
+      }
+    },
+    {
+      "path": "packages/sandbox",
+      "commands": {
+        "typecheck": "pnpm --if-present typecheck",
+        "test": "pnpm exec vitest run --root ../.. packages/sandbox"
+      }
+    },
+    {
+      "path": "packages/acp-host",
+      "commands": {
+        "typecheck": "pnpm --if-present typecheck",
+        "test": "pnpm exec vitest run --root ../.. packages/acp-host"
+      }
+    },
+    {
+      "path": "packages/crypto",
+      "commands": {
+        "typecheck": "pnpm --if-present typecheck",
+        "test": "pnpm exec vitest run --root ../.. packages/crypto"
+      }
+    },
+    {
+      "path": "packages/shared",
+      "commands": {
+        "typecheck": "pnpm --if-present typecheck",
+        "test": "pnpm exec vitest run --root ../.. packages/shared"
+      }
+    },
+    {
+      "path": "templates/react-threejs-scene",
+      "commands": {
+        "typecheck": "pnpm --if-present typecheck",
+        "test": "pnpm exec vitest run --root ../.. templates/react-threejs-scene"
+      }
+    },
+    {
+      "path": "infrastructure/caddy"
+    },
+    {
+      "path": "infrastructure/docker"
+    },
+    {
+      "path": "infrastructure/deploy"
+    },
+    {
+      "path": "infrastructure/mcp-servers"
+    }
   ],
   "commands": {
     "typecheck": "pnpm -r --if-present typecheck",
