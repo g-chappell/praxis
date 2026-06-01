@@ -53,6 +53,12 @@ jobs:
       - name: Build
         run: pnpm -r --if-present build
 
+      # Deploy-readiness: every workspace dep of a deployable must be COPY'd
+      # into its Dockerfile. CI builds in the full monorepo so it can't see
+      # this; the deployed image would crash at runtime (STORY-07 hit it twice).
+      - name: Deploy readiness (Dockerfile workspace deps)
+        run: node scripts/deploy-readiness-check.mjs --scripted-only
+
       # @praxis/db codegen drift check.
       # The script reads packages/db/src/schema.ts at the TS level and emits
       # row-type aliases into packages/db/src/generated/types.ts. CI fails if

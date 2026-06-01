@@ -153,7 +153,8 @@ locks deploys out.
 - **Build context** is the **repo root** (not the service folder) so
   workspace packages (`packages/db`, `packages/shared`) are
   reachable. Each service's `Dockerfile` `COPY`s the workspaces it
-  depends on explicitly.
+  depends on explicitly — **manifest into the deps layer** (so
+  `pnpm install` wires the symlink) **and source into the build layer**.
 - **Tags pushed per build:** `:latest`, `:sha-<short>`, `:<branch>`
   (via `docker/metadata-action`). Rollback uses
   `docker tag <sha-tag> :latest && systemctl restart …`.
@@ -172,6 +173,44 @@ locks deploys out.
      and link the package to the repo + set visibility public.
 - **Visibility:** make the production image public so the VPS pull
   doesn't need GHCR auth. Same package settings page.
+
+## Deploy-readiness — failures CI can't see
+
+CI builds in the full monorepo and runs in-process; several failure modes
+only appear in the deployed container. `node scripts/deploy-readiness-check.mjs`
+exists to catch them (scripted layer runs in CI; the full run adds an LLM
+pass over the branch diff). The recurring ones, learned the hard way in
+STORY-07:
+
+- **Missing workspace COPY (happened twice).** A deployable gained a
+  `@praxis/*` dependency but its `Dockerfile` didn't COPY the package, so the
+  image built green in CI yet crash-looped at runtime
+  (`ENOENT … node_modules/@praxis/sandbox`). **Fix:** COPY the package's
+  `package.json` into the deps layer and its directory into the build layer —
+  mirror how `packages/db` is handled. The scripted readiness check enforces
+  this; it would have caught both incidents.
+- **No-build services have no compile net.** The orchestrator runs Bun (TS
+  natively; `build` is a no-op `echo`), so a missing dependency or bad import
+  surfaces only when the container starts. Always **boot the image with
+  prod-like env** (`--env-file`, `--network praxis-net`, the same mounts) and
+  read the logs before calling an infra story done.
+- **Host-resource access needs more than a mount.** Mounting
+  `/var/run/docker.sock` is necessary but not sufficient: the container runs as
+  non-root `bun` (gid 1000) and the socket is `root:docker` (mode `0660`), so
+  dockerode failed with a vague "typo in the url or port?" until the unit added
+  **`--group-add <docker-gid>`** (the host `docker` gid, `getent group docker` —
+  988 on this VPS; host-specific). The same applies to published ports,
+  volumes, and capabilities — verify access from *inside* the container.
+- **Verify on a real cycle, not a smoke test.** Behaviour on a timer (e.g. the
+  idle sweep first fires 60s after boot) is invisible to a 4-second check — that
+  reads as a false "all clear". Boot the image and wait a full cycle, then
+  assert the real signal (e.g. zero `sandbox.sweep_failed` after a sweep runs).
+- **`.service` changes need a manual VPS re-apply.** The deploy workflow does
+  `docker pull` + `systemctl restart`, but does **not** copy the unit file. Any
+  change to mounts / `--group-add` / ports in `infrastructure/deploy/*.service`
+  requires, on the VPS: `sudo cp … /etc/systemd/system/ && sudo systemctl
+  daemon-reload && sudo systemctl restart <svc>`. List it under Operator
+  follow-ups.
 
 ## CI deploy workflow shape
 
