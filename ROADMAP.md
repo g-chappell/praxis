@@ -376,10 +376,14 @@ hello-world session that joins all three.
   - Two-user simultaneous session (STORY-12).
   - Preview URL (STORY-13).
   - :black_circle: **TASK-027** — Orchestrator: createSession + WebSocket session room  `high` `medium` _(services/orchestrator)_  
-    _depends on: TASK-017, TASK-023, TASK-025_
+    _depends on: TASK-017, TASK-023, TASK-025, TASK-058, TASK-059_
     > POST /sessions { projectId } creates a row in `sessions`, starts
     > a sandbox, spawns ACP, registers a WebSocket room. Clients in
     > the room receive agent_event messages broadcast from ACP.
+    > Authenticates the agent with the active platform Anthropic API key
+    > (getActivePlatformKey, STORY-21) passed as ANTHROPIC_API_KEY per
+    > ADR-0009 — never an OAuth token. Hence the dependency on the admin
+    > key management (STORY-20/21) landing first.
     _Task AC:_
     - Postman/integration test creates a session and receives at least one agent_event.
   - :black_circle: **TASK-028** — Frontend: New project flow + minimal chat panel  `high` `medium` _(apps/web)_  

@@ -617,7 +617,11 @@ epics:
               POST /sessions { projectId } creates a row in `sessions`, starts
               a sandbox, spawns ACP, registers a WebSocket room. Clients in
               the room receive agent_event messages broadcast from ACP.
-            depends_on: [TASK-017, TASK-023, TASK-025]
+              Authenticates the agent with the active platform Anthropic API key
+              (getActivePlatformKey, STORY-21) passed as ANTHROPIC_API_KEY per
+              ADR-0009 — never an OAuth token. Hence the dependency on the admin
+              key management (STORY-20/21) landing first.
+            depends_on: [TASK-017, TASK-023, TASK-025, TASK-058, TASK-059]
             attempt_count: 0
             task_acceptance:
               - "Postman/integration test creates a session and receives at least one agent_event."
