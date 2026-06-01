@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 8 / 24 (33%)
+- **Features verified:** 9 / 24 (38%)
 - **Total tasks:** 66
-- **Done:** 26 (39%)
-- **Ready:** 40
+- **Done:** 29 (44%)
+- **Ready:** 37
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -768,7 +768,7 @@ metering with budget enforcement so real spend stays bounded. This epic is
 also the foundation future admin capabilities (user management, feature
 flags, observability) mount into.
 
-- **STORY-20** — Admin area shell with role-based access
+- **STORY-20** — Admin area shell with role-based access  [:white_check_mark: verified]
   > An admin-only section in apps/web, gated by a role on the users table
   > (seeded for the two contributors). Navigation, layout, and the
   > authorization boundary that later admin features (API keys, usage,
@@ -783,7 +783,7 @@ flags, observability) mount into.
   **Out of scope:**
   - The individual admin features themselves (keys: STORY-21; usage: STORY-22/23).
   - Multi-role hierarchies / fine-grained permissions beyond admin vs not.
-  - :black_circle: **TASK-054** — Add a role to the users schema + migration + seed the two contributors as admin  `high` `small` _(packages/db)_  
+  - :white_check_mark: **TASK-054** — Add a role to the users schema + migration + seed the two contributors as admin  `high` `small` _(packages/db)_  
     _depends on: TASK-011_
     > Add a `role` column (enum: 'user' | 'admin', default 'user') to the
     > users table in packages/db schema; generate the migration and run
@@ -792,7 +792,7 @@ flags, observability) mount into.
     _Task AC:_
     - users.role exists with a migration; pnpm db:codegen is clean.
     - A seed marks the two contributor emails as admin idempotently.
-  - :black_circle: **TASK-055** — /admin route group with role-gated middleware and layout shell  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-055** — /admin route group with role-gated middleware and layout shell  `high` `medium` _(apps/web)_  
     _depends on: TASK-054, TASK-014_
     > Add an /admin route group with a server-side authorization check
     > (admin role required) reusing the Better Auth session. Provide the
@@ -800,7 +800,7 @@ flags, observability) mount into.
     > users hit the sign-in flow.
     _Task AC:_
     - Middleware/route guard denies non-admins and allows admins (covered by a test).
-  - :black_circle: **TASK-056** :checkered_flag: — Admin dashboard landing with sections index  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-056** :checkered_flag: — Admin dashboard landing with sections index  `med` `small` _(apps/web)_  
     _depends on: TASK-055_
     > The /admin landing page: a sections index linking to API keys and
     > usage, with clear empty states for sections that land in later

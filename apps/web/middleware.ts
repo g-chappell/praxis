@@ -6,7 +6,7 @@ export const config = {
   // /api/auth, or sign-in itself would redirect to itself. /api/oauth is
   // intentionally excluded too — those handlers run their own session
   // check and need to stay reachable for the consent redirect.
-  matcher: ['/dashboard/:path*', '/settings/:path*'],
+  matcher: ['/dashboard/:path*', '/settings/:path*', '/admin/:path*'],
 };
 
 export function middleware(request: NextRequest) {
