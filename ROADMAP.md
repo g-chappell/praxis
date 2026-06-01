@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 8 / 19 (42%)
-- **Total tasks:** 53
-- **Done:** 26 (49%)
-- **Ready:** 27
+- **Features verified:** 8 / 24 (33%)
+- **Total tasks:** 66
+- **Done:** 26 (39%)
+- **Ready:** 40
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -376,10 +376,14 @@ hello-world session that joins all three.
   - Two-user simultaneous session (STORY-12).
   - Preview URL (STORY-13).
   - :black_circle: **TASK-027** — Orchestrator: createSession + WebSocket session room  `high` `medium` _(services/orchestrator)_  
-    _depends on: TASK-017, TASK-023, TASK-025_
+    _depends on: TASK-017, TASK-023, TASK-025, TASK-058, TASK-059_
     > POST /sessions { projectId } creates a row in `sessions`, starts
     > a sandbox, spawns ACP, registers a WebSocket room. Clients in
     > the room receive agent_event messages broadcast from ACP.
+    > Authenticates the agent with the active platform Anthropic API key
+    > (getActivePlatformKey, STORY-21) passed as ANTHROPIC_API_KEY per
+    > ADR-0009 — never an OAuth token. Hence the dependency on the admin
+    > key management (STORY-20/21) landing first.
     _Task AC:_
     - Postman/integration test creates a session and receives at least one agent_event.
   - :black_circle: **TASK-028** — Frontend: New project flow + minimal chat panel  `high` `medium` _(apps/web)_  
@@ -751,3 +755,194 @@ that closes the POC.
     _Task AC:_
     - Retro doc committed.
     - STORY-18 acceptance_criteria satisfied.
+
+## EPIC-05 — Platform operations & admin
+
+Operational capabilities the platform-owned-key model (ADR-0009) requires.
+The POC pivoted from per-user subscription OAuth to a platform-owned
+Anthropic API key billed under the Commercial Terms — hosted multiplayer
+cannot run on a personal subscription. That introduces obligations the
+earlier epics don't cover: an authenticated admin area, the platform API
+key's lifecycle (encrypted at rest, rotation), and per-project usage
+metering with budget enforcement so real spend stays bounded. This epic is
+also the foundation future admin capabilities (user management, feature
+flags, observability) mount into.
+
+- **STORY-20** — Admin area shell with role-based access
+  > An admin-only section in apps/web, gated by a role on the users table
+  > (seeded for the two contributors). Navigation, layout, and the
+  > authorization boundary that later admin features (API keys, usage,
+  > budgets) mount into. Establishes "who is an admin" once, in Postgres.
+  **Acceptance criteria:**
+  - A non-admin who navigates to /admin is denied (redirect or 403); an admin sees the admin dashboard.
+  - The two contributor accounts are admins via a seeded role persisted in Postgres; role survives a fresh migrate+seed.
+  **User flow:**
+  1. Admin signs in and opens /admin
+  2. Admin dashboard lists available sections (API keys, usage) with empty states for the not-yet-built ones
+  3. Non-admin hitting /admin is bounced to /dashboard
+  **Out of scope:**
+  - The individual admin features themselves (keys: STORY-21; usage: STORY-22/23).
+  - Multi-role hierarchies / fine-grained permissions beyond admin vs not.
+  - :black_circle: **TASK-054** — Add a role to the users schema + migration + seed the two contributors as admin  `high` `small` _(packages/db)_  
+    _depends on: TASK-011_
+    > Add a `role` column (enum: 'user' | 'admin', default 'user') to the
+    > users table in packages/db schema; generate the migration and run
+    > codegen. Seed the two contributor accounts as 'admin' via an
+    > idempotent seed/migration so a fresh VPS rebuild reproduces it.
+    _Task AC:_
+    - users.role exists with a migration; pnpm db:codegen is clean.
+    - A seed marks the two contributor emails as admin idempotently.
+  - :black_circle: **TASK-055** — /admin route group with role-gated middleware and layout shell  `high` `medium` _(apps/web)_  
+    _depends on: TASK-054, TASK-014_
+    > Add an /admin route group with a server-side authorization check
+    > (admin role required) reusing the Better Auth session. Provide the
+    > admin layout + nav shell. Non-admins are redirected; unauthenticated
+    > users hit the sign-in flow.
+    _Task AC:_
+    - Middleware/route guard denies non-admins and allows admins (covered by a test).
+  - :black_circle: **TASK-056** :checkered_flag: — Admin dashboard landing with sections index  `med` `small` _(apps/web)_  
+    _depends on: TASK-055_
+    > The /admin landing page: a sections index linking to API keys and
+    > usage, with clear empty states for sections that land in later
+    > stories. No mock data — real links, real empty states.
+    _Task AC:_
+    - Admin dashboard renders the sections index for an admin.
+    - STORY-20 acceptance_criteria satisfied.
+
+- **STORY-21** — Platform Anthropic API key management (encrypted, rotation)
+  > Admin UI + storage for the platform Anthropic API key that powers all
+  > agent sessions (ADR-0009). The key is pasted once, encrypted at rest
+  > with @praxis/crypto (same posture as oauth_tokens), and never returned
+  > in plaintext or logged afterwards — reads show a masked value plus
+  > metadata only. Single active key with rotation: rotating replaces the
+  > active key and retains the previous one encrypted, inactive, for audit.
+  > A server-side accessor returns the decrypted active key to the
+  > orchestrator at agent-spawn time (consumed by AcpHost; wired in the
+  > orchestrator under STORY-09).
+  **Acceptance criteria:**
+  - An admin can paste an API key; it is stored encrypted (never plaintext, never logged) and no read path returns the raw value — masked display + metadata only.
+  - Rotating sets a new active key and marks the prior key inactive but retained (encrypted) for audit; new sessions use the active key.
+  - getActivePlatformKey() returns the decrypted active key server-side, or fails loudly when none is set.
+  **User flow:**
+  1. Admin opens /admin → API keys
+  2. Admin pastes the platform key and saves; UI then shows only a masked key + created/rotated metadata
+  3. Admin rotates: pastes a new key; the old one is retained inactive for audit
+  **Out of scope:**
+  - Multiple concurrent keys / per-project keys (single active key by ADR-0009).
+  - Automated rotation, Stripe/billing integration.
+  - The orchestrator's spawn-time consumption (STORY-09 wiring; this story only provides the accessor).
+  - :black_circle: **TASK-057** — platform_api_keys table (encrypted value, active flag, audit columns) + migration  `high` `small` _(packages/db)_  
+    _depends on: TASK-011, TASK-019_
+    > Schema for platform_api_keys: encrypted key material (via
+    > @praxis/crypto), an active flag, created_by, created_at,
+    > last_rotated_at. Migration + codegen. Never store plaintext.
+    _Task AC:_
+    - Table + migration exist; codegen clean; the key column holds ciphertext only.
+  - :black_circle: **TASK-058** — Key service: set / rotate / deactivate + getActivePlatformKey() accessor  `high` `medium` _(packages/db, apps/web)_  
+    _depends on: TASK-057_
+    > Service that encrypts on write and decrypts on read via
+    > @praxis/crypto: setActivePlatformKey(raw), rotate (new active, old
+    > retained inactive), and getActivePlatformKey() returning the
+    > decrypted active key for server-side consumers (the orchestrator).
+    > Loud-fail when no active key is configured. Never log raw values.
+    _Task AC:_
+    - Unit tests cover set, rotate (old marked inactive), and the no-key loud-fail; no test logs a raw key.
+  - :black_circle: **TASK-059** :checkered_flag: — Admin UI: paste key, masked display + metadata, rotate  `high` `medium` _(apps/web)_  
+    _depends on: TASK-058, TASK-055_
+    > Admin → API keys page: paste-and-save, then a masked-only display
+    > with created/rotated metadata and a rotate action. No endpoint
+    > echoes the raw key back. Clear empty state + loud banner when no
+    > active key is set.
+    _Task AC:_
+    - An admin can set and rotate the key through the UI; the raw value is never re-displayed.
+    - STORY-21 acceptance_criteria satisfied.
+
+- **STORY-22** — Per-project usage metering (record + display)
+  > Persist the token usage emitted on each AcpEvent turn-complete
+  > (ADR-0009), attributed to project and session, and surface cumulative
+  > usage (with a cost estimate) to the project owner. The data foundation
+  > for budget enforcement (STORY-23) and any later billing.
+  **Acceptance criteria:**
+  - Each completed turn records input/output token usage attributed to its project and session in Postgres.
+  - A project owner sees cumulative usage and a cost estimate for their project.
+  **Out of scope:**
+  - Budget caps / enforcement (STORY-23).
+  - Invoicing or payment integration (post-POC).
+  - :black_circle: **TASK-060** — usage_events table (project, session, tokens, cost estimate) + migration  `med` `small` _(packages/db)_  
+    _depends on: TASK-011_
+    > Schema for per-turn usage: project_id, session_id, input_tokens,
+    > output_tokens, estimated_cost, created_at. Migration + codegen.
+    _Task AC:_
+    - Table + migration exist; codegen clean.
+  - :black_circle: **TASK-061** — Orchestrator records usage from turn-complete events  `med` `medium` _(services/orchestrator)_  
+    _depends on: TASK-060, TASK-025, TASK-027_
+    > In the session loop, persist a usage_events row from each AcpEvent
+    > of type turn-complete (the usage payload AcpHost surfaces), keyed by
+    > project + session.
+    _Task AC:_
+    - An integration/unit test shows a completed turn writes a usage row with the reported tokens.
+  - :black_circle: **TASK-062** :checkered_flag: — Owner usage view (cumulative tokens + cost estimate)  `med` `medium` _(apps/web)_  
+    _depends on: TASK-061_
+    > Project-scoped usage view for the owner: cumulative input/output
+    > tokens and an estimated cost, sourced from usage_events. Real data,
+    > no placeholders.
+    _Task AC:_
+    - Owner sees real cumulative usage + cost estimate for a project.
+    - STORY-22 acceptance_criteria satisfied.
+
+- **STORY-23** — Per-project budget caps that pause sessions
+  > Bound real spend: a configurable per-project budget that, when
+  > exceeded, pauses the project — new prompts are blocked with a clear
+  > message until the budget is raised (by the owner or an admin). Builds
+  > on usage metering (STORY-22) and the platform-key model (ADR-0009).
+  **Acceptance criteria:**
+  - A project has a configurable budget; when cumulative usage exceeds it, new prompts are blocked with a clear, actionable message.
+  - Raising the budget (owner or admin) resumes prompting without losing session context.
+  **Out of scope:**
+  - Invoicing / payment (Stripe) — a later epic.
+  - Org-level or cross-project pooled budgets.
+  - :black_circle: **TASK-063** — Project budget configuration (limit) + owner/admin setting  `med` `small` _(packages/db, apps/web)_  
+    _depends on: TASK-060, TASK-055_
+    > Add a per-project budget limit (schema + migration) and a setting
+    > UI for the owner (and admin override). Sensible default.
+    _Task AC:_
+    - A project budget can be set and read; migration + codegen clean.
+  - :black_circle: **TASK-064** :checkered_flag: — Enforce budget: block prompts over budget, resume on raise  `med` `large` _(services/orchestrator, apps/web)_  
+    _depends on: TASK-063, TASK-061, TASK-028_
+    > Before accepting a prompt, compare cumulative usage to the budget;
+    > when over, reject/pause with a clear message surfaced in the chat
+    > UI and allow resume once the budget is raised. No silent drops.
+    _Task AC:_
+    - Over-budget prompts are blocked with a clear message; raising the budget resumes prompting.
+    - STORY-23 acceptance_criteria satisfied.
+
+- **STORY-24** — Reconcile Anthropic OAuth with the platform-key model
+  > Under ADR-0009 the platform API key powers inference; the per-user
+  > Anthropic OAuth flow (STORY-06) is no longer used for it. Make that
+  > explicit without discarding working code: ensure no code path passes a
+  > per-user OAuth token to the agent, mark the "Connected to Anthropic" UI
+  > as not-used-for-inference (or hide it behind a flag), and document the
+  > credential as reserved for future identity / bring-your-own-key. Do not
+  > modify oauth_tokens or @praxis/crypto.
+  **Acceptance criteria:**
+  - The agent-spawn path uses the platform API key exclusively; no code path forwards a per-user OAuth token to the agent.
+  - The Settings 'Connected to Anthropic' UI reflects reality (hidden or clearly marked 'not used for inference under the current plan'), with a note in docs.
+  **Out of scope:**
+  - Deleting the OAuth flow or the oauth_tokens table.
+  - Building the bring-your-own-key tier.
+  - :black_circle: **TASK-065** — Ensure the platform key is the sole inference credential  `low` `small` _(services/orchestrator)_  
+    _depends on: TASK-058, TASK-027_
+    > Audit the spawn path: confirm only ANTHROPIC_API_KEY (platform key)
+    > reaches the agent and no CLAUDE_CODE_OAUTH_TOKEN / per-user OAuth
+    > token is forwarded. Add a guard/test.
+    _Task AC:_
+    - A test asserts the agent env carries the platform key and no per-user OAuth token.
+  - :black_circle: **TASK-066** :checkered_flag: — Settings UI + docs reflect OAuth's not-used-for-inference status  `low` `small` _(apps/web)_  
+    _depends on: TASK-065, TASK-020_
+    > Update the 'Connected to Anthropic' Settings UI to state it is not
+    > used for inference under the current plan (or hide behind a flag),
+    > and note the reserved-for-future role in docs. Leave oauth_tokens
+    > and @praxis/crypto untouched.
+    _Task AC:_
+    - Settings UI no longer implies OAuth powers sessions; docs note the reserved role.
+    - STORY-24 acceptance_criteria satisfied.
