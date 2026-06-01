@@ -135,23 +135,14 @@ infrastructure/mcp-servers     MCP servers (image-gen for POC)
 - **Pre-merge local validation** for any PR touching `services/**`, `apps/**`, `packages/**`, `infrastructure/**`, or `.github/workflows/**`:
   ```bash
   pnpm lint && pnpm -r --if-present typecheck && pnpm test && pnpm -r --if-present build
+  node scripts/deploy-readiness-check.mjs            # Dockerfile workspace-dep COPYs (+ LLM risk pass)
   caddy validate --config infrastructure/caddy/Caddyfile --adapter caddyfile
   systemd-analyze verify infrastructure/deploy/*.service
   ```
-  CI runs the first line; the Caddy + systemd checks are local-only and easy to forget. A bad unit file fails *after* SSH-restart, not in CI.
-- **"Operator follow-ups" section in every infrastructure PR.** Bullet-point what the human has to do on the VPS / DNS provider / package registry that the workflow can't (DNS records, GHCR visibility flip, env-file additions, sudoers extensions). The runbook records these once they're done.
-- **One runbook per deployable** at `docs/runbooks/deploy-<service>.md`. Topology, daily ops (status/logs/restart/rollback), and a "Setup history" section that captures the one-time bootstrap so a future VPS rebuild is reproducible. See `docs/runbooks/deploy-{web,postgres,orchestrator}.md` for the shape.
-
-## Shipping infrastructure work
-
-- **Pre-merge local validation** for any PR touching `services/**`, `apps/**`, `packages/**`, `infrastructure/**`, or `.github/workflows/**`:
-  ```bash
-  pnpm lint && pnpm -r --if-present typecheck && pnpm test && pnpm -r --if-present build
-  caddy validate --config infrastructure/caddy/Caddyfile --adapter caddyfile
-  systemd-analyze verify infrastructure/deploy/*.service
-  ```
-  CI runs the first line; the Caddy + systemd checks are local-only and easy to forget. A bad unit file fails *after* SSH-restart, not in CI.
-- **"Operator follow-ups" section in every infrastructure PR.** Bullet-point what the human has to do on the VPS / DNS provider / package registry that the workflow can't (DNS records, GHCR visibility flip, env-file additions, sudoers extensions). The runbook records these once they're done.
+  CI runs line 1 + the deploy-readiness scripted layer; the Caddy + systemd checks are local-only and easy to forget. A bad unit file fails *after* SSH-restart, not in CI.
+- **A deployable that gains a `@praxis/*` workspace dep MUST update its Dockerfile in the same PR** — COPY the package's manifest into the deps layer *and* its source into the build layer. CI builds the full monorepo so a missing COPY passes there, but the image (selective COPY) crash-loops at runtime — STORY-07 hit this twice (`@praxis/crypto` in web, `@praxis/sandbox` in orchestrator). `deploy-readiness-check.mjs` catches it; see `docs/conventions/deploy.md`.
+- **Verify infra stories at the deploy layer, for real.** No-build services (Bun runs TS natively) only fail at *runtime* — boot the image with prod-like env and watch the logs. Host-resource changes (Docker socket, ports, volumes, container-user group perms) and timer-driven behaviour (e.g. the 60s idle sweep) need a *real cycle* observed, not a few-second smoke test — that's a false positive. A `.service` change also needs a manual VPS re-apply (`cp → daemon-reload → restart`); the deploy restarts but does not copy the unit file.
+- **"Operator follow-ups" section in every infrastructure PR.** Bullet-point what the human has to do on the VPS / DNS provider / package registry that the workflow can't (DNS records, GHCR visibility flip, env-file additions, sudoers extensions, unit re-apply). The runbook records these once they're done.
 - **One runbook per deployable** at `docs/runbooks/deploy-<service>.md`. Topology, daily ops (status/logs/restart/rollback), and a "Setup history" section that captures the one-time bootstrap so a future VPS rebuild is reproducible. See `docs/runbooks/deploy-{web,postgres,orchestrator}.md` for the shape.
 
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
