@@ -1331,7 +1331,7 @@ epics:
         tasks:
           - id: TASK-057
             title: "platform_api_keys table (encrypted value, active flag, audit columns) + migration"
-            status: ready
+            status: in-progress
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -1340,7 +1340,8 @@ epics:
               @praxis/crypto), an active flag, created_by, created_at,
               last_rotated_at. Migration + codegen. Never store plaintext.
             depends_on: [TASK-011, TASK-019]
-            attempt_count: 0
+            attempt_count: 1
+            last_attempted: '2026-06-02T07:14:00Z'
             task_acceptance:
               - "Table + migration exist; codegen clean; the key column holds ciphertext only."
           - id: TASK-058
