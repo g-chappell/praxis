@@ -1,5 +1,6 @@
+import { getActivePlatformKeyMeta } from '@praxis/keys';
+
 import { ApiKeyForm } from '@/components/admin/api-key-form';
-import { getActivePlatformKeyMeta } from '@/lib/platform-keys';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';

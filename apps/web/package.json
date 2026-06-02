@@ -13,6 +13,7 @@
   "dependencies": {
     "@praxis/crypto": "workspace:*",
     "@praxis/db": "workspace:*",
+    "@praxis/keys": "workspace:*",
     "@radix-ui/react-slot": "^1.1.0",
     "better-auth": "^1.2.0",
     "class-variance-authority": "^0.7.1",

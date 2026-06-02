@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@praxis/db": "workspace:*",
+    "@praxis/keys": "workspace:*",
     "@praxis/sandbox": "workspace:*",
     "hono": "4.6.14",
     "pino": "^9.5.0"
