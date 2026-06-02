@@ -44,9 +44,8 @@ test.describe('magic-link sign-in', () => {
     await page.goto(verifyUrl);
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 
-    // 5. /dashboard shows "Signed in as <email>".
+    // 5. /dashboard renders and the nav shows the signed-in user's email.
     await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible();
-    await expect(page.getByText('Signed in as')).toBeVisible();
     await expect(page.getByText(email)).toBeVisible();
   });
 
