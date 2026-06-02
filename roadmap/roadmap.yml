@@ -1362,7 +1362,7 @@ epics:
               - "Unit tests cover set, rotate (old marked inactive), and the no-key loud-fail; no test logs a raw key."
           - id: TASK-059
             title: "Admin UI: paste key, masked display + metadata, rotate"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]

@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 9 / 24 (38%)
 - **Total tasks:** 66
-- **Done:** 31 (47%)
-- **Ready:** 35
+- **Done:** 32 (48%)
+- **Ready:** 34
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -847,7 +847,7 @@ flags, observability) mount into.
     > Loud-fail when no active key is configured. Never log raw values.
     _Task AC:_
     - Unit tests cover set, rotate (old marked inactive), and the no-key loud-fail; no test logs a raw key.
-  - :black_circle: **TASK-059** :checkered_flag: — Admin UI: paste key, masked display + metadata, rotate  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-059** :checkered_flag: — Admin UI: paste key, masked display + metadata, rotate  `high` `medium` _(apps/web)_  
     _depends on: TASK-058, TASK-055_
     > Admin → API keys page: paste-and-save, then a masked-only display
     > with created/rotated metadata and a rotate action. No endpoint

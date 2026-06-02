@@ -1,4 +1,5 @@
 import { headers } from 'next/headers';
+import Link from 'next/link';
 
 import { getAuth } from '@/lib/auth';
 
@@ -15,6 +16,7 @@ const SECTIONS: ReadonlyArray<{ title: string; description: string; href?: strin
   {
     title: 'Platform API key',
     description: 'Set and rotate the Anthropic API key that powers all agent sessions.',
+    href: '/admin/api-keys',
   },
   {
     title: 'Usage',
@@ -36,15 +38,30 @@ export default async function AdminOverviewPage() {
       </div>
 
       <ul className="grid gap-4 sm:grid-cols-2">
-        {SECTIONS.map((section) => (
-          <li key={section.title} className="rounded-lg border p-4">
-            <h2 className="font-medium">{section.title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{section.description}</p>
-            <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Not yet available
-            </p>
-          </li>
-        ))}
+        {SECTIONS.map((section) => {
+          const body = (
+            <>
+              <h2 className="font-medium">{section.title}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{section.description}</p>
+              {!section.href && (
+                <p className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Not yet available
+                </p>
+              )}
+            </>
+          );
+          return (
+            <li key={section.title} className="rounded-lg border p-4">
+              {section.href ? (
+                <Link href={section.href} className="block transition-opacity hover:opacity-70">
+                  {body}
+                </Link>
+              ) : (
+                body
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
