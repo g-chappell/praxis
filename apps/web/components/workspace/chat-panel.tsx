@@ -55,13 +55,14 @@ export function ChatPanel({ projectId }: { projectId: string }) {
         setStatus('error');
         return;
       }
-      const { ticket } = (await res.json()) as { ticket: string };
-      const base = process.env.NEXT_PUBLIC_ORCHESTRATOR_WS_URL;
-      if (!base) {
+      // wsUrl comes from the server (runtime env) — not a NEXT_PUBLIC_* build
+      // inline — so it's configurable without rebuilding the web image.
+      const { ticket, wsUrl } = (await res.json()) as { ticket: string; wsUrl?: string };
+      if (!wsUrl) {
         setStatus('error');
         return;
       }
-      const ws = new WebSocket(`${base}?ticket=${encodeURIComponent(ticket)}`);
+      const ws = new WebSocket(`${wsUrl}?ticket=${encodeURIComponent(ticket)}`);
       wsRef.current = ws;
       ws.onopen = () => setStatus('connected');
       ws.onmessage = (e) => {
