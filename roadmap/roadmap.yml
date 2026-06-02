@@ -609,7 +609,7 @@ epics:
         tasks:
           - id: TASK-027
             title: "Orchestrator: createSession + WebSocket session room"
-            status: in-progress
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]

@@ -7,6 +7,7 @@ import { Hono } from 'hono';
 
 import { httpLogger } from './logger';
 import { healthRoute } from './routes/health';
+import { sessionsRoute } from './routes/sessions';
 import { VERSION } from './version';
 
 export const app = new Hono();
@@ -15,3 +16,4 @@ app.use('*', httpLogger);
 
 app.get('/', (c) => c.text(`praxis-orchestrator ${VERSION}`));
 app.route('/health', healthRoute);
+app.route('/sessions', sessionsRoute);

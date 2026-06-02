@@ -10,9 +10,9 @@ _Created: 2026-05-31_
 
 - **Features verified:** 10 / 24 (42%)
 - **Total tasks:** 66
-- **Done:** 32 (48%)
+- **Done:** 33 (50%)
 - **Ready:** 33
-- **In progress:** 1
+- **In progress:** 0
 - **Blocked:** 0
 
 ---
@@ -375,7 +375,7 @@ hello-world session that joins all three.
   **Out of scope:**
   - Two-user simultaneous session (STORY-12).
   - Preview URL (STORY-13).
-  - :large_orange_diamond: **TASK-027** — Orchestrator: createSession + WebSocket session room  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-027** — Orchestrator: createSession + WebSocket session room  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-017, TASK-023, TASK-025, TASK-058, TASK-059_
     > POST /sessions { projectId } creates a row in `sessions`, starts
     > a sandbox, spawns ACP, registers a WebSocket room. Clients in
