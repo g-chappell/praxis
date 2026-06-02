@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 10 / 24 (42%)
+- **Features verified:** 11 / 24 (46%)
 - **Total tasks:** 66
 - **Done:** 35 (53%)
 - **Ready:** 31
@@ -356,7 +356,7 @@ hello-world session that joins all three.
     - Integration test passes in CI on a clean build.
     - STORY-08 acceptance_criteria satisfied.
 
-- **STORY-09** — End-to-end hello-world session
+- **STORY-09** — End-to-end hello-world session  [:white_check_mark: verified]
   > Tie it all together. A signed-in user creates a project, the
   > orchestrator starts a DockerSandbox, ACP host spins up Claude
   > Code, and the user's first prompt streams back to the browser
