@@ -7,6 +7,8 @@
 import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 
+import { NoPlatformKeyError, getActivePlatformKey } from '@praxis/keys';
+
 import { getAuth } from '@/lib/auth';
 import { userOwnsProject } from '@/lib/projects';
 
@@ -34,10 +36,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'orchestrator_not_configured' }, { status: 500 });
   }
 
+  // Decrypt the platform key here (Node/libsodium) and hand it to the
+  // orchestrator over the internal channel — the Bun orchestrator can't load
+  // libsodium (ADR-0009 / STORY-09 fix). Server-to-server only; never logged.
+  let apiKey: string;
+  try {
+    apiKey = await getActivePlatformKey();
+  } catch (err) {
+    if (err instanceof NoPlatformKeyError) {
+      return NextResponse.json({ error: 'no_platform_key' }, { status: 503 });
+    }
+    throw err;
+  }
+
   const res = await fetch(`${orchestratorUrl}/sessions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-internal-secret': internalSecret },
-    body: JSON.stringify({ projectId, userId: session.user.id }),
+    body: JSON.stringify({ projectId, userId: session.user.id, apiKey }),
   }).catch(() => null);
 
   if (!res || !res.ok) {
