@@ -5,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { DockerSandbox, parseInotifyLine } from './docker-sandbox.js';
 import type { FileEvent, SandboxHandle } from './index.js';
+import { InMemoryObjectStore } from './object-store.js';
 
 // Pure, ungated — runs everywhere.
 describe('parseInotifyLine', () => {
@@ -158,6 +159,36 @@ describeDocker('DockerSandbox (real Docker)', () => {
       h = await sandbox.start(pid, 'react-threejs-scene');
       expect(await sandbox.readFile(h, 'persist.txt')).toBe('durable');
       await sandbox.stop(h);
+      try {
+        await docker.getVolume(`praxis-project-${pid}`).remove({ force: true });
+      } catch {
+        /* ignore */
+      }
+    },
+    T,
+  );
+
+  it(
+    'restores workspace state from the object store after the volume is removed',
+    async () => {
+      // The STORY-09 state-capture AC: a marker written in one session survives
+      // a full volume loss via the snapshot in the object store (ADR-0008). Uses
+      // an in-memory store so the path is exercised without a live MinIO.
+      const store = new InMemoryObjectStore();
+      const snapSandbox = new DockerSandbox({ store });
+      const pid = `${projectId}-snap`;
+
+      let h = await snapSandbox.start(pid, 'react-threejs-scene');
+      await snapSandbox.writeFile(h, 'marker.txt', 'survives-rebuild');
+      await snapSandbox.stop(h); // snapshots to the store, removes the container
+
+      // Drop the volume so the next start has an empty workspace → must restore.
+      await docker.getVolume(`praxis-project-${pid}`).remove({ force: true });
+
+      h = await snapSandbox.start(pid, 'react-threejs-scene');
+      expect(await snapSandbox.readFile(h, 'marker.txt')).toBe('survives-rebuild');
+
+      await snapSandbox.stop(h);
       try {
         await docker.getVolume(`praxis-project-${pid}`).remove({ force: true });
       } catch {

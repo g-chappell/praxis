@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 10 / 24 (42%)
 - **Total tasks:** 66
-- **Done:** 34 (52%)
-- **Ready:** 32
+- **Done:** 35 (53%)
+- **Ready:** 31
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -393,7 +393,7 @@ hello-world session that joins all three.
     > agent events. No file tree / Monaco yet (that's STORY-10).
     _Task AC:_
     - Manual test: prompt 'say hello' streams a response in the chat panel.
-  - :black_circle: **TASK-029** :checkered_flag: — State capture/restore via MinIO  `high` `medium` _(services/orchestrator, packages/sandbox)_  
+  - :white_check_mark: **TASK-029** :checkered_flag: — State capture/restore via MinIO  `high` `medium` _(services/orchestrator, packages/sandbox)_  
     _depends on: TASK-027, TASK-023_
     > On session stop, tarball the project volume and PUT to MinIO
     > (bucket: praxis-project-state, key: <projectId>.tar.gz). On

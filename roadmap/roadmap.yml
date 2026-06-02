@@ -642,7 +642,7 @@ epics:
               - "Manual test: prompt 'say hello' streams a response in the chat panel."
           - id: TASK-029
             title: "State capture/restore via MinIO"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator", "packages/sandbox"]
