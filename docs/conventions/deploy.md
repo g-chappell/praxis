@@ -132,8 +132,9 @@ infrastructure/deploy/*.service`.
 ## Sudoers fragment
 
 The `deploy` user can restart Praxis services and reload Caddy
-without a password — needed for the SSH-action deploy step. Fragment
-lives at `/etc/sudoers.d/praxis-deploy`:
+without a password — needed for the deploy step, which the self-hosted
+runner runs as `deploy` (ADR-0011). Fragment lives at
+`/etc/sudoers.d/praxis-deploy`:
 
 ```
 deploy ALL=(root) NOPASSWD: \
@@ -214,22 +215,31 @@ STORY-07:
 
 ## CI deploy workflow shape
 
-Every service has a `deploy-<service>.yml` mirroring this shape:
+Every service has a `deploy-<service>.yml` mirroring this shape (two
+jobs since ADR-0011):
 
 1. `on: push: branches: [main]` with `paths:` filters scoped to the
    service's workspace + its `infrastructure/deploy/<unit>.service`
    + the workflow file itself.
-2. `concurrency: deploy-<service>` so two merges in quick succession
-   queue rather than race.
-3. Build with `docker/build-push-action@v6`, context `.`, passing
-   `build-args: GIT_SHA=${{ github.sha }}`, with GHA cache.
-4. SSH-action runs `sudo systemctl restart praxis-<service>.service`
-   on the VPS.
-5. **Smoke test** via `scripts/healthcheck.sh "<public-url>/health"
-   60` so a failed deploy turns the build red.
+2. `concurrency: deploy-<service>` (per-workflow, **not** shared across
+   services — a shared group cancels legitimate concurrent deploys; see
+   #142) so two merges in quick succession queue rather than race.
+3. **`build` job** on `ubuntu-latest`: `docker/build-push-action@v6`,
+   context `.`, `build-args: GIT_SHA=${{ github.sha }}`, GHA cache,
+   pushes to GHCR.
+4. **`deploy` job** (`needs: build`) on the **self-hosted runner**
+   (`runs-on: [self-hosted, praxis-vps]`): runs `sudo systemctl restart
+   praxis-<service>.service` **locally** — no SSH. The runner lives on
+   the VPS, so the deploy hop has no internet path to flake on (ADR-0011
+   replaced the SSH-action push, which timed out intermittently from
+   GitHub-hosted runner IPs). GitHub still reports job success/failure,
+   so notifications stay native.
+5. **Smoke test** (inline curl-retry against the public `/health` URL)
+   so a failed deploy turns the job red.
 
 The `paths:` filter is load-bearing — without it, every `docs/`
-commit redeploys every service.
+commit redeploys every service. The self-hosted runner runs one job at
+a time, so deploy jobs serialize on it naturally.
 
 ## What the operator does (every new service)
 

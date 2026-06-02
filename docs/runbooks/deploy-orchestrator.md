@@ -94,17 +94,22 @@ sudo systemctl reload caddy
 `.github/workflows/deploy-orchestrator.yml` triggers on push to `main`
 that touches `services/orchestrator/**`, `packages/db/**`,
 `infrastructure/deploy/praxis-orchestrator.service`, or the workflow
-file itself. It:
+file itself. Two jobs:
 
-1. Builds the image from `services/orchestrator/Dockerfile` (build
-   context = repo root; `--build-arg GIT_SHA=${{ github.sha }}` is baked
-   in so `/health` reports the commit).
-2. Pushes three tags to `ghcr.io/g-chappell/praxis-orchestrator`:
-   `:latest`, `:sha-<short>`, `:main`.
-3. SSHes to the VPS as `deploy` and runs
-   `sudo systemctl restart praxis-orchestrator.service`.
-4. Smoke-tests `https://${{ vars.API_DOMAIN }}/health` via
-   `scripts/healthcheck.sh`.
+1. **`build`** (GitHub-hosted): builds the image from
+   `services/orchestrator/Dockerfile` (context = repo root;
+   `--build-arg GIT_SHA=${{ github.sha }}` baked in so `/health` reports
+   the commit) and pushes `:latest`, `:sha-<short>`, `:main` to
+   `ghcr.io/g-chappell/praxis-orchestrator`.
+2. **`deploy`** (`needs: build`, **self-hosted runner on the VPS**,
+   label `praxis-vps`): runs `sudo systemctl restart
+   praxis-orchestrator.service` **locally** (no SSH; the unit's
+   `ExecStartPre docker pull` rolls to `:latest`), then smoke-tests
+   `https://${{ vars.API_DOMAIN }}/health` (retried ~60s).
+
+The deploy moved off SSH-push to the self-hosted runner — see
+**ADR-0011** and the runner Setup-history / daily-ops in
+`deploy-web.md`. The `VPS_*` secrets are no longer used.
 
 ---
 

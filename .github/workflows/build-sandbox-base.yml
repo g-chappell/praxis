@@ -15,45 +15,22 @@ on:
       - '.github/workflows/build-sandbox-base.yml'
   workflow_dispatch:
 
-# Per-workflow group so overlapping rebuilds queue. Do NOT share one group
-# across the deploy workflows: GitHub keeps only one in-progress + one pending
-# per group, so a shared group cancels legitimate concurrent service deploys
-# (#142). The SSH-reachability flake is handled by the retry below.
 concurrency:
   group: build-sandbox-base
   cancel-in-progress: false
 
 jobs:
+  # Runs on the VPS via the self-hosted runner: the image is local to the VPS
+  # (not a registry), so it builds where it lives — no SSH/scp, which also
+  # sidesteps the intermittent GitHub-runner→VPS path loss (#142/#143).
   build:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, praxis-vps]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
-      # Ship the build context to the VPS and build there (the image is local to
-      # the VPS, not a registry). Retried: the dial to the VPS blackholes from
-      # GitHub-hosted runners in multi-minute windows (no SYN-ACK). ~8 attempts
-      # x 45s rides out an observed ~4 min blackout; each failed dial costs only
-      # ConnectTimeout=20s, and timeout_minutes covers the real build once it
-      # connects.
-      - name: Rebuild sandbox base image on the VPS
-        uses: nick-fields/retry@v3
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-        with:
-          timeout_minutes: 12
-          max_attempts: 8
-          retry_wait_seconds: 45
-          command: |
-            mkdir -p ~/.ssh && chmod 700 ~/.ssh
-            printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
-            SSHOPTS="-i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20"
-            TARGET="$VPS_USER@$VPS_HOST"
-            ssh $SSHOPTS "$TARGET" 'rm -rf /tmp/praxis-sbx-base && mkdir -p /tmp/praxis-sbx-base'
-            scp $SSHOPTS -r infrastructure/docker/sandbox-base/. "$TARGET:/tmp/praxis-sbx-base/"
-            ssh $SSHOPTS "$TARGET" \
-              'docker build -t praxis-sandbox-base:latest /tmp/praxis-sbx-base && rm -rf /tmp/praxis-sbx-base'
+      - name: Rebuild sandbox base image
+        run: docker build -t praxis-sandbox-base:latest infrastructure/docker/sandbox-base
 
       - name: Summary
         if: always()
