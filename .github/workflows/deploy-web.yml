@@ -9,11 +9,14 @@ on:
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch:
 
-# Queue overlapping deploys rather than cancel. A second deploy starting while
-# the first is mid-restart could race the systemd unit; the queue keeps it
-# linear.
+# Shared across ALL VPS-touching workflows (deploy-web, deploy-orchestrator,
+# build-sandbox-base) so they SSH to the box one at a time. A merge touching
+# several paths fires all of them at once; without a shared group three runners
+# open SSH within ~2s and the burst gets dropped on the network path
+# (intermittent `connect timed out`). Queue, don't cancel — a second deploy
+# mid-restart could also race the systemd unit.
 concurrency:
-  group: deploy-web
+  group: vps-deploy
   cancel-in-progress: false
 
 permissions:
