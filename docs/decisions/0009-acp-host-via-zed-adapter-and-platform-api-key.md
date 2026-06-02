@@ -18,18 +18,34 @@ on the **prompting user's Claude subscription** (§6, ADR-0006). Neither half ho
   `stream-json`, not ACP. The only maintained ACP path for Claude is the
   `claude-agent-acp` adapter (originally `@zed-industries/`, now
   `@agentclientprotocol/claude-agent-acp`), which wraps the **Claude Agent SDK**.
-- **A hosted multiplayer platform cannot run on a Pro/Max subscription.** Anthropic's
-  Consumer Terms forbid account sharing ("You may not share your Account"); the
-  subscription OAuth token is licensed only for Claude Code/Claude.ai (using it in
-  another product is prohibited token-extraction); and an April-2026 policy explicitly
-  targets apps "that routed requests through subscriptions to avoid higher API costs."
-  The Zed adapter enforces this — it rejects subscription OAuth and requires
-  `ANTHROPIC_API_KEY` (see adapter issue #421).
+- **A hosted multiplayer platform cannot run on a Pro/Max subscription.** This is
+  explicit in Anthropic's published terms (clauses verified against the live documents
+  2026-06-02 — see References):
+  - **Consumer Terms** (eff. 2025-10-08), which govern Free/Pro/Max: **§2** — "You may
+    not share your Account login information, Anthropic API key, or Account credentials
+    with anyone else or **make your Account available to anyone else**"; **§11** — "You
+    agree **not to use our Services for any commercial or business purposes**"; **§3**
+    bars using the Services to "resell the Services." Hosting one person's subscription
+    for other users breaches all three — independent of token caps, so the "it's just
+    capped vs uncapped" framing is not the operative distinction.
+  - **Claude Code → Legal and compliance → Authentication and credential use:** OAuth
+    "is intended exclusively for purchasers of Claude Free, Pro, Max, Team, and
+    Enterprise subscription plans and is designed to support ordinary use"; and
+    "**Anthropic does not permit third-party developers to offer Claude.ai login or to
+    route requests through Free, Pro, or Max plan credentials on behalf of their
+    users.**" Developers "should use API key authentication." That is exactly the Praxis
+    case (and applies equally whether we drive the Agent SDK or Claude Code).
+
+  The Zed adapter operationalizes the same boundary — it rejects subscription OAuth and
+  requires `ANTHROPIC_API_KEY` (adapter issue #421).
 
 The product requirement behind "subscription" was never the *plan type* — it was
 (a) one project **owner inherits the cost** and (b) the pair shares **one aligned
-session**. API keys under the Commercial Terms satisfy both, and they are the
-sanctioned path for hosted multi-user use.
+session**. API keys under the **Commercial Terms** (eff. 2025-06-17) satisfy both and
+are the sanctioned path for hosted multi-user use: **§A.1** — "Anthropic gives Customer
+permission to use the Services, including to **power products and services Customer makes
+available to its own customers and end users ("Users")**." So the difference between the
+two routes is the *governing contract and its license grant*, not a resource cap.
 
 ## Decision
 
@@ -68,6 +84,19 @@ of plan-vs-reality divergence for the OAuth flow itself).
   (2) a roadmap conversation on STORY-06 OAuth's future — it is no longer used for
   inference under this model and may become vestigial or be repurposed (identity, or a
   future bring-your-own-key tier). STORY-06 code is **not** unwound here.
+- **Compliance obligations we inherit on the API route** (Commercial Terms — build, don't
+  assume): **§A.1/§D.4** — we are permitted to *power a product* for end users but must
+  not "resell the Services," so Praxis stays a value-added product and never exposes raw
+  API access or resells keys/credits; **§D.2** — Customer *and its Users* may only use the
+  Services in compliance with the Usage Policy; **§D.3** — must notify Users that factual
+  assertions in Outputs need independent verification; **§D.5** — Customer is responsible
+  for all activity under its account; **§K.2** — Customer must defend Anthropic against
+  claims from its Users' violations. Roadmap coverage: per-project metering (STORY-22) +
+  budget caps that pause (STORY-23) bound spend/abuse; admin role + encrypted platform-key
+  lifecycle (STORY-20/21) keep the key controlled. **Gap:** a user-facing acceptable-use
+  pass-through (§D.2) + an output-reliability disclaimer (§D.3) are not yet a roadmap
+  story — add one before any public launch. This reading is not legal advice; counsel
+  should review the resale boundary (§D.4) pre-launch.
 - **Operator burden:** provision a platform API key (and a budget-limited CI test key);
   rebuild/redeploy the sandbox base image with the adapter baked in.
 - **Cost shifts** from flat subscription to metered per-token spend, fronted by the
@@ -92,3 +121,23 @@ of plan-vs-reality divergence for the OAuth flow itself).
   most complex — fails the "one aligned session" requirement.
 - **Hand-rolled ~300-line ACP client** (the roadmap's fallback). Unnecessary now that a
   maintained official client lib exists; we'd own protocol drift for no benefit.
+
+## References
+
+Primary sources, read 2026-06-02 (re-check before launch — terms change):
+
+- **Anthropic Consumer Terms of Service** (eff. 2025-10-08) — §2 (no sharing / making
+  account available), §3 (no resale), §11 (no commercial/business use). Governs
+  Free/Pro/Max. <https://www.anthropic.com/legal/consumer-terms>
+- **Anthropic Commercial Terms of Service** (eff. 2025-06-17) — §A.1 (permission to power
+  products for end users), §D.2–D.5 (Usage Policy compliance, output notice, use
+  restrictions/no-resale, account responsibility), §K.2 (defense for Users' violations).
+  Governs the API. <https://www.anthropic.com/legal/commercial-terms>
+- **Claude Code — Legal and compliance** ("Authentication and credential use": OAuth is
+  for ordinary subscription use; third-party developers may not offer Claude.ai login or
+  route requests through Free/Pro/Max credentials on behalf of users; developers should
+  use API keys). <https://code.claude.com/docs/en/legal-and-compliance>
+- **Can I use the Claude API for individual use?** (API is governed by the Commercial
+  Terms regardless of individual vs company).
+  <https://support.claude.com/en/articles/8987200-can-i-use-the-anthropic-api-for-individual-use>
+- **Anthropic Usage Policy.** <https://www.anthropic.com/legal/aup>
