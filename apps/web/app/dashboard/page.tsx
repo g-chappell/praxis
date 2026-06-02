@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { NewProjectButton } from '@/components/new-project-button';
 import { SignOutButton } from '@/components/sign-out-button';
 import { Button } from '@/components/ui/button';
 import { isUserAdmin } from '@/lib/admin';
@@ -36,13 +37,14 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground">
           Signed in as <span className="font-medium">{session.user.email}</span>.
         </p>
+        <NewProjectButton />
         <div className="flex items-center justify-center gap-3">
           {isAdmin && (
             <Button asChild variant="outline">
               <Link href="/admin">Admin</Link>
             </Button>
           )}
-          <Button asChild>
+          <Button asChild variant="outline">
             <Link href="/settings">Settings</Link>
           </Button>
           <SignOutButton />

@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 10 / 24 (42%)
 - **Total tasks:** 66
-- **Done:** 33 (50%)
-- **Ready:** 33
+- **Done:** 34 (52%)
+- **Ready:** 32
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -386,7 +386,7 @@ hello-world session that joins all three.
     > key management (STORY-20/21) landing first.
     _Task AC:_
     - Postman/integration test creates a session and receives at least one agent_event.
-  - :black_circle: **TASK-028** — Frontend: New project flow + minimal chat panel  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-028** — Frontend: New project flow + minimal chat panel  `high` `medium` _(apps/web)_  
     _depends on: TASK-014, TASK-027_
     > /dashboard 'New project' button → POST /projects → /projects/<id>
     > page that opens the WebSocket, sends prompts, renders streamed

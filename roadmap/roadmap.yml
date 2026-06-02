@@ -628,7 +628,7 @@ epics:
               - "Postman/integration test creates a session and receives at least one agent_event."
           - id: TASK-028
             title: "Frontend: New project flow + minimal chat panel"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]

@@ -8,4 +8,4 @@ export {
   maskKey,
   setActivePlatformKey,
   type PlatformKeyMeta,
-} from './platform-keys.js';
+} from './platform-keys';
