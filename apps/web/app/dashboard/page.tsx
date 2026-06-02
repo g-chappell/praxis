@@ -1,11 +1,8 @@
-import Link from 'next/link';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { AppNav } from '@/components/app-nav';
 import { NewProjectButton } from '@/components/new-project-button';
-import { SignOutButton } from '@/components/sign-out-button';
-import { Button } from '@/components/ui/button';
-import { isUserAdmin } from '@/lib/admin';
 import { getAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -27,29 +24,21 @@ export default async function DashboardPage() {
     redirect('/signin');
   }
 
-  // Admins get a link into the admin area; everyone else never sees it.
-  const isAdmin = await isUserAdmin(session.user.id);
-
+  // Admin / Settings / Sign out now live in the shared nav.
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md space-y-6 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Signed in as <span className="font-medium">{session.user.email}</span>.
-        </p>
-        <NewProjectButton />
-        <div className="flex items-center justify-center gap-3">
-          {isAdmin && (
-            <Button asChild variant="outline">
-              <Link href="/admin">Admin</Link>
-            </Button>
-          )}
-          <Button asChild variant="outline">
-            <Link href="/settings">Settings</Link>
-          </Button>
-          <SignOutButton />
+    <>
+      <AppNav />
+      <main className="flex flex-col items-center px-6 py-16">
+        <div className="w-full max-w-md space-y-6 text-center">
+          <div className="space-y-1">
+            <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">
+              Start a project to build with the agent.
+            </p>
+          </div>
+          <NewProjectButton />
         </div>
-      </div>
-    </main>
+      </main>
+    </>
   );
 }
