@@ -1346,7 +1346,7 @@ epics:
               - "Table + migration exist; codegen clean; the key column holds ciphertext only."
           - id: TASK-058
             title: "Key service: set / rotate / deactivate + getActivePlatformKey() accessor"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/db", "apps/web"]

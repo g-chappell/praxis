@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 9 / 24 (38%)
 - **Total tasks:** 66
-- **Done:** 30 (45%)
-- **Ready:** 36
+- **Done:** 31 (47%)
+- **Ready:** 35
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -838,7 +838,7 @@ flags, observability) mount into.
     > last_rotated_at. Migration + codegen. Never store plaintext.
     _Task AC:_
     - Table + migration exist; codegen clean; the key column holds ciphertext only.
-  - :black_circle: **TASK-058** — Key service: set / rotate / deactivate + getActivePlatformKey() accessor  `high` `medium` _(packages/db, apps/web)_  
+  - :white_check_mark: **TASK-058** — Key service: set / rotate / deactivate + getActivePlatformKey() accessor  `high` `medium` _(packages/db, apps/web)_  
     _depends on: TASK-057_
     > Service that encrypts on write and decrypts on read via
     > @praxis/crypto: setActivePlatformKey(raw), rotate (new active, old
