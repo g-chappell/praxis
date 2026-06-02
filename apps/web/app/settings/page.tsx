@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { oauthTokens } from '@praxis/db';
 import { db } from '@praxis/db/client';
 
+import { AppNav } from '@/components/app-nav';
 import { ConnectClaudeCode } from '@/components/connect-claude-code';
 import { DisconnectAnthropicButton } from '@/components/disconnect-anthropic-button';
 import { PROVIDER } from '@/lib/anthropic-oauth';
@@ -33,40 +34,43 @@ export default async function SettingsPage() {
   const connectedAt = token?.connectedAt ?? null;
 
   return (
-    <main className="flex min-h-screen flex-col items-center px-6 py-12">
-      <div className="w-full max-w-md space-y-8">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Signed in as <span className="font-medium">{session.user.email}</span>.
-          </p>
-        </div>
-
-        <section className="space-y-3 rounded-lg border p-5">
-          <div className="space-y-1">
-            <h2 className="font-medium">Claude Code</h2>
-            <p className="text-sm text-muted-foreground">
-              Connect your Claude subscription so the agent runs on your plan.
+    <>
+      <AppNav />
+      <main className="flex flex-col items-center px-6 py-12">
+        <div className="w-full max-w-md space-y-8">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Signed in as <span className="font-medium">{session.user.email}</span>.
             </p>
           </div>
 
-          {isConnected ? (
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-sm font-medium text-green-700">Connected to Claude Code ✓</p>
-                {connectedAt ? (
-                  <p className="text-xs text-muted-foreground">
-                    Connected {connectedAt.toLocaleDateString()}
-                  </p>
-                ) : null}
-              </div>
-              <DisconnectAnthropicButton />
+          <section className="space-y-3 rounded-lg border p-5">
+            <div className="space-y-1">
+              <h2 className="font-medium">Claude Code</h2>
+              <p className="text-sm text-muted-foreground">
+                Connect your Claude subscription so the agent runs on your plan.
+              </p>
             </div>
-          ) : (
-            <ConnectClaudeCode />
-          )}
-        </section>
-      </div>
-    </main>
+
+            {isConnected ? (
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-green-700">Connected to Claude Code ✓</p>
+                  {connectedAt ? (
+                    <p className="text-xs text-muted-foreground">
+                      Connected {connectedAt.toLocaleDateString()}
+                    </p>
+                  ) : null}
+                </div>
+                <DisconnectAnthropicButton />
+              </div>
+            ) : (
+              <ConnectClaudeCode />
+            )}
+          </section>
+        </div>
+      </main>
+    </>
   );
 }

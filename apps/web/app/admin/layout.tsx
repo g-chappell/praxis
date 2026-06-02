@@ -1,9 +1,8 @@
 import { headers } from 'next/headers';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
-import { SignOutButton } from '@/components/sign-out-button';
+import { AppNav } from '@/components/app-nav';
 import { adminAccess, isUserAdmin } from '@/lib/admin';
 import { getAuth } from '@/lib/auth';
 
@@ -27,17 +26,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   return (
     <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b px-6 py-4">
-        <div className="flex items-baseline gap-3">
-          <Link href="/admin" className="text-lg font-semibold tracking-tight">
-            Praxis Admin
-          </Link>
-          <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">
-            ← Dashboard
-          </Link>
-        </div>
-        <SignOutButton />
-      </header>
+      <AppNav />
       <main className="px-6 py-8">{children}</main>
     </div>
   );

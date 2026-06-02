@@ -1,6 +1,6 @@
 'use client';
 
-import { type FormEvent, useCallback, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 
@@ -89,6 +89,16 @@ export function ChatPanel({ projectId }: { projectId: string }) {
     setInput('');
   }
 
+  // Close the session cleanly: the server stops the sandbox when the last
+  // socket leaves the room (endSession). Also runs on unmount, so navigating
+  // away via the nav doesn't leave the session running.
+  const closeSession = useCallback(() => {
+    wsRef.current?.close();
+    wsRef.current = null;
+  }, []);
+
+  useEffect(() => closeSession, [closeSession]);
+
   return (
     <div className="flex h-full flex-col gap-4">
       {status === 'idle' || status === 'connecting' ? (
@@ -96,9 +106,20 @@ export function ChatPanel({ projectId }: { projectId: string }) {
           {status === 'connecting' ? 'Starting…' : 'Start session'}
         </Button>
       ) : (
-        <p className="text-xs text-muted-foreground">
-          {status === 'connected' ? 'Session connected' : 'Session error'}
-        </p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            {status === 'connected' ? 'Session connected' : 'Session error'}
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              closeSession();
+              setStatus('idle');
+            }}
+          >
+            End session
+          </Button>
+        </div>
       )}
 
       <ul className="flex-1 space-y-3 overflow-y-auto">

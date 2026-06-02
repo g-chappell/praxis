@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
+import { AppNav } from '@/components/app-nav';
 import { ChatPanel } from '@/components/workspace/chat-panel';
 import { getAuth } from '@/lib/auth';
 import { userOwnsProject } from '@/lib/projects';
@@ -23,11 +24,14 @@ export default async function ProjectWorkspacePage({ params }: { params: { id: s
   }
 
   return (
-    <main className="mx-auto flex h-screen max-w-2xl flex-col px-6 py-8">
-      <h1 className="mb-4 text-xl font-semibold tracking-tight">Workspace</h1>
-      <div className="min-h-0 flex-1">
-        <ChatPanel projectId={params.id} />
-      </div>
-    </main>
+    <div className="flex h-screen flex-col">
+      <AppNav />
+      <main className="mx-auto flex w-full min-h-0 max-w-2xl flex-1 flex-col px-6 py-6">
+        <h1 className="mb-4 text-xl font-semibold tracking-tight">Workspace</h1>
+        <div className="min-h-0 flex-1">
+          <ChatPanel projectId={params.id} />
+        </div>
+      </main>
+    </div>
   );
 }
