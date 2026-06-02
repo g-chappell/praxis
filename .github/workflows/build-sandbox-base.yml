@@ -15,13 +15,12 @@ on:
       - '.github/workflows/build-sandbox-base.yml'
   workflow_dispatch:
 
-# Shared across ALL VPS-touching workflows (deploy-web, deploy-orchestrator,
-# build-sandbox-base) so they SSH to the box one at a time. A merge touching
-# several paths fires all of them at once; without a shared group three runners
-# open SSH within ~2s and the burst gets dropped on the network path
-# (intermittent `connect timed out`). Queue, don't cancel.
+# Per-workflow group so overlapping rebuilds queue. Do NOT share one group
+# across the deploy workflows: GitHub keeps only one in-progress + one pending
+# per group, so a shared group cancels legitimate concurrent service deploys
+# (#142). The SSH-reachability flake is handled by the retry below.
 concurrency:
-  group: vps-deploy
+  group: build-sandbox-base
   cancel-in-progress: false
 
 jobs:
@@ -31,8 +30,11 @@ jobs:
       - uses: actions/checkout@v4
 
       # Ship the build context to the VPS and build there (the image is local to
-      # the VPS, not a registry). Retried: the dial to the VPS intermittently
-      # times out from GitHub-hosted runners.
+      # the VPS, not a registry). Retried: the dial to the VPS blackholes from
+      # GitHub-hosted runners in multi-minute windows (no SYN-ACK). ~8 attempts
+      # x 45s rides out an observed ~4 min blackout; each failed dial costs only
+      # ConnectTimeout=20s, and timeout_minutes covers the real build once it
+      # connects.
       - name: Rebuild sandbox base image on the VPS
         uses: nick-fields/retry@v3
         env:
@@ -41,8 +43,8 @@ jobs:
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
         with:
           timeout_minutes: 12
-          max_attempts: 3
-          retry_wait_seconds: 20
+          max_attempts: 8
+          retry_wait_seconds: 45
           command: |
             mkdir -p ~/.ssh && chmod 700 ~/.ssh
             printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
