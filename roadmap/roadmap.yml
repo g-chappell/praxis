@@ -593,6 +593,8 @@ epics:
           Code, and the user's first prompt streams back to the browser
           over WebSocket. On session stop, the project state captures to
           MinIO; next session resume restores it.
+        verified_at: '2026-06-02T11:40:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "From a fresh dashboard: 'New project' → container starts → prompt 'say hello' → assistant response streams in chat panel within 10s."
           - "Closing the session then re-opening the project restores file state (a marker file written during the first session is present in the second)."
