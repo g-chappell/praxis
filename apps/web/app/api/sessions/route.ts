@@ -1,8 +1,8 @@
 // POST /api/sessions — start an agent session for a project (STORY-09).
 // Authenticated + ownership-checked, then calls the orchestrator server-to-server
 // (shared internal secret) to create the session + mint a one-time WS ticket.
-// Returns { sessionId, ticket }; the browser opens the WS itself using
-// NEXT_PUBLIC_ORCHESTRATOR_WS_URL + the ticket.
+// Returns { sessionId, ticket, wsUrl }; the browser opens the WS itself using
+// the runtime-configured wsUrl + the ticket.
 
 import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
@@ -32,7 +32,11 @@ export async function POST(req: NextRequest) {
 
   const orchestratorUrl = process.env.ORCHESTRATOR_INTERNAL_URL;
   const internalSecret = process.env.ORCHESTRATOR_INTERNAL_SECRET;
-  if (!orchestratorUrl || !internalSecret) {
+  // Returned to the browser so it can open the WS. Read at runtime (server-side)
+  // — NOT a NEXT_PUBLIC_* build-time inline — so it's configurable via the env
+  // file without rebuilding the web image.
+  const wsUrl = process.env.ORCHESTRATOR_WS_URL;
+  if (!orchestratorUrl || !internalSecret || !wsUrl) {
     return NextResponse.json({ error: 'orchestrator_not_configured' }, { status: 500 });
   }
 
@@ -59,5 +63,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'session_start_failed' }, { status: 502 });
   }
   const { sessionId, ticket } = (await res.json()) as { sessionId: string; ticket: string };
-  return NextResponse.json({ sessionId, ticket });
+  return NextResponse.json({ sessionId, ticket, wsUrl });
 }
