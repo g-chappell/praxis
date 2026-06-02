@@ -2,12 +2,19 @@
 // per-project Docker container created from `praxis-sandbox-base`. Nothing
 // outside this file imports dockerode; consumers use the `Sandbox` interface.
 
+import { type ChildProcessWithoutNullStreams, spawn as spawnProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import * as posix from 'node:path/posix';
-import { PassThrough, Readable, type Duplex } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 
 import Docker from 'dockerode';
 import * as tar from 'tar-stream';
+
+// dockerode handles the container/volume/archive lifecycle (plain HTTP). For
+// exec'ing into containers we shell out to the `docker` CLI instead: dockerode's
+// hijacked exec stream (HTTP 101 upgrade) doesn't work under Bun, whereas the CLI
+// attaches stdio natively and runs identically under Bun (prod) and Node (tests).
+const DOCKER_CLI = 'docker';
 
 import type {
   ExecOptions,
@@ -49,18 +56,52 @@ function shSingleQuote(s: string): string {
   return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
-function envToArray(env?: Record<string, string>): string[] | undefined {
-  return env ? Object.entries(env).map(([k, v]) => `${k}=${v}`) : undefined;
-}
-
 function inWorkspace(p: string): string {
   return p.startsWith('/') ? p : posix.join(WORKDIR, p);
 }
 
-async function* toStringIterable(stream: PassThrough): AsyncIterable<string> {
+async function* toStringIterable(stream: Readable): AsyncIterable<string> {
   for await (const chunk of stream) {
     yield typeof chunk === 'string' ? chunk : (chunk as Buffer).toString('utf8');
   }
+}
+
+/** Run `docker exec` as a child process. The CLI demultiplexes stdout/stderr and
+ *  handles the stdio attach natively (unlike dockerode under Bun). */
+function dockerExec(
+  containerId: string,
+  argv: string[],
+  opts: { stdin?: boolean; cwd?: string; env?: Record<string, string> } = {},
+): ChildProcessWithoutNullStreams {
+  const args = ['exec'];
+  if (opts.stdin) args.push('-i');
+  args.push('-w', opts.cwd ?? WORKDIR);
+  for (const [k, v] of Object.entries(opts.env ?? {})) args.push('-e', `${k}=${v}`);
+  args.push(containerId, ...argv);
+  return spawnProcess(DOCKER_CLI, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+}
+
+/** Run a command via `docker exec` and collect stdout/stderr + exit code. */
+function execCapture(
+  containerId: string,
+  argv: string[],
+  opts: { cwd?: string; env?: Record<string, string> } = {},
+): Promise<ExecResult> {
+  return new Promise((resolve, reject) => {
+    const proc = dockerExec(containerId, argv, opts);
+    const out: Buffer[] = [];
+    const err: Buffer[] = [];
+    proc.stdout.on('data', (d: Buffer) => out.push(d));
+    proc.stderr.on('data', (d: Buffer) => err.push(d));
+    proc.on('error', reject);
+    proc.on('close', (code) =>
+      resolve({
+        exitCode: code ?? 0,
+        stdout: Buffer.concat(out).toString('utf8'),
+        stderr: Buffer.concat(err).toString('utf8'),
+      }),
+    );
+  });
 }
 
 export class DockerSandbox implements Sandbox {
@@ -98,14 +139,9 @@ export class DockerSandbox implements Sandbox {
   }
 
   /** Run a command, discard output, resolve with its exit code. */
-  private async execSimple(container: Docker.Container, cmd: string[]): Promise<number> {
-    const exec = await container.exec({ Cmd: cmd, AttachStdout: true, AttachStderr: true });
-    const stream = await exec.start({ hijack: true, stdin: false });
-    const sink = new PassThrough();
-    this.docker.modem.demuxStream(stream, sink, sink);
-    await new Promise<void>((resolve) => stream.on('end', resolve));
-    const info = await exec.inspect();
-    return info.ExitCode ?? 0;
+  private async execSimple(containerId: string, cmd: string[]): Promise<number> {
+    const { exitCode } = await execCapture(containerId, cmd);
+    return exitCode;
   }
 
   async start(projectId: string, templateId: string): Promise<SandboxHandle> {
@@ -140,11 +176,11 @@ export class DockerSandbox implements Sandbox {
 
     // Restore from the durable snapshot when the volume is fresh (first run, or
     // the local volume was reclaimed). A populated volume is left untouched.
-    if (this.store && (await this.isWorkspaceEmpty(container))) {
+    if (this.store && (await this.isWorkspaceEmpty(handle.containerId))) {
       await this.restore(handle, container);
     }
     // Initialise git in the project dir if still fresh after any restore.
-    await this.execSimple(container, [
+    await this.execSimple(handle.containerId, [
       'bash',
       '-lc',
       'cd /workspace && [ -d .git ] || git init -q',
@@ -152,115 +188,75 @@ export class DockerSandbox implements Sandbox {
     return handle;
   }
 
-  private async isWorkspaceEmpty(container: Docker.Container): Promise<boolean> {
-    const exec = await container.exec({
-      Cmd: ['bash', '-lc', '[ -z "$(ls -A /workspace 2>/dev/null)" ] && echo empty || echo no'],
-      AttachStdout: true,
-      AttachStderr: false,
-    });
-    const stream = await exec.start({ hijack: true, stdin: false });
-    const out = new PassThrough();
-    const chunks: Buffer[] = [];
-    this.docker.modem.demuxStream(stream, out, new PassThrough());
-    out.on('data', (d: Buffer) => chunks.push(d));
-    await new Promise<void>((resolve) => stream.on('end', resolve));
-    return Buffer.concat(chunks).toString('utf8').trim() === 'empty';
+  private async isWorkspaceEmpty(containerId: string): Promise<boolean> {
+    const { stdout } = await execCapture(containerId, [
+      'bash',
+      '-lc',
+      '[ -z "$(ls -A /workspace 2>/dev/null)" ] && echo empty || echo no',
+    ]);
+    return stdout.trim() === 'empty';
   }
 
   async exec(handle: SandboxHandle, cmd: string, opts: ExecOptions = {}): Promise<ExecResult> {
     this.touch(handle.projectId);
-    const container = this.container(handle);
     const base = ['bash', '-lc', cmd];
-    const wrapped =
+    const argv =
       opts.timeoutMs && opts.timeoutMs > 0
         ? ['timeout', `${Math.ceil(opts.timeoutMs / 1000)}s`, ...base]
         : base;
-    const exec = await container.exec({
-      Cmd: wrapped,
-      AttachStdout: true,
-      AttachStderr: true,
-      WorkingDir: opts.cwd ?? WORKDIR,
-      Env: envToArray(opts.env),
-    });
-    const stream = await exec.start({ hijack: true, stdin: false });
-    const out = new PassThrough();
-    const err = new PassThrough();
-    this.docker.modem.demuxStream(stream, out, err);
-    const stdoutChunks: Buffer[] = [];
-    const stderrChunks: Buffer[] = [];
-    out.on('data', (d: Buffer) => stdoutChunks.push(d));
-    err.on('data', (d: Buffer) => stderrChunks.push(d));
-    await new Promise<void>((resolve) => stream.on('end', resolve));
-    const info = await exec.inspect();
-    return {
-      exitCode: info.ExitCode ?? 0,
-      stdout: Buffer.concat(stdoutChunks).toString('utf8'),
-      stderr: Buffer.concat(stderrChunks).toString('utf8'),
-    };
+    return execCapture(handle.containerId, argv, { cwd: opts.cwd, env: opts.env });
   }
 
   async spawn(handle: SandboxHandle, cmd: string, opts: SpawnOptions = {}): Promise<ProcessHandle> {
     this.touch(handle.projectId);
-    const container = this.container(handle);
+    const { containerId } = handle;
     const token = id();
     const pidFile = `/tmp/praxis-${token}.pid`;
     // Record the in-container PID, then exec the command in its place so the
-    // PID stays valid for kill().
+    // PID stays valid for kill() (killing the local `docker exec` wouldn't stop
+    // the in-container process).
     const wrapped = `echo $$ > ${pidFile}; exec bash -lc ${shSingleQuote(cmd)}`;
-    const exec = await container.exec({
-      Cmd: ['bash', '-lc', wrapped],
-      AttachStdin: true,
-      AttachStdout: true,
-      AttachStderr: true,
-      WorkingDir: opts.cwd ?? WORKDIR,
-      Env: envToArray(opts.env),
-    });
-    const stream = (await exec.start({ hijack: true, stdin: true })) as Duplex;
-    const out = new PassThrough();
-    const err = new PassThrough();
-    this.docker.modem.demuxStream(stream, out, err);
-    stream.on('end', () => {
-      out.end();
-      err.end();
+    const proc = dockerExec(containerId, ['bash', '-lc', wrapped], {
+      stdin: true,
+      cwd: opts.cwd,
+      env: opts.env,
     });
 
-    const pid = await this.readPid(container, pidFile);
+    // Buffer stdout/stderr eagerly. We `await readPid` before returning, and the
+    // caller attaches its consumer later still — without an immediate sink the
+    // output emitted in that window would be lost.
+    const out = new PassThrough();
+    const err = new PassThrough();
+    proc.stdout.pipe(out);
+    proc.stderr.pipe(err);
+
+    // Capture the exit code eagerly — `close` fires once, so a listener attached
+    // lazily in wait() would miss it if the process already exited.
+    // `docker exec` (foreground) exits with the in-container command's code.
+    const exited = new Promise<number>((resolve) => {
+      proc.on('close', (code) => resolve(code ?? 0));
+    });
+
+    const pid = await this.readPid(containerId, pidFile);
 
     return {
       pid,
       stdout: toStringIterable(out),
       stderr: toStringIterable(err),
       write: async (data: string) => {
-        stream.write(data);
+        proc.stdin.write(data);
       },
       kill: async (signal: NodeJS.Signals = 'SIGTERM') => {
-        await this.execSimple(container, ['kill', `-${signal}`, String(pid)]);
+        await this.execSimple(containerId, ['kill', `-${signal}`, String(pid)]);
       },
-      wait: async () => {
-        for (;;) {
-          const info = await exec.inspect();
-          if (!info.Running) return info.ExitCode ?? 0;
-          await new Promise((r) => setTimeout(r, 150));
-        }
-      },
+      wait: () => exited,
     };
   }
 
-  private async readPid(container: Docker.Container, pidFile: string): Promise<number> {
+  private async readPid(containerId: string, pidFile: string): Promise<number> {
     for (let attempt = 0; attempt < 20; attempt += 1) {
-      const exec = await container.exec({
-        Cmd: ['cat', pidFile],
-        AttachStdout: true,
-        AttachStderr: false,
-      });
-      const stream = await exec.start({ hijack: true, stdin: false });
-      const out = new PassThrough();
-      const chunks: Buffer[] = [];
-      this.docker.modem.demuxStream(stream, out, new PassThrough());
-      out.on('data', (d: Buffer) => chunks.push(d));
-      await new Promise<void>((resolve) => stream.on('end', resolve));
-      const text = Buffer.concat(chunks).toString('utf8').trim();
-      const n = Number.parseInt(text, 10);
+      const { stdout } = await execCapture(containerId, ['cat', pidFile]);
+      const n = Number.parseInt(stdout.trim(), 10);
       if (Number.isFinite(n) && n > 0) return n;
       await new Promise((r) => setTimeout(r, 50));
     }
@@ -272,7 +268,7 @@ export class DockerSandbox implements Sandbox {
     const abs = inWorkspace(path);
     const dir = posix.dirname(abs);
     const base = posix.basename(abs);
-    await this.execSimple(container, ['mkdir', '-p', dir]);
+    await this.execSimple(handle.containerId, ['mkdir', '-p', dir]);
     const pack = tar.pack();
     pack.entry({ name: base }, content);
     pack.finalize();
@@ -304,10 +300,10 @@ export class DockerSandbox implements Sandbox {
   }
 
   watchFiles(handle: SandboxHandle, cb: (event: FileEvent) => void): Unsubscribe {
-    const container = this.container(handle);
+    const { containerId } = handle;
     const token = id();
     const pidFile = `/tmp/praxis-${token}.pid`;
-    let stream: Duplex | null = null;
+    let proc: ChildProcessWithoutNullStreams | null = null;
     let pid: number | undefined;
     let stopped = false;
 
@@ -316,20 +312,14 @@ export class DockerSandbox implements Sandbox {
         const wrapped =
           `echo $$ > ${pidFile}; ` +
           `exec inotifywait -m -r -q -e create,modify,delete,move --format '%e|%w%f' ${WORKDIR}`;
-        const exec = await container.exec({
-          Cmd: ['bash', '-lc', wrapped],
-          AttachStdout: true,
-          AttachStderr: true,
-        });
-        stream = (await exec.start({ hijack: true, stdin: false })) as Duplex;
+        proc = dockerExec(containerId, ['bash', '-lc', wrapped]);
         if (stopped) {
-          stream.destroy();
+          proc.kill();
           return;
         }
-        const out = new PassThrough();
-        this.docker.modem.demuxStream(stream, out, new PassThrough());
+        proc.stderr.resume();
         let buf = '';
-        out.on('data', (d: Buffer) => {
+        proc.stdout.on('data', (d: Buffer) => {
           buf += d.toString('utf8');
           let nl: number;
           while ((nl = buf.indexOf('\n')) >= 0) {
@@ -339,7 +329,7 @@ export class DockerSandbox implements Sandbox {
             if (ev && !stopped) cb(ev);
           }
         });
-        pid = await this.readPid(container, pidFile).catch(() => undefined);
+        pid = await this.readPid(containerId, pidFile).catch(() => undefined);
       } catch {
         // The container was torn down mid-setup, or the exec failed — there is
         // nothing to watch. Never surface as an unhandled rejection.
@@ -348,8 +338,8 @@ export class DockerSandbox implements Sandbox {
 
     return () => {
       stopped = true;
-      if (stream) stream.destroy();
-      if (pid) void this.execSimple(container, ['kill', String(pid)]).catch(() => {});
+      if (proc) proc.kill();
+      if (pid) void this.execSimple(containerId, ['kill', String(pid)]).catch(() => {});
     };
   }
 

@@ -13,7 +13,10 @@ WORKDIR /app
 
 # We use pnpm to manage the monorepo (Bun is the runtime only).
 # Bun's image doesn't ship corepack, so install pnpm directly via npm.
-RUN apk add --no-cache nodejs npm \
+# docker-cli: DockerSandbox exec/spawn shell out to `docker exec` (dockerode's
+# hijacked exec stream doesn't work under Bun — see ADR-0010). The CLI talks to
+# the mounted /var/run/docker.sock (the container already has the socket + gid).
+RUN apk add --no-cache nodejs npm docker-cli \
     && npm install -g pnpm@9.15.5
 
 # Build arg + env for the /health response. The deploy workflow passes
