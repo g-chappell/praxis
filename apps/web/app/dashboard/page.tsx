@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 
 import { SignOutButton } from '@/components/sign-out-button';
 import { Button } from '@/components/ui/button';
+import { isUserAdmin } from '@/lib/admin';
 import { getAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +26,9 @@ export default async function DashboardPage() {
     redirect('/signin');
   }
 
+  // Admins get a link into the admin area; everyone else never sees it.
+  const isAdmin = await isUserAdmin(session.user.id);
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center px-6 py-12">
       <div className="w-full max-w-md space-y-6 text-center">
@@ -33,6 +37,11 @@ export default async function DashboardPage() {
           Signed in as <span className="font-medium">{session.user.email}</span>.
         </p>
         <div className="flex items-center justify-center gap-3">
+          {isAdmin && (
+            <Button asChild variant="outline">
+              <Link href="/admin">Admin</Link>
+            </Button>
+          )}
           <Button asChild>
             <Link href="/settings">Settings</Link>
           </Button>
