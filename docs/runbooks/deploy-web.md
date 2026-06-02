@@ -114,19 +114,30 @@ week).
 `.github/workflows/deploy-web.yml` (added in TASK-008) runs on every
 push to `main` that touches `apps/web/**`,
 `infrastructure/deploy/praxis-web.service`, or the workflow file
-itself. It:
+itself. Two jobs:
 
-1. Builds the image from `apps/web/Dockerfile` (build context = repo
-   root).
-2. Pushes to `ghcr.io/g-chappell/praxis-web` with tags `:latest`,
-   `:sha-<short>`, `:main`.
-3. SSHes to the VPS as `deploy` (using the `VPS_HOST`, `VPS_USER`,
-   `VPS_SSH_KEY` repo secrets) and runs
-   `sudo systemctl restart praxis-web.service`. The sudo is allowed
-   by the narrow sudoers fragment installed during setup
-   (`/etc/sudoers.d/praxis-deploy`).
-4. Smoke-tests `https://${{ vars.WEB_DOMAIN }}/api/health` and fails
-   the job if non-200.
+1. **`build`** (GitHub-hosted `ubuntu-latest`): builds the image from
+   `apps/web/Dockerfile` (context = repo root) and pushes to
+   `ghcr.io/g-chappell/praxis-web` with tags `:latest`, `:sha-<short>`,
+   `:main`.
+2. **`deploy`** (`needs: build`, runs on the **self-hosted runner on
+   the VPS**, label `praxis-vps`): runs `sudo systemctl restart
+   praxis-web.service` **locally** (no SSH) — the unit's `ExecStartPre
+   docker pull` rolls to `:latest`. The sudo is allowed by the narrow
+   sudoers fragment (`/etc/sudoers.d/praxis-deploy`). Then it
+   smoke-tests `https://${{ vars.WEB_DOMAIN }}/api/health` (retried up
+   to ~60s) and fails the job if non-200.
+
+> **Why self-hosted, not SSH-push.** GitHub-hosted runners get a fresh
+> Azure egress IP per job; some of those intermittently can't traverse
+> the path to the Hostinger VPS on :22 (silent `connect timed out`,
+> SYN never reaches sshd), and a runner keeps one IP for the whole job
+> so in-job retries can't recover. Running the deploy step *on* the box
+> removes the internet hop entirely. GitHub still reports the job
+> success/failure, so notifications stay native. The old
+> `VPS_SSH_KEY`-based SSH push (and its retry wrapper, #140/#143) was
+> replaced; the `VPS_*` secrets are now unused by web/orchestrator
+> deploys. See ADR-0011.
 
 Restart, not reload, on the literal `systemctl` verb — see the
 ADR-0001 and **ADR-0004** note about Caddy's upstream-retry buffer
@@ -240,3 +251,35 @@ Three items the executor cannot do from the VPS:
    to public for robustness.
 
 After items 1 and 2 are complete, TASK-008's CI workflow can land green.
+
+### Self-hosted runner (added 2026-06-02, ADR-0011)
+
+Deploys moved off SSH-push to a self-hosted GitHub Actions runner on the
+VPS (ADR-0011). One-time install, done as root, runner runs as `deploy`:
+
+```bash
+sudo -u deploy bash -c '
+  cd /home/deploy && rm -rf actions-runner && mkdir actions-runner && cd actions-runner
+  curl -sSL -o r.tgz https://github.com/actions/runner/releases/download/v2.334.0/actions-runner-linux-x64-2.334.0.tar.gz
+  tar xzf r.tgz && rm r.tgz'
+# Registration token is short-lived; mint it fresh:
+RT=$(gh api -X POST repos/g-chappell/praxis/actions/runners/registration-token --jq .token)
+sudo -u deploy /home/deploy/actions-runner/config.sh \
+  --url https://github.com/g-chappell/praxis --token "$RT" \
+  --name praxis-vps --labels self-hosted,praxis-vps --work _work --unattended --replace
+cd /home/deploy/actions-runner && sudo ./svc.sh install deploy && sudo ./svc.sh start
+```
+
+Daily ops:
+
+```bash
+sudo /home/deploy/actions-runner/svc.sh status     # health
+gh api repos/g-chappell/praxis/actions/runners --jq '.runners[]|"\(.name) \(.status) busy=\(.busy)"'
+sudo /home/deploy/actions-runner/svc.sh stop|start # restart the listener
+```
+
+No new privileges: `deploy` was already in `docker` and had NOPASSWD sudo for
+the `systemctl restart praxis-*` commands. If the runner is offline, deploy
+jobs queue until it returns; `svc.sh start` (or `systemctl start
+actions.runner.g-chappell-praxis.praxis-vps.service`) brings it back. The
+`VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY` secrets are no longer used by deploys.

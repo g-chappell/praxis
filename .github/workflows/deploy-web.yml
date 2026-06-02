@@ -12,8 +12,7 @@ on:
 # Per-workflow group so overlapping web deploys queue rather than race the
 # systemd unit mid-restart. Do NOT share one group across the deploy workflows:
 # GitHub keeps only one in-progress + one pending per group, so a shared group
-# cancels legitimate concurrent service deploys (#142). The SSH-reachability
-# flake is handled by the retry below, not by serialization.
+# cancels legitimate concurrent service deploys (#142).
 concurrency:
   group: deploy-web
   cancel-in-progress: false
@@ -23,7 +22,8 @@ permissions:
   packages: write
 
 jobs:
-  deploy:
+  # Build + push on a GitHub-hosted runner (buildx + GHA cache, no VPS access).
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -63,32 +63,34 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      # SSH to the VPS to restart the service. Retried: the dial to the VPS
-      # blackholes from GitHub-hosted runners in multi-minute windows (no
-      # SYN-ACK). ~10 attempts x 45s (~10 min) rides out an observed ~4 min
-      # blackout; each failed dial costs only ConnectTimeout=20s. The systemd
-      # unit's ExecStartPre runs `docker pull` as root, so one restart is enough.
-      - name: Restart praxis-web on VPS
-        uses: nick-fields/retry@v3
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
-        with:
-          timeout_minutes: 3
-          max_attempts: 10
-          retry_wait_seconds: 45
-          command: |
-            mkdir -p ~/.ssh && chmod 700 ~/.ssh
-            printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
-            ssh -i ~/.ssh/id_deploy -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 \
-              "$VPS_USER@$VPS_HOST" 'sudo systemctl restart praxis-web.service'
+  # Deploy on the VPS itself via the self-hosted runner. No internet SSH: the
+  # restart is local, which sidesteps the intermittent GitHub-runner→VPS path
+  # loss that failed SSH-push deploys (#142/#143). GitHub still reports
+  # success/failure for this job, so notifications are native.
+  deploy:
+    needs: build
+    runs-on: [self-hosted, praxis-vps]
+    timeout-minutes: 10
+    steps:
+      # The unit's ExecStartPre runs `docker pull :latest` as root, so a restart
+      # is enough to roll to the new image. deploy has NOPASSWD sudo for exactly
+      # this command (/etc/sudoers.d/praxis-deploy).
+      - name: Restart praxis-web
+        run: sudo systemctl restart praxis-web.service
 
       - name: Smoke test
+        env:
+          URL: https://${{ vars.WEB_DOMAIN }}/api/health
         run: |
-          bash scripts/healthcheck.sh "https://${{ vars.WEB_DOMAIN }}/api/health" 60
+          for i in $(seq 1 30); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' -m 10 "$URL" || true)
+            echo "attempt $i: $URL -> $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 2
+          done
+          echo "::error title=Smoke test failed::$URL never returned 200"
+          exit 1
 
       - name: Summary
         if: always()
-        run: |
-          echo "::notice title=Deployed::https://${{ vars.WEB_DOMAIN }} now serves the build for commit ${{ github.sha }}"
+        run: echo "::notice title=Deployed::https://${{ vars.WEB_DOMAIN }} now serves the build for commit ${{ github.sha }}"
