@@ -1316,6 +1316,8 @@ epics:
           A server-side accessor returns the decrypted active key to the
           orchestrator at agent-spawn time (consumed by AcpHost; wired in the
           orchestrator under STORY-09).
+        verified_at: '2026-06-02T07:27:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "An admin can paste an API key; it is stored encrypted (never plaintext, never logged) and no read path returns the raw value — masked display + metadata only."
           - "Rotating sets a new active key and marks the prior key inactive but retained (encrypted) for audit; new sessions use the active key."
@@ -1331,7 +1333,7 @@ epics:
         tasks:
           - id: TASK-057
             title: "platform_api_keys table (encrypted value, active flag, audit columns) + migration"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -1340,12 +1342,13 @@ epics:
               @praxis/crypto), an active flag, created_by, created_at,
               last_rotated_at. Migration + codegen. Never store plaintext.
             depends_on: [TASK-011, TASK-019]
-            attempt_count: 0
+            attempt_count: 1
+            last_attempted: '2026-06-02T07:14:00Z'
             task_acceptance:
               - "Table + migration exist; codegen clean; the key column holds ciphertext only."
           - id: TASK-058
             title: "Key service: set / rotate / deactivate + getActivePlatformKey() accessor"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/db", "apps/web"]
@@ -1361,7 +1364,7 @@ epics:
               - "Unit tests cover set, rotate (old marked inactive), and the no-key loud-fail; no test logs a raw key."
           - id: TASK-059
             title: "Admin UI: paste key, masked display + metadata, rotate"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]

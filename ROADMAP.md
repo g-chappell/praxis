@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 9 / 24 (38%)
+- **Features verified:** 10 / 24 (42%)
 - **Total tasks:** 66
-- **Done:** 29 (44%)
-- **Ready:** 37
+- **Done:** 32 (48%)
+- **Ready:** 34
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -809,7 +809,7 @@ flags, observability) mount into.
     - Admin dashboard renders the sections index for an admin.
     - STORY-20 acceptance_criteria satisfied.
 
-- **STORY-21** — Platform Anthropic API key management (encrypted, rotation)
+- **STORY-21** — Platform Anthropic API key management (encrypted, rotation)  [:white_check_mark: verified]
   > Admin UI + storage for the platform Anthropic API key that powers all
   > agent sessions (ADR-0009). The key is pasted once, encrypted at rest
   > with @praxis/crypto (same posture as oauth_tokens), and never returned
@@ -831,14 +831,14 @@ flags, observability) mount into.
   - Multiple concurrent keys / per-project keys (single active key by ADR-0009).
   - Automated rotation, Stripe/billing integration.
   - The orchestrator's spawn-time consumption (STORY-09 wiring; this story only provides the accessor).
-  - :black_circle: **TASK-057** — platform_api_keys table (encrypted value, active flag, audit columns) + migration  `high` `small` _(packages/db)_  
+  - :white_check_mark: **TASK-057** — platform_api_keys table (encrypted value, active flag, audit columns) + migration  `high` `small` _(packages/db)_  
     _depends on: TASK-011, TASK-019_
     > Schema for platform_api_keys: encrypted key material (via
     > @praxis/crypto), an active flag, created_by, created_at,
     > last_rotated_at. Migration + codegen. Never store plaintext.
     _Task AC:_
     - Table + migration exist; codegen clean; the key column holds ciphertext only.
-  - :black_circle: **TASK-058** — Key service: set / rotate / deactivate + getActivePlatformKey() accessor  `high` `medium` _(packages/db, apps/web)_  
+  - :white_check_mark: **TASK-058** — Key service: set / rotate / deactivate + getActivePlatformKey() accessor  `high` `medium` _(packages/db, apps/web)_  
     _depends on: TASK-057_
     > Service that encrypts on write and decrypts on read via
     > @praxis/crypto: setActivePlatformKey(raw), rotate (new active, old
@@ -847,7 +847,7 @@ flags, observability) mount into.
     > Loud-fail when no active key is configured. Never log raw values.
     _Task AC:_
     - Unit tests cover set, rotate (old marked inactive), and the no-key loud-fail; no test logs a raw key.
-  - :black_circle: **TASK-059** :checkered_flag: — Admin UI: paste key, masked display + metadata, rotate  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-059** :checkered_flag: — Admin UI: paste key, masked display + metadata, rotate  `high` `medium` _(apps/web)_  
     _depends on: TASK-058, TASK-055_
     > Admin → API keys page: paste-and-save, then a masked-only display
     > with created/rotated metadata and a rotate action. No endpoint
