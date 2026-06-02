@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 10 / 24 (42%)
 - **Total tasks:** 66
-- **Done:** 32 (48%)
-- **Ready:** 34
+- **Done:** 35 (53%)
+- **Ready:** 31
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -375,7 +375,7 @@ hello-world session that joins all three.
   **Out of scope:**
   - Two-user simultaneous session (STORY-12).
   - Preview URL (STORY-13).
-  - :black_circle: **TASK-027** — Orchestrator: createSession + WebSocket session room  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-027** — Orchestrator: createSession + WebSocket session room  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-017, TASK-023, TASK-025, TASK-058, TASK-059_
     > POST /sessions { projectId } creates a row in `sessions`, starts
     > a sandbox, spawns ACP, registers a WebSocket room. Clients in
@@ -386,14 +386,14 @@ hello-world session that joins all three.
     > key management (STORY-20/21) landing first.
     _Task AC:_
     - Postman/integration test creates a session and receives at least one agent_event.
-  - :black_circle: **TASK-028** — Frontend: New project flow + minimal chat panel  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-028** — Frontend: New project flow + minimal chat panel  `high` `medium` _(apps/web)_  
     _depends on: TASK-014, TASK-027_
     > /dashboard 'New project' button → POST /projects → /projects/<id>
     > page that opens the WebSocket, sends prompts, renders streamed
     > agent events. No file tree / Monaco yet (that's STORY-10).
     _Task AC:_
     - Manual test: prompt 'say hello' streams a response in the chat panel.
-  - :black_circle: **TASK-029** :checkered_flag: — State capture/restore via MinIO  `high` `medium` _(services/orchestrator, packages/sandbox)_  
+  - :white_check_mark: **TASK-029** :checkered_flag: — State capture/restore via MinIO  `high` `medium` _(services/orchestrator, packages/sandbox)_  
     _depends on: TASK-027, TASK-023_
     > On session stop, tarball the project volume and PUT to MinIO
     > (bucket: praxis-project-state, key: <projectId>.tar.gz). On

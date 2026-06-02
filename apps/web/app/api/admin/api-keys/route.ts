@@ -6,9 +6,10 @@
 import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 
+import { getActivePlatformKeyMeta, setActivePlatformKey } from '@praxis/keys';
+
 import { isUserAdmin } from '@/lib/admin';
 import { getAuth } from '@/lib/auth';
-import { getActivePlatformKeyMeta, setActivePlatformKey } from '@/lib/platform-keys';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

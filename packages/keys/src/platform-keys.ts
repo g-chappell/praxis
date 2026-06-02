@@ -2,12 +2,11 @@
 // key that powers all agent sessions lives encrypted in platform_api_keys; this
 // module is the only place that encrypts on write and decrypts on read. A single
 // key is active at a time — setting a new one deactivates the prior (retained for
-// audit). Mirrors the cross-consumer shape of anthropic-token.ts.
+// audit).
 //
-// NOTE (STORY-09): the orchestrator must also reach getActivePlatformKey at
-// agent-spawn time. It can't import apps/web/lib — STORY-09 promotes this (and
-// anthropic-token) into a shared package then. Until then this lives here, beside
-// the admin UI that's its only current consumer.
+// Lives in @praxis/keys (not apps/web/lib) so both the web admin UI and the
+// orchestrator (which calls getActivePlatformKey at agent-spawn time, STORY-09)
+// can import it.
 
 import { eq } from 'drizzle-orm';
 

@@ -23,6 +23,8 @@ COPY apps/web/package.json apps/web/package.json
 # actual source ships in the builder stage below.
 COPY packages/db/package.json packages/db/package.json
 COPY packages/crypto/package.json packages/crypto/package.json
+# @praxis/keys (workspace:*) — platform-key service used by the admin UI.
+COPY packages/keys/package.json packages/keys/package.json
 
 RUN pnpm install --frozen-lockfile --filter @praxis/web...
 
@@ -41,6 +43,7 @@ COPY apps/web ./apps/web
 # `@praxis/crypto` at build time.
 COPY packages/db ./packages/db
 COPY packages/crypto ./packages/crypto
+COPY packages/keys ./packages/keys
 
 RUN pnpm --filter @praxis/web build
 

@@ -44,6 +44,9 @@ importers:
       '@praxis/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@praxis/keys':
+        specifier: workspace:*
+        version: link:../../packages/keys
       '@radix-ui/react-slot':
         specifier: ^1.1.0
         version: 1.2.4(@types/react@18.3.29)(react@18.3.1)
@@ -155,6 +158,25 @@ importers:
         specifier: ^5.6.3
         version: 5.9.3
 
+  packages/keys:
+    dependencies:
+      '@praxis/crypto':
+        specifier: workspace:*
+        version: link:../crypto
+      '@praxis/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/react@18.3.29)(bun-types@1.3.14)(kysely@0.28.17)(postgres@3.4.9)(react@18.3.1)
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.6
+        version: 20.19.41
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
   packages/sandbox:
     dependencies:
       dockerode:
@@ -182,12 +204,21 @@ importers:
 
   services/orchestrator:
     dependencies:
+      '@praxis/acp-host':
+        specifier: workspace:*
+        version: link:../../packages/acp-host
       '@praxis/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@praxis/keys':
+        specifier: workspace:*
+        version: link:../../packages/keys
       '@praxis/sandbox':
         specifier: workspace:*
         version: link:../../packages/sandbox
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/react@18.3.29)(bun-types@1.3.14)(kysely@0.28.17)(postgres@3.4.9)(react@18.3.1)
       hono:
         specifier: 4.6.14
         version: 4.6.14
