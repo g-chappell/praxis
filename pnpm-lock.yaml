@@ -204,6 +204,9 @@ importers:
 
   services/orchestrator:
     dependencies:
+      '@praxis/acp-host':
+        specifier: workspace:*
+        version: link:../../packages/acp-host
       '@praxis/db':
         specifier: workspace:*
         version: link:../../packages/db
@@ -213,6 +216,9 @@ importers:
       '@praxis/sandbox':
         specifier: workspace:*
         version: link:../../packages/sandbox
+      drizzle-orm:
+        specifier: ^0.36.4
+        version: 0.36.4(@types/react@18.3.29)(bun-types@1.3.14)(kysely@0.28.17)(postgres@3.4.9)(react@18.3.1)
       hono:
         specifier: 4.6.14
         version: 4.6.14
