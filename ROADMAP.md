@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 9 / 24 (38%)
+- **Features verified:** 10 / 24 (42%)
 - **Total tasks:** 66
 - **Done:** 32 (48%)
 - **Ready:** 34
@@ -809,7 +809,7 @@ flags, observability) mount into.
     - Admin dashboard renders the sections index for an admin.
     - STORY-20 acceptance_criteria satisfied.
 
-- **STORY-21** — Platform Anthropic API key management (encrypted, rotation)
+- **STORY-21** — Platform Anthropic API key management (encrypted, rotation)  [:white_check_mark: verified]
   > Admin UI + storage for the platform Anthropic API key that powers all
   > agent sessions (ADR-0009). The key is pasted once, encrypted at rest
   > with @praxis/crypto (same posture as oauth_tokens), and never returned

@@ -1316,6 +1316,8 @@ epics:
           A server-side accessor returns the decrypted active key to the
           orchestrator at agent-spawn time (consumed by AcpHost; wired in the
           orchestrator under STORY-09).
+        verified_at: '2026-06-02T07:27:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "An admin can paste an API key; it is stored encrypted (never plaintext, never logged) and no read path returns the raw value — masked display + metadata only."
           - "Rotating sets a new active key and marks the prior key inactive but retained (encrypted) for audit; new sessions use the active key."
