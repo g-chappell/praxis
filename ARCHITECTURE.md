@@ -80,6 +80,11 @@ Mail goes out via Resend (apex `praxis.blacksail.dev`, see ADR-0005
 addendum and `docs/conventions/auth-and-mail.md`). Sign-in is magic
 link, no password storage.
 
+Deploys: GitHub Actions builds + pushes images on hosted runners; a
+**self-hosted runner on the VPS** runs the local `systemctl restart`
+(no internet SSH — see ADR-0011). Auto-fires on merge to `main`
+touching a service's paths.
+
 ## Core principles
 
 - **Orchestrator owns active sessions.** WebSocket hub, prompt queue, ACP

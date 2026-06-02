@@ -281,5 +281,10 @@ sudo /home/deploy/actions-runner/svc.sh stop|start # restart the listener
 No new privileges: `deploy` was already in `docker` and had NOPASSWD sudo for
 the `systemctl restart praxis-*` commands. If the runner is offline, deploy
 jobs queue until it returns; `svc.sh start` (or `systemctl start
-actions.runner.g-chappell-praxis.praxis-vps.service`) brings it back. The
-`VPS_HOST`/`VPS_USER`/`VPS_SSH_KEY` secrets are no longer used by deploys.
+actions.runner.g-chappell-praxis.praxis-vps.service`) brings it back.
+
+The SSH-push path was retired with this change: the `VPS_HOST` / `VPS_USER` /
+`VPS_SSH_KEY` GitHub Actions secrets were **deleted 2026-06-02** (no workflow
+references them), so the "SSH keypair for the `deploy` user" operator step
+above and the `VPS_*` rows in the secrets table are historical only. The
+`deploy` user's `~/.ssh/authorized_keys` entry for CI is now dormant.
