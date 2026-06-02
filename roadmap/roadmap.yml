@@ -1331,7 +1331,7 @@ epics:
         tasks:
           - id: TASK-057
             title: "platform_api_keys table (encrypted value, active flag, audit columns) + migration"
-            status: in-progress
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]

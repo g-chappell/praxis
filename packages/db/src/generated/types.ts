@@ -20,6 +20,9 @@ export type NewLearningLink = InferInsertModel<typeof schema.learningLinks>;
 export type OauthToken = InferSelectModel<typeof schema.oauthTokens>;
 export type NewOauthToken = InferInsertModel<typeof schema.oauthTokens>;
 
+export type PlatformApiKey = InferSelectModel<typeof schema.platformApiKeys>;
+export type NewPlatformApiKey = InferInsertModel<typeof schema.platformApiKeys>;
+
 export type Project = InferSelectModel<typeof schema.projects>;
 export type NewProject = InferInsertModel<typeof schema.projects>;
 

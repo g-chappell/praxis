@@ -10,9 +10,9 @@ _Created: 2026-05-31_
 
 - **Features verified:** 9 / 24 (38%)
 - **Total tasks:** 66
-- **Done:** 29 (44%)
+- **Done:** 30 (45%)
 - **Ready:** 36
-- **In progress:** 1
+- **In progress:** 0
 - **Blocked:** 0
 
 ---
@@ -831,7 +831,7 @@ flags, observability) mount into.
   - Multiple concurrent keys / per-project keys (single active key by ADR-0009).
   - Automated rotation, Stripe/billing integration.
   - The orchestrator's spawn-time consumption (STORY-09 wiring; this story only provides the accessor).
-  - :large_orange_diamond: **TASK-057** — platform_api_keys table (encrypted value, active flag, audit columns) + migration  `high` `small` _(packages/db)_  
+  - :white_check_mark: **TASK-057** — platform_api_keys table (encrypted value, active flag, audit columns) + migration  `high` `small` _(packages/db)_  
     _depends on: TASK-011, TASK-019_
     > Schema for platform_api_keys: encrypted key material (via
     > @praxis/crypto), an active flag, created_by, created_at,

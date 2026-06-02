@@ -20,6 +20,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -99,6 +100,30 @@ export const oauthTokens = pgTable(
     connectedAt: timestamp('connected_at', { withTimezone: true }).defaultNow(),
   },
   (table) => [unique('oauth_tokens_user_provider_unique').on(table.userId, table.provider)],
+);
+
+// ─── platform_api_keys ────────────────────────────────────────────────
+// The platform-owned Anthropic API key that powers all agent sessions
+// (ADR-0009), admin-managed (STORY-21). Encrypted at rest via @praxis/crypto
+// (same posture as oauth_tokens) — `key_encrypted` is ciphertext, never the raw
+// key. Single active key with rotation: setting a new key marks the prior row
+// inactive (retained for audit). The partial unique index guarantees at most
+// one active key at the DB level.
+export const platformApiKeys = pgTable(
+  'platform_api_keys',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    keyEncrypted: text('key_encrypted').notNull(),
+    active: boolean('active').notNull().default(false),
+    createdBy: uuid('created_by').references(() => users.id),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+    lastRotatedAt: timestamp('last_rotated_at', { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex('one_active_platform_key')
+      .on(table.active)
+      .where(sql`${table.active}`),
+  ],
 );
 
 // ─── teams ────────────────────────────────────────────────────────────
