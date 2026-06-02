@@ -15,8 +15,13 @@ on:
       - '.github/workflows/build-sandbox-base.yml'
   workflow_dispatch:
 
+# Shared across ALL VPS-touching workflows (deploy-web, deploy-orchestrator,
+# build-sandbox-base) so they SSH to the box one at a time. A merge touching
+# several paths fires all of them at once; without a shared group three runners
+# open SSH within ~2s and the burst gets dropped on the network path
+# (intermittent `connect timed out`). Queue, don't cancel.
 concurrency:
-  group: build-sandbox-base
+  group: vps-deploy
   cancel-in-progress: false
 
 jobs:
