@@ -32,12 +32,11 @@ COPY packages/db/package.json packages/db/package.json
 # @praxis/sandbox (workspace:*) — DockerSandbox + the idle sweep. Its manifest
 # pulls in dockerode/minio/tar-stream during install.
 COPY packages/sandbox/package.json packages/sandbox/package.json
-# @praxis/keys (workspace:*) — getActivePlatformKey for agent-spawn auth (STORY-09).
-COPY packages/keys/package.json packages/keys/package.json
 # @praxis/acp-host (workspace:*) — drives the in-sandbox claude-agent-acp adapter.
+# NB: the orchestrator does NOT depend on @praxis/keys/@praxis/crypto — libsodium's
+# wasm doesn't load under Bun, so the web app (Node) decrypts the platform key and
+# passes it over POST /sessions.
 COPY packages/acp-host/package.json packages/acp-host/package.json
-# @praxis/crypto (workspace:*) — transitive via @praxis/keys (token encryption at rest).
-COPY packages/crypto/package.json packages/crypto/package.json
 
 # engine-strict is on at repo root, but Alpine's Node lags newer transitive
 # deps (e.g. @noble/hashes needs Node 20.19+). Bun is the actual runtime;
@@ -48,9 +47,7 @@ COPY tsconfig.base.json ./
 COPY services/orchestrator ./services/orchestrator
 COPY packages/db ./packages/db
 COPY packages/sandbox ./packages/sandbox
-COPY packages/keys ./packages/keys
 COPY packages/acp-host ./packages/acp-host
-COPY packages/crypto ./packages/crypto
 
 USER bun
 EXPOSE 4001

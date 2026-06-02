@@ -11,7 +11,6 @@ import type { ServerWebSocket } from 'bun';
 
 import { sessions } from '@praxis/db';
 import { db } from '@praxis/db/client';
-import { getActivePlatformKey } from '@praxis/keys';
 
 import { logger } from '../logger';
 import { consumeTicket, deleteRoom, getAcpHost, getRoom, getSandbox } from '../runtime';
@@ -122,10 +121,13 @@ async function runPrompt(
   }
 
   try {
-    const apiKey = await getActivePlatformKey();
-    for await (const event of getAcpHost().spawnAndPrompt(getSandbox(), room.handle, apiKey, text, {
-      onPermission: async () => 'allow',
-    })) {
+    for await (const event of getAcpHost().spawnAndPrompt(
+      getSandbox(),
+      room.handle,
+      room.apiKey,
+      text,
+      { onPermission: async () => 'allow' },
+    )) {
       send(ws, { type: 'agent_event', event });
     }
   } catch (err) {

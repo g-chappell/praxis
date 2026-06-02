@@ -34,13 +34,23 @@ export interface SessionRoom {
   sessionId: string;
   projectId: string;
   handle: SandboxHandle;
+  // The decrypted platform API key for this session's agent. The web app (Node)
+  // decrypts it via @praxis/keys and hands it over the internal POST /sessions
+  // call — the orchestrator (Bun) deliberately does NOT load libsodium, which
+  // doesn't run under Bun. Held in memory only; never logged.
+  apiKey: string;
   sockets: Set<ServerWebSocket<unknown>>;
 }
 
 const rooms = new Map<string, SessionRoom>();
 
-export function createRoom(sessionId: string, projectId: string, handle: SandboxHandle): void {
-  rooms.set(sessionId, { sessionId, projectId, handle, sockets: new Set() });
+export function createRoom(
+  sessionId: string,
+  projectId: string,
+  handle: SandboxHandle,
+  apiKey: string,
+): void {
+  rooms.set(sessionId, { sessionId, projectId, handle, apiKey, sockets: new Set() });
 }
 
 export function getRoom(sessionId: string): SessionRoom | undefined {

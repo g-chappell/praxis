@@ -32,11 +32,12 @@ describe('tickets', () => {
 describe('rooms', () => {
   it('create / get / delete', () => {
     const handle = { projectId: 'p1', containerId: 'c1' };
-    createRoom('sess-2', 'p1', handle);
+    createRoom('sess-2', 'p1', handle, 'sk-ant-test');
 
     const room = getRoom('sess-2');
     expect(room?.projectId).toBe('p1');
     expect(room?.handle).toEqual(handle);
+    expect(room?.apiKey).toBe('sk-ant-test');
     expect(room?.sockets.size).toBe(0);
 
     deleteRoom('sess-2');
