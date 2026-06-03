@@ -1,23 +1,29 @@
 'use client';
 
-import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { type ServerFrame, useWorkspaceSocket } from '@/components/workspace/workspace-socket';
 
-type Status = 'idle' | 'connecting' | 'connected' | 'error';
 interface Message {
   role: 'user' | 'assistant';
   text: string;
 }
 
-// Minimal session chat (STORY-09): start a session (gets a one-time ticket),
-// open the orchestrator WS, send prompts, render streamed text. No file
-// tree/editor yet (STORY-10), no interactive tool permissions (auto-allowed).
-export function ChatPanel({ projectId }: { projectId: string }) {
-  const [status, setStatus] = useState<Status>('idle');
+// Session chat (STORY-09), now reading the shared workspace socket (STORY-10):
+// the file tree, editor, and chat panes share the one connection minted by
+// <WorkspaceSocketProvider>. This pane sends prompts and renders streamed text;
+// it no longer opens its own WebSocket. No interactive tool permissions yet
+// (auto-allowed).
+export function ChatPanel() {
+  const { status: socketStatus, start, close, send, subscribe } = useWorkspaceSocket();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const wsRef = useRef<WebSocket | null>(null);
+  const [errored, setErrored] = useState(false);
+
+  // An app-level error frame surfaces as an error state without tearing down the
+  // shared connection (mirrors STORY-09's behaviour on the dedicated socket).
+  const status = errored ? 'error' : socketStatus;
 
   // Append to the in-flight assistant message (the last one), or start one.
   const appendAssistant = useCallback((chunk: string) => {
@@ -30,79 +36,36 @@ export function ChatPanel({ projectId }: { projectId: string }) {
     });
   }, []);
 
-  const handleServerMessage = useCallback(
-    (data: unknown) => {
-      if (typeof data !== 'object' || data === null) return;
-      const msg = data as { type?: string; event?: { type?: string; text?: string } };
-      if (msg.type === 'agent_event' && msg.event?.type === 'text-chunk') {
-        appendAssistant(msg.event.text ?? '');
-      } else if (msg.type === 'error') {
-        setStatus('error');
+  useEffect(() => {
+    return subscribe((frame: ServerFrame) => {
+      if (frame.type === 'agent_event') {
+        const event = frame.event as { type?: string; text?: string } | undefined;
+        if (event?.type === 'text-chunk') appendAssistant(event.text ?? '');
+      } else if (frame.type === 'error') {
+        setErrored(true);
       }
-    },
-    [appendAssistant],
-  );
-
-  const start = useCallback(async () => {
-    setStatus('connecting');
-    try {
-      const res = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ projectId }),
-      });
-      if (!res.ok) {
-        setStatus('error');
-        return;
-      }
-      // wsUrl comes from the server (runtime env) — not a NEXT_PUBLIC_* build
-      // inline — so it's configurable without rebuilding the web image.
-      const { ticket, wsUrl } = (await res.json()) as { ticket: string; wsUrl?: string };
-      if (!wsUrl) {
-        setStatus('error');
-        return;
-      }
-      const ws = new WebSocket(`${wsUrl}?ticket=${encodeURIComponent(ticket)}`);
-      wsRef.current = ws;
-      ws.onopen = () => setStatus('connected');
-      ws.onmessage = (e) => {
-        try {
-          handleServerMessage(JSON.parse(String(e.data)));
-        } catch {
-          /* ignore malformed frames */
-        }
-      };
-      ws.onerror = () => setStatus('error');
-      ws.onclose = () => setStatus((s) => (s === 'error' ? s : 'idle'));
-    } catch {
-      setStatus('error');
-    }
-  }, [projectId, handleServerMessage]);
+    });
+  }, [subscribe, appendAssistant]);
 
   function sendPrompt(event: FormEvent) {
     event.preventDefault();
     const text = input.trim();
-    const ws = wsRef.current;
-    if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+    if (!text) return;
+    if (!send({ type: 'prompt', text })) return;
     setMessages((prev) => [...prev, { role: 'user', text }]);
-    ws.send(JSON.stringify({ type: 'prompt', text }));
     setInput('');
   }
-
-  // Close the session cleanly: the server stops the sandbox when the last
-  // socket leaves the room (endSession). Also runs on unmount, so navigating
-  // away via the nav doesn't leave the session running.
-  const closeSession = useCallback(() => {
-    wsRef.current?.close();
-    wsRef.current = null;
-  }, []);
-
-  useEffect(() => closeSession, [closeSession]);
 
   return (
     <div className="flex h-full flex-col gap-4">
       {status === 'idle' || status === 'connecting' ? (
-        <Button onClick={start} disabled={status === 'connecting'}>
+        <Button
+          onClick={() => {
+            setErrored(false);
+            start();
+          }}
+          disabled={status === 'connecting'}
+        >
           {status === 'connecting' ? 'Starting…' : 'Start session'}
         </Button>
       ) : (
@@ -113,8 +76,8 @@ export function ChatPanel({ projectId }: { projectId: string }) {
           <Button
             variant="outline"
             onClick={() => {
-              closeSession();
-              setStatus('idle');
+              close();
+              setErrored(false);
             }}
           >
             End session
