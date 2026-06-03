@@ -51,6 +51,9 @@ COPY services/orchestrator ./services/orchestrator
 COPY packages/db ./packages/db
 COPY packages/sandbox ./packages/sandbox
 COPY packages/acp-host ./packages/acp-host
+# Template sources shipped as data — DockerSandbox seeds a fresh /workspace from
+# /app/templates/<templateId> (runtime.ts templatesDir). STORY-27.
+COPY templates ./templates
 
 USER bun
 EXPOSE 4001

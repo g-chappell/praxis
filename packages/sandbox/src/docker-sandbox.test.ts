@@ -1,4 +1,5 @@
 import { randomBytes } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
 import Docker from 'dockerode';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -219,6 +220,62 @@ describeDocker('DockerSandbox (real Docker)', () => {
       });
       // Idempotent — a second destroy is a no-op.
       await expect(sandbox.destroy(pid)).resolves.toBeUndefined();
+    },
+    T,
+  );
+
+  // Repo templates/ dir, resolved from this test file (packages/sandbox/src).
+  const REPO_TEMPLATES = fileURLToPath(new URL('../../../templates', import.meta.url));
+  const seeder = new DockerSandbox({ templatesDir: REPO_TEMPLATES });
+
+  it(
+    'seeds a fresh workspace from the blank template as the initial commit',
+    async () => {
+      const pid = `test-${randomBytes(6).toString('hex')}`;
+      let h: SandboxHandle | undefined;
+      try {
+        h = await seeder.start(pid, 'blank');
+        expect((await seeder.exec(h, 'cat /workspace/README.md')).stdout).toContain(
+          'Blank project',
+        );
+        const count = await seeder.exec(h, 'cd /workspace && git log --oneline | wc -l');
+        expect(count.stdout.trim()).toBe('1');
+        const subject = await seeder.exec(h, 'cd /workspace && git log -1 --pretty=%s');
+        expect(subject.stdout.trim()).toContain('blank');
+      } finally {
+        if (h) await seeder.stop(h);
+        try {
+          await docker.getVolume(`praxis-project-${pid}`).remove({ force: true });
+        } catch {
+          /* ignore */
+        }
+      }
+    },
+    T,
+  );
+
+  it(
+    'leaves the workspace empty (just git init) for an unknown template id',
+    async () => {
+      const pid = `test-${randomBytes(6).toString('hex')}`;
+      let h: SandboxHandle | undefined;
+      try {
+        h = await seeder.start(pid, 'no-such-template');
+        const files = await seeder.exec(h, 'ls -A /workspace | grep -vx .git | wc -l');
+        expect(files.stdout.trim()).toBe('0'); // only .git
+        const commits = await seeder.exec(
+          h,
+          'cd /workspace && git log --oneline 2>/dev/null | wc -l',
+        );
+        expect(commits.stdout.trim()).toBe('0'); // no seed commit
+      } finally {
+        if (h) await seeder.stop(h);
+        try {
+          await docker.getVolume(`praxis-project-${pid}`).remove({ force: true });
+        } catch {
+          /* ignore */
+        }
+      }
     },
     T,
   );
