@@ -15,6 +15,7 @@ import type { FileEvent } from '@praxis/sandbox';
 
 import { handleFileList, handleFileRead, handleFileSave } from '../file-ops';
 import { logger } from '../logger';
+import { removePreview } from '../preview';
 import {
   consumeTicket,
   deleteRoom,
@@ -192,6 +193,7 @@ function endSession(sessionId: string): void {
   const room = getRoom(sessionId);
   if (!room) return;
   room.unwatchFiles?.();
+  removePreview(room.projectId); // preview URL revoked → /caddy/ask + proxy 404
   deleteRoom(sessionId);
   void (async () => {
     try {

@@ -13,7 +13,9 @@ import { projects, sessions } from '@praxis/db';
 import { db } from '@praxis/db/client';
 
 import { logger } from '../logger';
+import { previewUrlFor, registerPreview } from '../preview';
 import { createRoom, getSandbox, mintTicket } from '../runtime';
+import { readTemplateConfig } from '../templates';
 
 export const sessionsRoute = new Hono();
 
@@ -48,9 +50,26 @@ sessionsRoute.post('/', async (c) => {
 
   // start() restores from MinIO if the volume is empty (ADR-0008).
   const handle = await getSandbox().start(projectId, project.templateId);
+
+  // Register the preview: map the project's slug → the sandbox's dev-server port
+  // so Caddy's wildcard proxies <projectId>.preview.<domain> here (STORY-13). The
+  // dev server itself is auto-started separately (PR2); the URL 502s until it's up.
+  const { previewPort } = readTemplateConfig(project.templateId);
+  let previewUrl: string | null = null;
+  try {
+    const addr = await getSandbox().exposePort(handle, previewPort); // http://<ip>:<port>
+    registerPreview(projectId, { ip: new URL(addr).hostname, port: previewPort });
+    previewUrl = previewUrlFor(projectId);
+  } catch (err) {
+    logger.warn(
+      { projectId, err: err instanceof Error ? err.message : String(err) },
+      'preview.register_failed',
+    );
+  }
+
   const [session] = await db
     .insert(sessions)
-    .values({ projectId, containerId: handle.containerId })
+    .values({ projectId, containerId: handle.containerId, previewUrl })
     .returning({ id: sessions.id });
   const sessionId = session!.id;
 
@@ -58,5 +77,5 @@ sessionsRoute.post('/', async (c) => {
   const ticket = mintTicket(sessionId, userId);
   logger.info({ sessionId, projectId }, 'session.created');
 
-  return c.json({ sessionId, ticket });
+  return c.json({ sessionId, ticket, previewUrl });
 });
