@@ -163,6 +163,13 @@ locks deploys out.
   `ARG GIT_SHA=dev`, the CI workflow passes the commit SHA, and the
   app reads it for `/health.gitSha`. Operators can confirm "what's
   actually running" without SSH.
+- **Baked-in data + deploy triggers.** A service's deploy workflow `paths:`
+  filter must cover **everything its image `COPY`s**, not just its code. The
+  orchestrator image bakes in `templates/` (DockerSandbox seeds from
+  `/app/templates`, ADR-0014) and its workspace deps (`packages/sandbox`,
+  `acp-host`, `db`) — all must be in `deploy-orchestrator.yml` `paths:`, or a
+  template/dep-only change builds & passes CI but never redeploys (STORY-14
+  shipped a template that didn't reach prod → empty workspace).
 - **First push to a new package**: GHCR returns **403** on the
   *second* push from CI if the package isn't linked to the repo. Two
   options:

@@ -5,7 +5,17 @@ on:
     branches: [main]
     paths:
       - 'services/orchestrator/**'
+      # Orchestrator workspace deps — a change to any of these rebuilds the image
+      # (previously only db was listed, so a sandbox/acp-host-only change wouldn't
+      # redeploy).
+      - 'packages/sandbox/**'
+      - 'packages/acp-host/**'
       - 'packages/db/**'
+      # The orchestrator image bakes in templates/ (DockerSandbox seeds from
+      # /app/templates — ADR-0014). Template changes must rebuild the image, or
+      # new/changed templates never reach prod (STORY-14 shipped a template that
+      # didn't redeploy → empty workspace).
+      - 'templates/**'
       - 'infrastructure/deploy/praxis-orchestrator.service'
       - '.github/workflows/deploy-orchestrator.yml'
   workflow_dispatch:
