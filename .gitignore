@@ -10,6 +10,9 @@ out/
 .next/
 .nuxt/
 target/
+# Self-hosted Monaco editor assets, copied from node_modules by
+# apps/web/scripts/sync-monaco.mjs (prebuild/predev). Generated, not source.
+apps/web/public/monaco-vs/
 *.pyc
 __pycache__/
 .pytest_cache/

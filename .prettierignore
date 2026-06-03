@@ -11,6 +11,9 @@ coverage
 playwright-report
 test-results
 
+# Self-hosted Monaco assets copied from node_modules (vendored, not source)
+apps/web/public/monaco-vs
+
 # Drizzle-generated migration SQL + introspection output
 packages/db/migrations
 packages/db/src/generated

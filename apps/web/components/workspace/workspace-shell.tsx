@@ -10,6 +10,9 @@ import {
 } from 'react-resizable-panels';
 
 import { ChatPanel } from '@/components/workspace/chat-panel';
+import { CodeEditor } from '@/components/workspace/code-editor';
+import { FileTree } from '@/components/workspace/file-tree';
+import { WorkspaceFilesProvider } from '@/components/workspace/workspace-files';
 import { WorkspaceSocketProvider } from '@/components/workspace/workspace-socket';
 
 // Three-panel workspace shell (STORY-10): file tree | editor | chat, hosted on a
@@ -29,7 +32,9 @@ const layoutStorage: LayoutStorage =
 export function WorkspaceShell({ projectId }: { projectId: string }) {
   return (
     <WorkspaceSocketProvider projectId={projectId}>
-      <ResizablePanels />
+      <WorkspaceFilesProvider>
+        <ResizablePanels />
+      </WorkspaceFilesProvider>
     </WorkspaceSocketProvider>
   );
 }
@@ -97,7 +102,9 @@ function FilesPane() {
   return (
     <>
       <PaneHeader>Files</PaneHeader>
-      <div className="min-h-0 flex-1 overflow-y-auto" />
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <FileTree />
+      </div>
     </>
   );
 }
@@ -106,8 +113,8 @@ function EditorPane() {
   return (
     <>
       <PaneHeader>Editor</PaneHeader>
-      <div className="flex min-h-0 flex-1 items-center justify-center p-6 text-sm text-muted-foreground">
-        Select a file to edit
+      <div className="min-h-0 flex-1">
+        <CodeEditor />
       </div>
     </>
   );

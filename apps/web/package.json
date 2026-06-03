@@ -3,7 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
+    "sync-monaco": "node scripts/sync-monaco.mjs",
+    "predev": "node scripts/sync-monaco.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/sync-monaco.mjs",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
@@ -11,6 +14,7 @@
     "test:e2e:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@praxis/crypto": "workspace:*",
     "@praxis/db": "workspace:*",
     "@praxis/keys": "workspace:*",
@@ -19,6 +23,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.36.4",
+    "monaco-editor": "^0.55.1",
     "next": "^14.2.18",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
