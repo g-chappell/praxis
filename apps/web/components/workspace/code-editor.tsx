@@ -24,7 +24,7 @@ const MonacoEditor = dynamic(() => import('@monaco-editor/react').then((m) => m.
 // The editor pane (TASK-031): loads the selected file into Monaco and saves
 // edits back through the sandbox. Save is a button and Ctrl/Cmd-S.
 export function CodeEditor() {
-  const { selectedPath, content, loading, saving, save } = useWorkspaceFiles();
+  const { selectedPath, content, loading, saving, error, save } = useWorkspaceFiles();
   const [draft, setDraft] = useState('');
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   // Keep the latest save in a ref so the Monaco keybinding never goes stale.
@@ -44,14 +44,17 @@ export function CodeEditor() {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
         <span className="truncate text-xs text-muted-foreground">{selectedPath}</span>
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={loading || saving}
-          onClick={() => save(draft)}
-        >
-          {saving ? 'Saving…' : 'Save'}
-        </Button>
+        <div className="flex items-center gap-2">
+          {error && <span className="text-xs text-destructive">{error}</span>}
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={loading || saving}
+            onClick={() => save(draft)}
+          >
+            {saving ? 'Saving…' : 'Save'}
+          </Button>
+        </div>
       </div>
       <div className="min-h-0 flex-1">
         {loading ? (

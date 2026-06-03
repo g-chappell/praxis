@@ -94,7 +94,10 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
             streamingRef.current = false;
             return;
         }
-      } else if (frame.type === 'error') {
+      } else if (frame.type === 'error' && frame.path === undefined) {
+        // Only session-scoped errors (no `path`) touch the chat. File read/save
+        // errors carry a `path` and are surfaced in the editor instead, so a
+        // failed save never poisons the chat or disables the input (TASK-071).
         streamingRef.current = false;
         setErrored(true);
         pushMessage({
