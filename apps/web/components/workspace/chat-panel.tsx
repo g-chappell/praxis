@@ -3,106 +3,130 @@
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import {
+  Avatar,
+  type ChatAuthor,
+  type ChatMessage,
+  ChatTranscript,
+} from '@/components/workspace/chat-message';
+import { type ServerFrame, useWorkspaceSocket } from '@/components/workspace/workspace-socket';
 
-type Status = 'idle' | 'connecting' | 'connected' | 'error';
-interface Message {
-  role: 'user' | 'assistant';
-  text: string;
-}
-
-// Minimal session chat (STORY-09): start a session (gets a one-time ticket),
-// open the orchestrator WS, send prompts, render streamed text. No file
-// tree/editor yet (STORY-10), no interactive tool permissions (auto-allowed).
-export function ChatPanel({ projectId }: { projectId: string }) {
-  const [status, setStatus] = useState<Status>('idle');
-  const [messages, setMessages] = useState<Message[]>([]);
+// Session chat (STORY-09 → STORY-10), reading the shared workspace socket. Renders
+// the agent's typed event kinds (text / tool_call / file_change / error) and the
+// user's prompts, each attributed to the prompting user (TASK-032). No interactive
+// tool permissions yet (auto-allowed).
+export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
+  const { status: socketStatus, start, close, send, subscribe } = useWorkspaceSocket();
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const wsRef = useRef<WebSocket | null>(null);
+  const [errored, setErrored] = useState(false);
+  // True while the agent is streaming a `text` run; reset by any non-text event
+  // so the next text-chunk starts a fresh message.
+  const streamingRef = useRef(false);
+  const idRef = useRef(0);
+  const nextId = useCallback(() => `m${(idRef.current += 1)}`, []);
 
-  // Append to the in-flight assistant message (the last one), or start one.
-  const appendAssistant = useCallback((chunk: string) => {
-    setMessages((prev) => {
-      const last = prev[prev.length - 1];
-      if (last && last.role === 'assistant') {
-        return [...prev.slice(0, -1), { role: 'assistant', text: last.text + chunk }];
-      }
-      return [...prev, { role: 'assistant', text: chunk }];
-    });
+  // The prompting user for agent attribution. Single-client today, so it's always
+  // the current user; the orchestrator would tag events per-user for multiplayer.
+  const authorRef = useRef(currentUser);
+  authorRef.current = currentUser;
+
+  // An app-level error frame surfaces as an error state without tearing down the
+  // shared connection (mirrors STORY-09's behaviour on the dedicated socket).
+  const status = errored ? 'error' : socketStatus;
+
+  const pushMessage = useCallback((msg: ChatMessage) => {
+    setMessages((prev) => [...prev, msg]);
   }, []);
 
-  const handleServerMessage = useCallback(
-    (data: unknown) => {
-      if (typeof data !== 'object' || data === null) return;
-      const msg = data as { type?: string; event?: { type?: string; text?: string } };
-      if (msg.type === 'agent_event' && msg.event?.type === 'text-chunk') {
-        appendAssistant(msg.event.text ?? '');
-      } else if (msg.type === 'error') {
-        setStatus('error');
-      }
+  const appendAgentText = useCallback(
+    (chunk: string) => {
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (streamingRef.current && last && last.kind === 'text') {
+          return [...prev.slice(0, -1), { ...last, text: last.text + chunk }];
+        }
+        streamingRef.current = true;
+        return [...prev, { id: nextId(), kind: 'text', author: authorRef.current, text: chunk }];
+      });
     },
-    [appendAssistant],
+    [nextId],
   );
 
-  const start = useCallback(async () => {
-    setStatus('connecting');
-    try {
-      const res = await fetch('/api/sessions', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ projectId }),
-      });
-      if (!res.ok) {
-        setStatus('error');
-        return;
-      }
-      // wsUrl comes from the server (runtime env) — not a NEXT_PUBLIC_* build
-      // inline — so it's configurable without rebuilding the web image.
-      const { ticket, wsUrl } = (await res.json()) as { ticket: string; wsUrl?: string };
-      if (!wsUrl) {
-        setStatus('error');
-        return;
-      }
-      const ws = new WebSocket(`${wsUrl}?ticket=${encodeURIComponent(ticket)}`);
-      wsRef.current = ws;
-      ws.onopen = () => setStatus('connected');
-      ws.onmessage = (e) => {
-        try {
-          handleServerMessage(JSON.parse(String(e.data)));
-        } catch {
-          /* ignore malformed frames */
+  useEffect(() => {
+    return subscribe((frame: ServerFrame) => {
+      if (frame.type === 'agent_event') {
+        const event = frame.event as Record<string, unknown> | undefined;
+        const author = authorRef.current;
+        switch (event?.type) {
+          case 'text-chunk':
+            appendAgentText(typeof event.text === 'string' ? event.text : '');
+            return;
+          case 'tool-call':
+            streamingRef.current = false;
+            pushMessage({
+              id: nextId(),
+              kind: 'tool_call',
+              author,
+              title: typeof event.title === 'string' ? event.title : 'tool',
+            });
+            return;
+          case 'file-change':
+            streamingRef.current = false;
+            pushMessage({
+              id: nextId(),
+              kind: 'file_change',
+              author,
+              change: typeof event.change === 'string' ? event.change : 'modify',
+              path: typeof event.path === 'string' ? event.path : '',
+            });
+            return;
+          case 'error':
+            streamingRef.current = false;
+            pushMessage({
+              id: nextId(),
+              kind: 'error',
+              author,
+              text: typeof event.message === 'string' ? event.message : 'Agent error',
+            });
+            return;
+          case 'turn-complete':
+            streamingRef.current = false;
+            return;
         }
-      };
-      ws.onerror = () => setStatus('error');
-      ws.onclose = () => setStatus((s) => (s === 'error' ? s : 'idle'));
-    } catch {
-      setStatus('error');
-    }
-  }, [projectId, handleServerMessage]);
+      } else if (frame.type === 'error') {
+        streamingRef.current = false;
+        setErrored(true);
+        pushMessage({
+          id: nextId(),
+          kind: 'error',
+          author: authorRef.current,
+          text: 'Session error',
+        });
+      }
+    });
+  }, [subscribe, appendAgentText, pushMessage, nextId]);
 
   function sendPrompt(event: FormEvent) {
     event.preventDefault();
     const text = input.trim();
-    const ws = wsRef.current;
-    if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-    setMessages((prev) => [...prev, { role: 'user', text }]);
-    ws.send(JSON.stringify({ type: 'prompt', text }));
+    if (!text) return;
+    if (!send({ type: 'prompt', text })) return;
+    streamingRef.current = false;
+    pushMessage({ id: nextId(), kind: 'user', author: currentUser, text });
     setInput('');
   }
-
-  // Close the session cleanly: the server stops the sandbox when the last
-  // socket leaves the room (endSession). Also runs on unmount, so navigating
-  // away via the nav doesn't leave the session running.
-  const closeSession = useCallback(() => {
-    wsRef.current?.close();
-    wsRef.current = null;
-  }, []);
-
-  useEffect(() => closeSession, [closeSession]);
 
   return (
     <div className="flex h-full flex-col gap-4">
       {status === 'idle' || status === 'connecting' ? (
-        <Button onClick={start} disabled={status === 'connecting'}>
+        <Button
+          onClick={() => {
+            setErrored(false);
+            start();
+          }}
+          disabled={status === 'connecting'}
+        >
           {status === 'connecting' ? 'Starting…' : 'Start session'}
         </Button>
       ) : (
@@ -113,8 +137,8 @@ export function ChatPanel({ projectId }: { projectId: string }) {
           <Button
             variant="outline"
             onClick={() => {
-              closeSession();
-              setStatus('idle');
+              close();
+              setErrored(false);
             }}
           >
             End session
@@ -122,22 +146,16 @@ export function ChatPanel({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      <ul className="flex-1 space-y-3 overflow-y-auto">
-        {messages.map((m, i) => (
-          <li key={i} className="text-sm">
-            <span className="font-medium">{m.role === 'user' ? 'You' : 'Agent'}: </span>
-            <span className="whitespace-pre-wrap">{m.text}</span>
-          </li>
-        ))}
-      </ul>
+      <ChatTranscript messages={messages} />
 
-      <form onSubmit={sendPrompt} className="flex gap-2">
+      <form onSubmit={sendPrompt} className="flex items-center gap-2">
+        <Avatar name={currentUser.name} image={currentUser.image} />
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Say hello…"
+          placeholder={`Message as ${currentUser.name}…`}
           disabled={status !== 'connected'}
-          className="flex-1 rounded-md border px-3 py-2 text-sm"
+          className="min-w-0 flex-1 rounded-md border px-3 py-2 text-sm"
         />
         <Button type="submit" disabled={status !== 'connected' || input.trim().length === 0}>
           Send

@@ -31,7 +31,7 @@ export default defineConfig({
     // auth route in the spec's beforeAll so the first test isn't paying
     // the compile cost. The webServer.timeout is for the initial /
     // probe, not per-test.
-    command: `pnpm next dev -p ${PORT}`,
+    command: `pnpm sync-monaco && pnpm next dev -p ${PORT}`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

@@ -15,6 +15,7 @@ export default [
       'coverage/**',
       'playwright-report/**',
       'test-results/**',
+      'apps/web/public/monaco-vs/**',
       '.claude/**',
       'roadmap/yaml-lite.mjs',
       'packages/db/migrations/**',
@@ -24,7 +25,7 @@ export default [
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['scripts/**/*.{mjs,js}', 'roadmap/**/*.mjs'],
+    files: ['scripts/**/*.{mjs,js}', 'roadmap/**/*.mjs', 'apps/*/scripts/**/*.mjs'],
     languageOptions: {
       globals: { ...globals.node },
       sourceType: 'module',

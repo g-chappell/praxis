@@ -1,0 +1,189 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ChatTranscript > renders each message kind with per-user attribution 1`] = `
+<DocumentFragment>
+  <ul
+    class="flex-1 space-y-3 overflow-y-auto"
+  >
+    <li
+      class="flex gap-2 text-sm"
+    >
+      <span
+        aria-hidden="true"
+        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground"
+      >
+        GC
+      </span>
+      <div
+        class="min-w-0 flex-1"
+      >
+        <div
+          class="flex items-center gap-1.5"
+        >
+          <span
+            class="truncate font-medium"
+          >
+            Graham Chappell
+          </span>
+        </div>
+        <p
+          class="whitespace-pre-wrap break-words"
+        >
+          build me a rotating cube
+        </p>
+      </div>
+    </li>
+    <li
+      class="flex gap-2 text-sm"
+    >
+      <span
+        aria-hidden="true"
+        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground"
+      >
+        GC
+      </span>
+      <div
+        class="min-w-0 flex-1"
+      >
+        <div
+          class="flex items-center gap-1.5"
+        >
+          <span
+            class="truncate font-medium"
+          >
+            Graham Chappell
+          </span>
+          <span
+            class="rounded bg-muted px-1 text-[10px] uppercase tracking-wide text-muted-foreground"
+          >
+            Agent
+          </span>
+        </div>
+        <p
+          class="whitespace-pre-wrap break-words"
+        >
+          Sure — creating the scene.
+        </p>
+      </div>
+    </li>
+    <li
+      class="flex gap-2 text-sm"
+    >
+      <span
+        aria-hidden="true"
+        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground"
+      >
+        GC
+      </span>
+      <div
+        class="min-w-0 flex-1"
+      >
+        <div
+          class="flex items-center gap-1.5"
+        >
+          <span
+            class="truncate font-medium"
+          >
+            Graham Chappell
+          </span>
+          <span
+            class="rounded bg-muted px-1 text-[10px] uppercase tracking-wide text-muted-foreground"
+          >
+            Agent
+          </span>
+        </div>
+        <p
+          class="text-muted-foreground"
+        >
+          <span
+            aria-hidden="true"
+          >
+            🔧 
+          </span>
+          Ran 
+          <span
+            class="font-medium"
+          >
+            Write(src/scene.tsx)
+          </span>
+        </p>
+      </div>
+    </li>
+    <li
+      class="flex gap-2 text-sm"
+    >
+      <span
+        aria-hidden="true"
+        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground"
+      >
+        GC
+      </span>
+      <div
+        class="min-w-0 flex-1"
+      >
+        <div
+          class="flex items-center gap-1.5"
+        >
+          <span
+            class="truncate font-medium"
+          >
+            Graham Chappell
+          </span>
+          <span
+            class="rounded bg-muted px-1 text-[10px] uppercase tracking-wide text-muted-foreground"
+          >
+            Agent
+          </span>
+        </div>
+        <p
+          class="text-muted-foreground"
+        >
+          <span
+            aria-hidden="true"
+          >
+            ✎ 
+          </span>
+          create 
+          <span
+            class="font-mono text-xs"
+          >
+            src/scene.tsx
+          </span>
+        </p>
+      </div>
+    </li>
+    <li
+      class="flex gap-2 text-sm"
+    >
+      <img
+        alt="Ada Lovelace"
+        class="h-6 w-6 shrink-0 rounded-full object-cover"
+        src="https://example.com/ada.png"
+      />
+      <div
+        class="min-w-0 flex-1"
+      >
+        <div
+          class="flex items-center gap-1.5"
+        >
+          <span
+            class="truncate font-medium"
+          >
+            Ada Lovelace
+          </span>
+          <span
+            class="rounded bg-muted px-1 text-[10px] uppercase tracking-wide text-muted-foreground"
+          >
+            Agent
+          </span>
+        </div>
+        <p
+          class="text-destructive"
+        >
+          Tool failed: timeout
+        </p>
+      </div>
+    </li>
+  </ul>
+</DocumentFragment>
+`;

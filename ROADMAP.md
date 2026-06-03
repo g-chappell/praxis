@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 11 / 24 (46%)
-- **Total tasks:** 66
-- **Done:** 35 (53%)
-- **Ready:** 31
+- **Features verified:** 12 / 25 (48%)
+- **Total tasks:** 68
+- **Done:** 38 (56%)
+- **Ready:** 30
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -430,7 +430,7 @@ chat/prompt, real-time sync between two users with presence, cursors,
 and file-level locks, a prompt queue with attribution, and preview
 URLs surfaced through a wildcard Caddy domain.
 
-- **STORY-10** — Three-panel workspace shell
+- **STORY-10** — Three-panel workspace shell  [:white_check_mark: verified]
   > The IDE-like layout users live in. Left: file tree from the
   > sandbox over WebSocket. Centre: Monaco loading whichever file
   > is clicked. Right: chat/prompt panel from STORY-09 expanded
@@ -446,13 +446,13 @@ URLs surfaced through a wildcard Caddy domain.
   **Out of scope:**
   - Yjs co-editing (post-POC).
   - Multi-cursor presence (STORY-11).
-  - :black_circle: **TASK-030** — Workspace layout components + resizable panels  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-030** — Workspace layout components + resizable panels  `high` `medium` _(apps/web)_  
     _depends on: TASK-028_
     > apps/web/components/Workspace with a 3-pane react-resizable-panels
     > layout. Persists pane sizes per-user in localStorage.
     _Task AC:_
     - Resizing a pane survives a page refresh.
-  - :black_circle: **TASK-031** — File tree fed by sandbox watchFiles; Monaco loader  `high` `large` _(apps/web, services/orchestrator)_  
+  - :white_check_mark: **TASK-031** — File tree fed by sandbox watchFiles; Monaco loader  `high` `large` _(apps/web, services/orchestrator)_  
     _depends on: TASK-030, TASK-023_
     > Orchestrator forwards Sandbox.watchFiles events to the WebSocket
     > room as file_changed messages. Client builds a tree, requests
@@ -460,7 +460,7 @@ URLs surfaced through a wildcard Caddy domain.
     > sends edit message → orchestrator writeFile → sandbox.
     _Task AC:_
     - Edit-save-refresh cycle preserves content.
-  - :black_circle: **TASK-032** :checkered_flag: — Chat panel: typed message kinds + per-user attribution UI  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-032** :checkered_flag: — Chat panel: typed message kinds + per-user attribution UI  `high` `small` _(apps/web)_  
     _depends on: TASK-030_
     > Render agent_event messages with kinds: text_chunk, tool_call,
     > file_change_notice, error. Each message shows the prompting
@@ -563,6 +563,45 @@ URLs surfaced through a wildcard Caddy domain.
     _Task AC:_
     - Integration test: expose port serving 'hello', curl URL returns 'hello'; stop, curl returns 5xx.
     - STORY-13 acceptance_criteria satisfied.
+
+- **STORY-25** — Persist + replay chat transcript across reconnect
+  > Today a page reload restores the sandbox FILE state (MinIO,
+  > ADR-0008) but the chat history is empty — the agent_turns table
+  > exists in packages/db (prompt_text, response_text,
+  > prompting_user_id, session_id, started_at, completed_at) yet is
+  > never written or read. Wire it: persist each prompt turn as it
+  > happens, and hydrate the chat panel from agent_turns when a user
+  > re-opens the workspace, preserving each message's original
+  > per-user attribution.
+  **Acceptance criteria:**
+  - Prompting then reloading the workspace shows the prior prompts and agent responses in the chat panel.
+  - Each restored message keeps its prompting-user attribution (avatar + name).
+  **User flow:**
+  1. User prompts the agent and gets a response
+  2. User reloads the page (or re-opens the project later)
+  3. The chat panel shows the prior prompts + responses, attributed to who sent them
+  **Out of scope:**
+  - Agent/Claude conversation-context continuity across sessions (the model re-reading its own prior turns) — transcript display only.
+  - Live multi-user presence and cursors (STORY-11).
+  - :black_circle: **TASK-067** — Orchestrator: persist an agent_turns row per prompt turn  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-032_
+    > On a prompt, insert an agent_turns row (project_id, session_id,
+    > prompting_user_id, prompt_text, started_at). On the
+    > turn-complete AcpEvent, update response_text + completed_at for
+    > that turn. Best-effort: a persistence failure must not break the
+    > live stream.
+    _Task AC:_
+    - After a prompt turn completes, an agent_turns row exists with the prompt text, response text, prompting user, and completed_at set.
+  - :black_circle: **TASK-068** :checkered_flag: — Hydrate chat panel from agent_turns on reconnect  `high` `medium` _(apps/web, services/orchestrator)_  
+    _depends on: TASK-067_
+    > On workspace open, fetch the project's prior agent_turns
+    > (ordered by started_at) and render them in the chat panel as
+    > user_message + agent response pairs, each tagged with the
+    > original prompting user's avatar + name, before/alongside the
+    > live socket stream.
+    _Task AC:_
+    - Reloading a workspace that had prior turns renders those turns in the chat panel with correct per-user attribution.
+    - STORY-25 acceptance_criteria satisfied.
 
 ## EPIC-04 — Template, git, polish
 

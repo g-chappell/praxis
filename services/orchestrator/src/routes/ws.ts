@@ -11,9 +11,18 @@ import type { ServerWebSocket } from 'bun';
 
 import { sessions } from '@praxis/db';
 import { db } from '@praxis/db/client';
+import type { FileEvent } from '@praxis/sandbox';
 
+import { handleFileList, handleFileRead, handleFileSave } from '../file-ops';
 import { logger } from '../logger';
-import { consumeTicket, deleteRoom, getAcpHost, getRoom, getSandbox } from '../runtime';
+import {
+  consumeTicket,
+  deleteRoom,
+  getAcpHost,
+  getRoom,
+  getSandbox,
+  type SessionRoom,
+} from '../runtime';
 
 interface ConnectionState {
   id: string;
@@ -25,6 +34,29 @@ const conns = new WeakMap<ServerWebSocket<unknown>, ConnectionState>();
 
 function send(ws: { send: (data: string) => void }, payload: unknown): void {
   ws.send(JSON.stringify(payload));
+}
+
+/** Fan a payload out to every socket currently in the room (file_changed). */
+function broadcast(room: SessionRoom | undefined, payload: unknown): void {
+  if (!room) return;
+  for (const sock of room.sockets) send(sock, payload);
+}
+
+/** Start the per-room sandbox file watcher once (on the first socket join), so
+ *  inotify changes in /workspace broadcast to the room as file_changed. */
+function ensureWatcher(sessionId: string): void {
+  const room = getRoom(sessionId);
+  if (!room || room.unwatchFiles) return;
+  try {
+    room.unwatchFiles = getSandbox().watchFiles(room.handle, (e: FileEvent) => {
+      broadcast(getRoom(sessionId), { type: 'file_changed', change: e.type, path: e.path });
+    });
+  } catch (err) {
+    logger.warn(
+      { sessionId, err: err instanceof Error ? err.message : String(err) },
+      'ws.watch_failed',
+    );
+  }
 }
 
 export const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket<unknown>>();
@@ -55,6 +87,7 @@ wsRoute.get(
           conns.set(ws.raw, { id, sessionId: claim.sessionId, messageCount: 0 });
           room.sockets.add(ws.raw);
         }
+        ensureWatcher(claim.sessionId);
         logger.info({ wsConnId: id, sessionId: claim.sessionId }, 'ws.open');
         send(ws, { type: 'ready', sessionId: claim.sessionId });
       },
@@ -84,6 +117,20 @@ wsRoute.get(
         }
         if (type === 'prompt') {
           await runPrompt(ws, state, (msg as { text?: unknown }).text);
+          return;
+        }
+        if (type === 'file_list' || type === 'file_read' || type === 'file_save') {
+          const room = getRoom(state.sessionId);
+          if (!room) {
+            send(ws, { type: 'error', reason: 'no_session' });
+            return;
+          }
+          const reply = (payload: unknown) => send(ws, payload);
+          const m = msg as { path?: unknown; content?: unknown };
+          if (type === 'file_list') await handleFileList(reply, getSandbox(), room.handle);
+          else if (type === 'file_read')
+            await handleFileRead(reply, getSandbox(), room.handle, m.path);
+          else await handleFileSave(reply, getSandbox(), room.handle, m.path, m.content);
           return;
         }
 
@@ -144,6 +191,7 @@ async function runPrompt(
 function endSession(sessionId: string): void {
   const room = getRoom(sessionId);
   if (!room) return;
+  room.unwatchFiles?.();
   deleteRoom(sessionId);
   void (async () => {
     try {

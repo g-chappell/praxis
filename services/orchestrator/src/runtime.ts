@@ -6,7 +6,12 @@
 // orchestrator would move these to Redis/Postgres (future).
 
 import { ClaudeAcpHost } from '@praxis/acp-host';
-import { DockerSandbox, MinioObjectStore, type SandboxHandle } from '@praxis/sandbox';
+import {
+  DockerSandbox,
+  MinioObjectStore,
+  type SandboxHandle,
+  type Unsubscribe,
+} from '@praxis/sandbox';
 import type { ServerWebSocket } from 'bun';
 
 let _sandbox: DockerSandbox | undefined;
@@ -40,6 +45,10 @@ export interface SessionRoom {
   // doesn't run under Bun. Held in memory only; never logged.
   apiKey: string;
   sockets: Set<ServerWebSocket<unknown>>;
+  // Stops the per-room sandbox file watcher (started lazily when the first
+  // socket joins, STORY-10/TASK-031). Called on teardown so inotifywait in the
+  // container is killed. Undefined until the watcher starts.
+  unwatchFiles?: Unsubscribe;
 }
 
 const rooms = new Map<string, SessionRoom>();
