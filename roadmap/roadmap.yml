@@ -980,6 +980,63 @@ epics:
               - "Reloading a workspace that had prior turns renders those turns in the chat panel with correct per-user attribution."
               - "STORY-25 acceptance_criteria satisfied."
 
+      - id: STORY-30
+        title: "Live-reload the preview pane (proxy Vite HMR WebSocket)"
+        description: |
+          Follow-up to STORY-13/14. The orchestrator preview proxy (ADR-0015)
+          forwards plain HTTP only, so Vite's HMR WebSocket never connects
+          through <slug>.preview.<domain> — the preview renders but updates
+          only on a MANUAL refresh, not live as the agent edits files
+          (operator-confirmed live 2026-06-03, "preview updated after refresh").
+          Tunnel the HMR WebSocket upgrade through the preview proxy to the
+          sandbox dev server so the preview hot-reloads automatically.
+        acceptance_criteria:
+          - "The orchestrator preview proxy forwards WebSocket upgrade requests (Vite's HMR ws endpoint) through to the sandbox dev server, so the Vite HMR client connects successfully through https://<slug>.preview.<domain>."
+          - "Editing a file in a running react-threejs-scene project hot-reloads (or full-reloads) the preview pane automatically with no manual refresh — verified live on the VPS."
+          - "Non-preview and non-upgrade requests are unaffected: the existing HTTP preview proxy and the session WebSocket keep working."
+        user_flow:
+          - "User opens a 3js project's preview pane"
+          - "User asks the agent to change the scene (or edits a file in Monaco)"
+          - "The preview updates automatically within a second or two, without a manual refresh"
+        out_of_scope:
+          - "HMR for templates other than react-threejs-scene (the mechanism should generalise, but only the 3js template is in scope to verify)."
+          - "Collaborative multi-user cursor/edit sync (post-POC, Yjs)."
+        tasks:
+          - id: TASK-079
+            title: "Orchestrator: tunnel the preview WebSocket upgrade to the sandbox dev server"
+            status: ready
+            priority: med
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              In the preview proxy, detect a WebSocket upgrade on a
+              preview-host request and tunnel it to the sandbox dev server
+              (ip:port from the PreviewRegistry), bidirectionally piping
+              frames. Keep the existing HTTP proxy path for non-upgrade
+              requests untouched.
+            depends_on: [TASK-038]
+            attempt_count: 0
+            task_acceptance:
+              - "A WebSocket upgrade to a live preview host is proxied to the sandbox dev server and frames pass both ways; a non-upgrade request still serves over the HTTP path."
+          - id: TASK-080
+            title: "Verify preview hot-reload live + document Vite HMR config"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["services/orchestrator", "templates/react-threejs-scene"]
+            description: |
+              On the VPS, edit a file in a running 3js project and confirm the
+              preview pane hot-reloads without a manual refresh. Capture any
+              Vite config the proxied setup needs (e.g. server.hmr.clientPort,
+              allowedHosts) in the template and in
+              docs/conventions/orchestrator-runtime.md.
+            depends_on: [TASK-079]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Live on the VPS: editing a file in a running 3js project reloads the preview pane with no manual refresh."
+              - "STORY-30 acceptance_criteria satisfied."
+
   - id: EPIC-04
     title: "Template, git, polish"
     description: |
