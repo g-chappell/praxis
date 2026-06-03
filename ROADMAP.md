@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 15 / 28 (54%)
+- **Features verified:** 17 / 28 (61%)
 - **Total tasks:** 77
 - **Done:** 52 (68%)
 - **Ready:** 25
@@ -535,7 +535,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Manual two-browser test: A's prompt queues behind B's, runs after, both attributed correctly.
     - STORY-12 acceptance_criteria satisfied.
 
-- **STORY-13** — Preview URL via Caddy wildcard
+- **STORY-13** — Preview URL via Caddy wildcard  [:white_check_mark: verified]
   > When a project's app starts (e.g. Vite on :5173 in the sandbox),
   > the orchestrator allocates a unique subdomain
   > <projectSlug>.preview.<domain> and registers it with Caddy
@@ -610,7 +610,7 @@ image-generation MCP feeding textures, the git panel, agent
 auto-commit guidance, curated learning links, and the dogfood pass
 that closes the POC.
 
-- **STORY-14** — React + Three.js + Vite template scaffold
+- **STORY-14** — React + Three.js + Vite template scaffold  [:white_check_mark: verified]
   > templates/react-threejs-scene with Vite + React + TypeScript +
   > @react-three/fiber + drei. template.json declares preview port
   > 5173, harness claude-code, MCP servers [image-gen]. AGENTS.md

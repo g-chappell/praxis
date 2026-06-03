@@ -879,6 +879,8 @@ epics:
           <projectSlug>.preview.<domain> and registers it with Caddy
           on-demand so it routes to the right sandbox port. URL is revoked
           when the sandbox stops.
+        verified_at: '2026-06-03T20:32:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Calling Sandbox.exposePort(handle, 5173) returns an https URL that fetches the sandbox's port content within 1s."
           - "After Sandbox.stop(), the URL returns 502/404 (Caddy upstream gone)."
@@ -994,6 +996,8 @@ epics:
           5173, harness claude-code, MCP servers [image-gen]. AGENTS.md
           gives Claude Code Three.js conventions and texture-loading
           patterns from public/textures/.
+        verified_at: '2026-06-03T20:32:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Creating a project from `react-threejs-scene` lands the scaffold in the sandbox; `npm run dev` from inside the sandbox renders a starter cube scene visible in the preview URL."
           - "Template AGENTS.md is loaded by Claude Code on its first turn (verified via the agent quoting one of its rules)."
