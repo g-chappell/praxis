@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 12 / 25 (48%)
-- **Total tasks:** 68
-- **Done:** 38 (56%)
-- **Ready:** 30
+- **Features verified:** 12 / 29 (41%)
+- **Total tasks:** 77
+- **Done:** 38 (49%)
+- **Ready:** 39
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -985,3 +985,156 @@ flags, observability) mount into.
     _Task AC:_
     - Settings UI no longer implies OAuth powers sessions; docs note the reserved role.
     - STORY-24 acceptance_criteria satisfied.
+
+## EPIC-06 — Project lifecycle & workspace reliability
+
+Surfaced by operator review of the live STORY-10 workspace. Two gaps make
+the product unusable end-to-end today: a project can't be returned to or
+deleted (the dashboard only creates), and the workspace itself has
+reliability holes — saving an edited file fails in prod and the chosen
+template is never seeded, so the workspace starts empty. This epic makes
+projects manageable (create-with-name, list, open, delete-with-full-
+cleanup) and closes those workspace gaps, with structured logging +
+traceability throughout so future bugs are diagnosable.
+
+- **STORY-26** — Fix workspace file save + scope file errors to the editor + observability
+  > Operator edited an agent-created file and hit "Session error" in chat;
+  > the edit did NOT persist (verified: the project volume still held the
+  > original content). Root cause is unknown because file-op failures are
+  > not logged. Sandbox writeFile works in isolation, so the failure is
+  > live/environmental. Separately, the chat panel treats ANY
+  > {type:'error'} frame as a session error, so file read/save errors
+  > (which carry a `path`) render as "Session error" AND disable the chat
+  > input. Add file-op + handler logging, route file-scoped errors to the
+  > editor, and root-cause the live write failure.
+  **Acceptance criteria:**
+  - Editing a file in Monaco and saving persists to the sandbox and reloads correctly after a page refresh (the STORY-10 AC, currently broken in prod).
+  - A failed file read/save surfaces as an inline editor error (not a chat 'Session error') and never disables the chat input.
+  - File-op failures (file_list/file_read/file_save) are logged server-side with the underlying error + sessionId/path context, so future bugs are diagnosable.
+  **User flow:**
+  1. Open a file in the editor, edit it, click Save
+  2. Content persists to the sandbox and survives a page refresh
+  3. If a save fails, an inline error shows by the Save button and the chat/session is unaffected
+  **Out of scope:**
+  - Multi-user concurrent-edit conflict resolution (Yjs, post-POC).
+  - :black_circle: **TASK-069** — Orchestrator: log file-op failures with cause + sessionId/path context  `high` `small` _(services/orchestrator)_
+    > Log the underlying error in handleFileSave/handleFileRead/
+    > handleFileList (currently only file_list logs), plus a broader
+    > catch-logging pass on orchestrator handlers. Include sessionId +
+    > path context. This is the observability needed to diagnose the
+    > live save failure and future bugs.
+    _Task AC:_
+    - Each file-op handler logs the underlying error (message + sessionId + path) on failure; verified by a unit test asserting the log call.
+  - :black_circle: **TASK-070** :checkered_flag: — Deploy logging, reproduce the live save failure, root-cause + fix it  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-069_
+    > With TASK-069 deployed, reproduce the edit-save failure on the live
+    > VPS (agent creates a file, user edits + saves), capture the real
+    > writeFile error from the logs, and fix the root cause. Confirm the
+    > edit persists to the sandbox volume.
+    _Task AC:_
+    - The live save failure is reproduced, its cause captured in logs, and fixed; an edited file's new content is confirmed in the sandbox volume after save.
+    - STORY-26 acceptance_criteria satisfied.
+  - :black_circle: **TASK-071** :checkered_flag: — Web: route file errors to the editor, not the chat session  `high` `small` _(apps/web)_
+    > Stop the chat panel treating file-scoped error frames (those
+    > carrying a `path`) as session errors / disabling input. Surface
+    > read/save failures inline in the CodeEditor (e.g. a save-failed
+    > state by the Save button) via WorkspaceFilesProvider.
+    _Task AC:_
+    - A file_save/file_read error renders inline in the editor and leaves the chat connected + input enabled; covered by a component/unit test.
+
+- **STORY-27** — Seed the project template into the workspace
+  > DockerSandbox.start only runs `git init` — it never copies the template
+  > files, so a new project's /workspace is empty (only .git). The
+  > templateId is recorded as a container label but otherwise unused, and
+  > templates/react-threejs-scene has no source on disk. An empty workspace
+  > defeats the product (the agent has nothing to build from). Seed the
+  > template into /workspace on first start with an initial git commit.
+  **Acceptance criteria:**
+  - A newly created project's workspace contains the react-threejs-scene template files (the file tree shows them and they open in the editor).
+  - The seeded template files are the initial git commit in the sandbox.
+  **User flow:**
+  1. Create a project on the react-threejs-scene template
+  2. Open the workspace — the file tree shows the template's files
+  3. Open a template file in Monaco and edit it
+  **Out of scope:**
+  - A template-picker UI / multiple templates (later).
+  - The Codex harness.
+  - :black_circle: **TASK-072** — Establish the react-threejs-scene template source under templates/  `high` `medium` _(templates/react-threejs-scene)_
+    > Create the POC template source (Vite + React + @react-three/fiber +
+    > drei) under templates/react-threejs-scene — a minimal working scene
+    > the agent can extend.
+    _Task AC:_
+    - templates/react-threejs-scene contains a buildable Vite + React + r3f scene (installs and builds).
+  - :black_circle: **TASK-073** :checkered_flag: — Sandbox: seed the template into /workspace on first start (+ ADR)  `high` `medium` _(packages/sandbox)_  
+    _depends on: TASK-072_
+    > On first start for a project, copy the template's files into
+    > /workspace before the git init and make them the initial commit
+    > (skip when the volume is already populated/restored). Write a short
+    > ADR for the seeding behaviour on the Sandbox interface.
+    _Task AC:_
+    - Starting a fresh project seeds the template files into /workspace as the initial git commit (Docker-gated integration test).
+    - STORY-27 acceptance_criteria satisfied.
+
+- **STORY-28** — Dashboard project list: open & delete
+  > The dashboard renders only a 'New project' button — there is no list
+  > query, no GET /api/projects, and no DELETE, so a user cannot return to
+  > or remove a project. Projects are owned via the user's personal team.
+  > Add a project list (open) and a delete that leaves no stale artifacts
+  > (row + sessions + sandbox container/volume) while logging the
+  > destructive action for traceability.
+  **Acceptance criteria:**
+  - The dashboard lists the signed-in user's projects, newest first, each opening its workspace.
+  - Deleting a project (with confirmation) removes the project row, its sessions, AND its sandbox container + named volume — no stale artifacts — and the deletion is logged (who/what/when) for traceability.
+  - An empty state is shown when the user has no projects.
+  **User flow:**
+  1. Sign in and open the dashboard
+  2. See my projects listed (name + created date, newest first)
+  3. Click a project to open its workspace
+  4. Delete a project (with confirm) — it disappears from the list
+  **Out of scope:**
+  - Sharing / teams management UI.
+  - Rename from the list (possible follow-up).
+  - :black_circle: **TASK-074** — lib + API: list + delete projects (ownership-checked)  `high` `medium` _(apps/web)_  
+    _depends on: TASK-075_
+    > Add listUserProjects(userId) and deleteProject(userId, projectId)
+    > to lib/projects.ts (team-membership ownership). Add GET /api/projects
+    > (list) and DELETE /api/projects/[id] — the delete removes the row +
+    > sessions and calls the orchestrator to destroy the sandbox, then
+    > logs the deletion for traceability.
+    _Task AC:_
+    - GET returns only the caller's projects; DELETE is ownership-checked, removes row + sessions, triggers sandbox destroy, and logs the action; covered by tests.
+  - :black_circle: **TASK-075** — Orchestrator + Sandbox: destroy a project's sandbox (container + volume) (+ ADR)  `high` `medium` _(services/orchestrator, packages/sandbox)_
+    > Add a Sandbox method + orchestrator endpoint to fully remove a
+    > project's sandbox: stop/remove the container and delete the named
+    > volume praxis-project-<id> (and any object-store snapshot). ADR for
+    > the Sandbox-interface addition. Log the destructive action.
+    _Task AC:_
+    - Destroying a project removes its container + named volume (and snapshot); Docker-gated integration test confirms no artifacts remain; action is logged.
+  - :black_circle: **TASK-076** :checkered_flag: — Dashboard UI: project list with open + delete + empty state  `high` `medium` _(apps/web)_  
+    _depends on: TASK-074_
+    > Render the user's projects on the dashboard (name + created date,
+    > newest first), each opening its workspace; a delete action with a
+    > confirm step; an empty state when there are none.
+    _Task AC:_
+    - Dashboard lists projects (open), supports delete-with-confirm, and shows an empty state; verified in a browser drive.
+    - STORY-28 acceptance_criteria satisfied.
+
+- **STORY-29** — Name a project on create
+  > POST /api/projects hardcodes the name 'Untitled project' and accepts no
+  > body; NewProjectButton sends an empty POST. The operator wants a basic
+  > name field now (template selection + other config expand later).
+  **Acceptance criteria:**
+  - Creating a project takes a required name (with a sensible default) and stores it; the name appears in the dashboard list and the workspace.
+  **User flow:**
+  1. Click New project
+  2. Enter a name
+  3. The project is created with that name and shown in the list + workspace
+  **Out of scope:**
+  - Template selection / other config fields (later).
+  - :black_circle: **TASK-077** :checkered_flag: — Create with a name: API body + create form  `high` `small` _(apps/web)_
+    > POST /api/projects accepts and validates { name } (trim, fallback to
+    > a default when empty). NewProjectButton becomes a small create form
+    > with a name input that submits the name.
+    _Task AC:_
+    - Creating a project with a typed name persists and surfaces it; empty input falls back to a default; covered by a test.
+    - STORY-29 acceptance_criteria satisfied.
