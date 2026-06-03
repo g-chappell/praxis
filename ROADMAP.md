@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 14 / 28 (50%)
+- **Features verified:** 15 / 28 (54%)
 - **Total tasks:** 77
-- **Done:** 44 (57%)
-- **Ready:** 33
+- **Done:** 47 (61%)
+- **Ready:** 30
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1042,7 +1042,7 @@ traceability throughout so future bugs are diagnosable.
     _Task AC:_
     - A file_save/file_read error renders inline in the editor and leaves the chat connected + input enabled; covered by a component/unit test.
 
-- **STORY-27** — Template seeding: mechanism + blank template + picker
+- **STORY-27** — Template seeding: mechanism + blank template + picker  [:white_check_mark: verified]
   > DockerSandbox.start only runs `git init` — it never copies template
   > files, so a new project's /workspace is empty. This story builds the
   > rails: a seeding mechanism (copy a chosen template into /workspace on
@@ -1062,13 +1062,13 @@ traceability throughout so future bugs are diagnosable.
   **Out of scope:**
   - The react-threejs-scene template content (STORY-14).
   - The Codex harness; per-template sandbox images.
-  - :black_circle: **TASK-072** — Establish the blank template source (templates/blank)  `high` `small` _(apps/web)_
+  - :white_check_mark: **TASK-072** — Establish the blank template source (templates/blank)  `high` `small` _(apps/web)_
     > Add templates/blank — a truly-empty starter (a README only) for
     > internal/open testing. The seeding mechanism (TASK-073) copies it
     > into a fresh workspace; the rest of /workspace stays empty.
     _Task AC:_
     - templates/blank exists with a README and no app scaffold.
-  - :black_circle: **TASK-073** :checkered_flag: — Sandbox: seed the chosen template into /workspace on first start (+ ADR)  `high` `medium` _(packages/sandbox, services/orchestrator)_  
+  - :white_check_mark: **TASK-073** :checkered_flag: — Sandbox: seed the chosen template into /workspace on first start (+ ADR)  `high` `medium` _(packages/sandbox, services/orchestrator)_  
     _depends on: TASK-072_
     > DockerSandbox gains a templatesDir config; on first start of a fresh
     > workspace, copy templatesDir/<templateId> into /workspace (docker cp,
@@ -1077,7 +1077,7 @@ traceability throughout so future bugs are diagnosable.
     > templatesDir + ships templates/ in its image. ADR for the mechanism.
     _Task AC:_
     - A fresh project seeds templatesDir/<templateId> into /workspace as the initial commit (Docker-gated test); populated/restored volumes untouched.
-  - :black_circle: **TASK-078** :checkered_flag: — Template registry + create form (name + template) + POST validation  `high` `medium` _(apps/web)_
+  - :white_check_mark: **TASK-078** :checkered_flag: — Template registry + create form (name + template) + POST validation  `high` `medium` _(apps/web)_
     > A web-side template registry (blank, react-threejs-scene: id + name +
     > description). Replace NewProjectButton with a create form collecting a
     > required name (default) + a template choice. POST /api/projects accepts
