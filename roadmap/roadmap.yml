@@ -735,7 +735,7 @@ epics:
               - "Resizing a pane survives a page refresh."
           - id: TASK-031
             title: "File tree fed by sandbox watchFiles; Monaco loader"
-            status: ready
+            status: done
             priority: high
             complexity: large
             workspaces: ["apps/web", "services/orchestrator"]
@@ -746,6 +746,7 @@ epics:
               sends edit message → orchestrator writeFile → sandbox.
             depends_on: [TASK-030, TASK-023]
             attempt_count: 0
+            completed: '2026-06-03T10:23:00Z'
             task_acceptance:
               - "Edit-save-refresh cycle preserves content."
           - id: TASK-032

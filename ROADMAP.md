@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 11 / 25 (44%)
 - **Total tasks:** 68
-- **Done:** 36 (53%)
-- **Ready:** 32
+- **Done:** 37 (54%)
+- **Ready:** 31
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -452,7 +452,7 @@ URLs surfaced through a wildcard Caddy domain.
     > layout. Persists pane sizes per-user in localStorage.
     _Task AC:_
     - Resizing a pane survives a page refresh.
-  - :black_circle: **TASK-031** — File tree fed by sandbox watchFiles; Monaco loader  `high` `large` _(apps/web, services/orchestrator)_  
+  - :white_check_mark: **TASK-031** — File tree fed by sandbox watchFiles; Monaco loader  `high` `large` _(apps/web, services/orchestrator)_  
     _depends on: TASK-030, TASK-023_
     > Orchestrator forwards Sandbox.watchFiles events to the WebSocket
     > room as file_changed messages. Client builds a tree, requests
