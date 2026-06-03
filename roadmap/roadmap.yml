@@ -1682,55 +1682,76 @@ epics:
             task_acceptance:
               - "A file_save/file_read error renders inline in the editor and leaves the chat connected + input enabled; covered by a component/unit test."
       - id: STORY-27
-        title: "Seed the project template into the workspace"
+        title: "Template seeding: mechanism + blank template + picker"
         description: |
-          DockerSandbox.start only runs `git init` — it never copies the template
-          files, so a new project's /workspace is empty (only .git). The
-          templateId is recorded as a container label but otherwise unused, and
-          templates/react-threejs-scene has no source on disk. An empty workspace
-          defeats the product (the agent has nothing to build from). Seed the
-          template into /workspace on first start with an initial git commit.
+          DockerSandbox.start only runs `git init` — it never copies template
+          files, so a new project's /workspace is empty. This story builds the
+          rails: a seeding mechanism (copy a chosen template into /workspace on
+          first start + initial commit), a `blank` template (truly empty — a
+          README only — for internal/open testing), a template registry, and a
+          create form that picks name + template. The react-threejs-scene content
+          is owned by STORY-14 and plugs into this mechanism (no duplication).
+          Subsumes STORY-29 (name on create) — the create form does name + template.
         acceptance_criteria:
-          - "A newly created project's workspace contains the react-threejs-scene template files (the file tree shows them and they open in the editor)."
-          - "The seeded template files are the initial git commit in the sandbox."
+          - "Creating a project seeds the chosen template into /workspace on first start (blank → a README, otherwise empty), as the initial git commit; the file tree shows the seeded files."
+          - "The create flow takes a required name (sensible default) and a template choice (Blank / React + Three.js); both are stored and the name shows in the dashboard list."
+          - "An unknown templateId is rejected at the API; a populated/restored workspace is left untouched."
         user_flow:
-          - "Create a project on the react-threejs-scene template"
-          - "Open the workspace — the file tree shows the template's files"
-          - "Open a template file in Monaco and edit it"
+          - "Dashboard → New project → enter a name, pick a template"
+          - "Open the workspace — the file tree shows the seeded template files"
+          - "Open a seeded file in Monaco and edit it"
         out_of_scope:
-          - "A template-picker UI / multiple templates (later)."
-          - "The Codex harness."
+          - "The react-threejs-scene template content (STORY-14)."
+          - "The Codex harness; per-template sandbox images."
         tasks:
           - id: TASK-072
-            title: "Establish the react-threejs-scene template source under templates/"
+            title: "Establish the blank template source (templates/blank)"
             status: ready
             priority: high
-            complexity: medium
-            workspaces: ["templates/react-threejs-scene"]
+            complexity: small
+            workspaces: ["apps/web"]
             description: |
-              Create the POC template source (Vite + React + @react-three/fiber +
-              drei) under templates/react-threejs-scene — a minimal working scene
-              the agent can extend.
+              Add templates/blank — a truly-empty starter (a README only) for
+              internal/open testing. The seeding mechanism (TASK-073) copies it
+              into a fresh workspace; the rest of /workspace stays empty.
             depends_on: []
             attempt_count: 0
             task_acceptance:
-              - "templates/react-threejs-scene contains a buildable Vite + React + r3f scene (installs and builds)."
+              - "templates/blank exists with a README and no app scaffold."
           - id: TASK-073
-            title: "Sandbox: seed the template into /workspace on first start (+ ADR)"
+            title: "Sandbox: seed the chosen template into /workspace on first start (+ ADR)"
             status: ready
             priority: high
             complexity: medium
-            workspaces: ["packages/sandbox"]
+            workspaces: ["packages/sandbox", "services/orchestrator"]
             description: |
-              On first start for a project, copy the template's files into
-              /workspace before the git init and make them the initial commit
-              (skip when the volume is already populated/restored). Write a short
-              ADR for the seeding behaviour on the Sandbox interface.
+              DockerSandbox gains a templatesDir config; on first start of a fresh
+              workspace, copy templatesDir/<templateId> into /workspace (docker cp,
+              Bun-safe) and make it the initial commit. Skip when the volume is
+              populated/restored or the templateId is unknown. Orchestrator passes
+              templatesDir + ships templates/ in its image. ADR for the mechanism.
             depends_on: [TASK-072]
             attempt_count: 0
             is_terminal: true
             task_acceptance:
-              - "Starting a fresh project seeds the template files into /workspace as the initial git commit (Docker-gated integration test)."
+              - "A fresh project seeds templatesDir/<templateId> into /workspace as the initial commit (Docker-gated test); populated/restored volumes untouched."
+          - id: TASK-078
+            title: "Template registry + create form (name + template) + POST validation"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              A web-side template registry (blank, react-threejs-scene: id + name +
+              description). Replace NewProjectButton with a create form collecting a
+              required name (default) + a template choice. POST /api/projects accepts
+              { name, templateId }, validates against the registry, and stores both
+              (drop the hardcoded TEMPLATE_ID). Subsumes STORY-29.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Creating a project with a typed name + chosen template persists both; an unknown templateId is rejected; the name shows in the dashboard list."
               - "STORY-27 acceptance_criteria satisfied."
       - id: STORY-28
         title: "Dashboard project list: open & delete"
@@ -1806,34 +1827,3 @@ epics:
             task_acceptance:
               - "Dashboard lists projects (open), supports delete-with-confirm, and shows an empty state; verified in a browser drive."
               - "STORY-28 acceptance_criteria satisfied."
-      - id: STORY-29
-        title: "Name a project on create"
-        description: |
-          POST /api/projects hardcodes the name 'Untitled project' and accepts no
-          body; NewProjectButton sends an empty POST. The operator wants a basic
-          name field now (template selection + other config expand later).
-        acceptance_criteria:
-          - "Creating a project takes a required name (with a sensible default) and stores it; the name appears in the dashboard list and the workspace."
-        user_flow:
-          - "Click New project"
-          - "Enter a name"
-          - "The project is created with that name and shown in the list + workspace"
-        out_of_scope:
-          - "Template selection / other config fields (later)."
-        tasks:
-          - id: TASK-077
-            title: "Create with a name: API body + create form"
-            status: ready
-            priority: high
-            complexity: small
-            workspaces: ["apps/web"]
-            description: |
-              POST /api/projects accepts and validates { name } (trim, fallback to
-              a default when empty). NewProjectButton becomes a small create form
-              with a name input that submits the name.
-            depends_on: []
-            attempt_count: 0
-            is_terminal: true
-            task_acceptance:
-              - "Creating a project with a typed name persists and surfaces it; empty input falls back to a default; covered by a test."
-              - "STORY-29 acceptance_criteria satisfied."
