@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 11 / 24 (46%)
-- **Total tasks:** 66
-- **Done:** 35 (53%)
-- **Ready:** 31
+- **Features verified:** 11 / 25 (44%)
+- **Total tasks:** 68
+- **Done:** 35 (51%)
+- **Ready:** 33
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -563,6 +563,45 @@ URLs surfaced through a wildcard Caddy domain.
     _Task AC:_
     - Integration test: expose port serving 'hello', curl URL returns 'hello'; stop, curl returns 5xx.
     - STORY-13 acceptance_criteria satisfied.
+
+- **STORY-25** — Persist + replay chat transcript across reconnect
+  > Today a page reload restores the sandbox FILE state (MinIO,
+  > ADR-0008) but the chat history is empty — the agent_turns table
+  > exists in packages/db (prompt_text, response_text,
+  > prompting_user_id, session_id, started_at, completed_at) yet is
+  > never written or read. Wire it: persist each prompt turn as it
+  > happens, and hydrate the chat panel from agent_turns when a user
+  > re-opens the workspace, preserving each message's original
+  > per-user attribution.
+  **Acceptance criteria:**
+  - Prompting then reloading the workspace shows the prior prompts and agent responses in the chat panel.
+  - Each restored message keeps its prompting-user attribution (avatar + name).
+  **User flow:**
+  1. User prompts the agent and gets a response
+  2. User reloads the page (or re-opens the project later)
+  3. The chat panel shows the prior prompts + responses, attributed to who sent them
+  **Out of scope:**
+  - Agent/Claude conversation-context continuity across sessions (the model re-reading its own prior turns) — transcript display only.
+  - Live multi-user presence and cursors (STORY-11).
+  - :black_circle: **TASK-067** — Orchestrator: persist an agent_turns row per prompt turn  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-032_
+    > On a prompt, insert an agent_turns row (project_id, session_id,
+    > prompting_user_id, prompt_text, started_at). On the
+    > turn-complete AcpEvent, update response_text + completed_at for
+    > that turn. Best-effort: a persistence failure must not break the
+    > live stream.
+    _Task AC:_
+    - After a prompt turn completes, an agent_turns row exists with the prompt text, response text, prompting user, and completed_at set.
+  - :black_circle: **TASK-068** :checkered_flag: — Hydrate chat panel from agent_turns on reconnect  `high` `medium` _(apps/web, services/orchestrator)_  
+    _depends on: TASK-067_
+    > On workspace open, fetch the project's prior agent_turns
+    > (ordered by started_at) and render them in the chat panel as
+    > user_message + agent response pairs, each tagged with the
+    > original prompting user's avatar + name, before/alongside the
+    > live socket stream.
+    _Task AC:_
+    - Reloading a workspace that had prior turns renders those turns in the chat panel with correct per-user attribution.
+    - STORY-25 acceptance_criteria satisfied.
 
 ## EPIC-04 — Template, git, polish
 
