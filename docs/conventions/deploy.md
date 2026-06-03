@@ -81,6 +81,14 @@ The canonical file lives at `/etc/praxis/praxis.env`. Mode `0640`,
 owned `root:deploy` so the `deploy` user can read it for `docker run`
 but other users can't.
 
+**`PRAXIS_NETWORK=praxis-net` is required for previews.** The orchestrator passes
+it to `DockerSandbox` as the sandbox container's network. If unset, sandboxes land
+on the default `bridge`, isolated from the orchestrator (on `praxis-net`) — file
+ops/agent still work (they use the Docker socket), but the preview proxy can't
+reach `sandbox:<port>` and every preview 502s (STORY-13). ⚠ Security: this puts
+untrusted agent sandboxes on `praxis-net` alongside `praxis-db` — harden via
+STORY-19 (egress allowlist) or a dedicated sandbox network.
+
 ## systemd unit shape
 
 Every Praxis service unit follows the same skeleton (see
