@@ -156,6 +156,7 @@ Topic cookbooks. Read the relevant file before touching that layer:
 - **`docs/conventions/deploy.md`** — VPS shape, `praxis-net` Docker bridge, port allocation, Caddy composite at `/etc/caddy/Caddyfile`, env-file format quirks (ASCII-only, no inline comments), systemd unit skeleton, GHCR image policy (tags, build context, first-push 403, `GIT_SHA` arg), CI deploy workflow shape, sudoers fragment, operator follow-ups.
 - **`docs/conventions/database.md`** — Drizzle as source of truth, two import surfaces (`@praxis/db` schema-only vs `@praxis/db/client` lazy proxy), lazy initialization pattern for env-dependent modules (also applies to auth and mail), codegen drift check, no-mocking-the-DB rule.
 - **`docs/conventions/auth-and-mail.md`** — Better Auth schema hybrid (ADR-0005), `pnpm.overrides` for kysely on Node 20, lazy auth singleton, middleware matcher precision, Playwright cold-compile pre-warm, mailer interface (Dev / Resend / loud-fail in prod), Resend domain verification two-step, API key rotation procedure.
+- **`docs/conventions/orchestrator-runtime.md`** — the Bun↔dockerode rule (streaming ops 501 under Bun → use the docker CLI; reserve dockerode for unary lifecycle calls — ADR-0010/0014), docker-socket gid, sandbox `praxis-net` requirement, preview routing (ADR-0015, HMR-WS follow-up). Read before touching orchestrator/sandbox container I/O.
 - **`ARCHITECTURE.md`** — system shape, post-EPIC-01. Link to it; don't duplicate the diagram here.
 
 ## Testing patterns
