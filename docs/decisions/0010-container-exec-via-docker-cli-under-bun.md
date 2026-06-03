@@ -69,3 +69,23 @@ dockerode is fine.
   implementation). More surface, more risk, for no functional gain.
 - **Patch/monkey-patch docker-modem's upgrade handling.** Fragile, ties us to
   docker-modem internals.
+
+## Update (2026-06-03, STORY-26 / TASK-070)
+
+The claim above that "get/putArchive work fine under Bun" was **only half right**.
+Operator review found saving an edited file failed in prod (chat showed a session
+error). Reproduced against the prod image under Bun: `readFile` (`getArchive`, a
+download) works, but `writeFile`'s **`putArchive`** fails with `(HTTP code 501)
+unexpected - Unsupported transfer encoding` — Bun's HTTP-over-unix-socket layer
+rejects the chunked request body docker-modem streams for an unknown-length
+upload. Node was unaffected, so the Node/Vitest sandbox tests never caught it
+(same blind spot as the original exec bug).
+
+Per this ADR's own decision, `writeFile` now streams content through the **docker
+CLI** (`docker exec -i … tee <path>`, content on stdin) instead of `putArchive`.
+`getArchive` reads are unchanged (they work under Bun).
+
+**Known follow-up:** the snapshot-restore path (the remaining `putArchive` in
+`docker-sandbox.ts`) has the *same* latent 501 under Bun and needs the same CLI
+treatment (or `docker cp`) before object-store snapshots are relied on in prod —
+out of scope for STORY-26 (file save).
