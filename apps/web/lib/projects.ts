@@ -2,10 +2,16 @@
 // gives each user an implicit "Personal" team on first project. Full team
 // management is a later epic.
 
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 import { projects, teamMemberships, teams } from '@praxis/db';
 import { db } from '@praxis/db/client';
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  createdAt: Date | null;
+}
 
 /** Return the user's first team, creating a personal team + membership if none. */
 export async function ensurePersonalTeam(userId: string): Promise<string> {
@@ -33,4 +39,23 @@ export async function userOwnsProject(userId: string, projectId: string): Promis
     .where(and(eq(projects.id, projectId), eq(teamMemberships.userId, userId)))
     .limit(1);
   return Boolean(row);
+}
+
+/** All projects in the user's team(s), newest first. */
+export async function listUserProjects(userId: string): Promise<ProjectSummary[]> {
+  return db
+    .select({ id: projects.id, name: projects.name, createdAt: projects.createdAt })
+    .from(projects)
+    .innerJoin(teamMemberships, eq(teamMemberships.teamId, projects.teamId))
+    .where(eq(teamMemberships.userId, userId))
+    .orderBy(desc(projects.createdAt));
+}
+
+/** Delete a project the user owns (cascades its sessions). Returns false when the
+ *  project doesn't exist or isn't theirs. Sandbox teardown is handled by the
+ *  caller via the orchestrator — this only removes the DB rows. */
+export async function deleteProject(userId: string, projectId: string): Promise<boolean> {
+  if (!(await userOwnsProject(userId, projectId))) return false;
+  await db.delete(projects).where(eq(projects.id, projectId));
+  return true;
 }
