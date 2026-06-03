@@ -13,6 +13,8 @@ import type { ChatAuthor } from '@/components/workspace/chat-message';
 import { ChatPanel } from '@/components/workspace/chat-panel';
 import { CodeEditor } from '@/components/workspace/code-editor';
 import { FileTree } from '@/components/workspace/file-tree';
+import { PreviewPane } from '@/components/workspace/preview-pane';
+import { cn } from '@/lib/utils';
 import { WorkspaceFilesProvider } from '@/components/workspace/workspace-files';
 import { WorkspaceSocketProvider } from '@/components/workspace/workspace-socket';
 
@@ -117,13 +119,49 @@ function FilesPane() {
 }
 
 function EditorPane() {
+  const [tab, setTab] = useState<'editor' | 'preview'>('editor');
   return (
     <>
-      <PaneHeader>Editor</PaneHeader>
-      <div className="min-h-0 flex-1">
+      <div className="flex items-center gap-1 border-b px-2 py-1">
+        <PaneTab active={tab === 'editor'} onClick={() => setTab('editor')}>
+          Editor
+        </PaneTab>
+        <PaneTab active={tab === 'preview'} onClick={() => setTab('preview')}>
+          Preview
+        </PaneTab>
+      </div>
+      {/* Keep both mounted (hide the inactive one) so the preview's running app
+          isn't reloaded on every tab switch. */}
+      <div className={cn('min-h-0 flex-1', tab !== 'editor' && 'hidden')}>
         <CodeEditor />
       </div>
+      <div className={cn('min-h-0 flex-1', tab !== 'preview' && 'hidden')}>
+        <PreviewPane />
+      </div>
     </>
+  );
+}
+
+function PaneTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'rounded px-2 py-1 text-xs font-medium uppercase tracking-wide',
+        active ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent',
+      )}
+    >
+      {children}
+    </button>
   );
 }
 
