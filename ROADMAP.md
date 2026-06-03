@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 11 / 25 (44%)
+- **Features verified:** 12 / 25 (48%)
 - **Total tasks:** 68
-- **Done:** 37 (54%)
-- **Ready:** 31
+- **Done:** 38 (56%)
+- **Ready:** 30
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -430,7 +430,7 @@ chat/prompt, real-time sync between two users with presence, cursors,
 and file-level locks, a prompt queue with attribution, and preview
 URLs surfaced through a wildcard Caddy domain.
 
-- **STORY-10** — Three-panel workspace shell
+- **STORY-10** — Three-panel workspace shell  [:white_check_mark: verified]
   > The IDE-like layout users live in. Left: file tree from the
   > sandbox over WebSocket. Centre: Monaco loading whichever file
   > is clicked. Right: chat/prompt panel from STORY-09 expanded
@@ -460,7 +460,7 @@ URLs surfaced through a wildcard Caddy domain.
     > sends edit message → orchestrator writeFile → sandbox.
     _Task AC:_
     - Edit-save-refresh cycle preserves content.
-  - :black_circle: **TASK-032** :checkered_flag: — Chat panel: typed message kinds + per-user attribution UI  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-032** :checkered_flag: — Chat panel: typed message kinds + per-user attribution UI  `high` `small` _(apps/web)_  
     _depends on: TASK-030_
     > Render agent_event messages with kinds: text_chunk, tool_call,
     > file_change_notice, error. Each message shows the prompting

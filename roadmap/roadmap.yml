@@ -707,6 +707,8 @@ epics:
           sandbox over WebSocket. Centre: Monaco loading whichever file
           is clicked. Right: chat/prompt panel from STORY-09 expanded
           with attribution and message types.
+        verified_at: '2026-06-03T11:04:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Opening a project renders all three panels; the file tree mirrors the sandbox; clicking a file loads it in Monaco within 500ms."
           - "Edits in Monaco persist to the sandbox over the WebSocket and reload correctly after a page refresh."
@@ -751,7 +753,7 @@ epics:
               - "Edit-save-refresh cycle preserves content."
           - id: TASK-032
             title: "Chat panel: typed message kinds + per-user attribution UI"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -761,6 +763,7 @@ epics:
               user's avatar+name. Prompt input shows the current user.
             depends_on: [TASK-030]
             attempt_count: 0
+            completed: '2026-06-03T11:04:00Z'
             is_terminal: true
             task_acceptance:
               - "Snapshot test of the chat panel rendering each message kind."
