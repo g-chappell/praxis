@@ -52,9 +52,8 @@ sessionsRoute.post('/', async (c) => {
   const handle = await getSandbox().start(projectId, project.templateId);
 
   // Register the preview: map the project's slug → the sandbox's dev-server port
-  // so Caddy's wildcard proxies <projectId>.preview.<domain> here (STORY-13). The
-  // dev server itself is auto-started separately (PR2); the URL 502s until it's up.
-  const { previewPort } = readTemplateConfig(project.templateId);
+  // so Caddy's wildcard proxies <projectId>.preview.<domain> here (STORY-13).
+  const { previewPort, setup, dev } = readTemplateConfig(project.templateId);
   let previewUrl: string | null = null;
   try {
     const addr = await getSandbox().exposePort(handle, previewPort); // http://<ip>:<port>
@@ -65,6 +64,23 @@ sessionsRoute.post('/', async (c) => {
       { projectId, err: err instanceof Error ? err.message : String(err) },
       'preview.register_failed',
     );
+  }
+
+  // Auto-start the template's dev server so the preview actually serves the app
+  // (TASK-041). Fire-and-forget: npm install can take a minute, during which the
+  // preview 502s ("starting…"). node_modules persists on the volume, so resumes
+  // are fast. Templates with no dev command (e.g. blank) skip this.
+  if (dev) {
+    const cmd = setup ? `${setup} && ${dev}` : dev;
+    getSandbox()
+      .spawn(handle, cmd)
+      .then((p) => logger.info({ projectId, pid: p.pid }, 'preview.dev_server_started'))
+      .catch((err) =>
+        logger.warn(
+          { projectId, err: err instanceof Error ? err.message : String(err) },
+          'preview.dev_server_failed',
+        ),
+      );
   }
 
   const [session] = await db

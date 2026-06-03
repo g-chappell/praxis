@@ -1035,7 +1035,7 @@ epics:
               - "Schema validation for template.json passes against the (yet-to-be-written) validator."
           - id: TASK-041
             title: "End-to-end: create project from template, see preview URL render"
-            status: blocked
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator", "apps/web"]
@@ -1045,6 +1045,7 @@ epics:
               5173, returns the preview URL. UI shows preview iframe.
             depends_on: [TASK-040, TASK-038, TASK-029]
             attempt_count: 0
+            completed: '2026-06-03T18:51:00Z'
             is_terminal: true
             blocked_reason: |
               Blocked on STORY-13 (Preview URL via Caddy wildcard) — the preview

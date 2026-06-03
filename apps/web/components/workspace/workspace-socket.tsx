@@ -31,6 +31,8 @@ interface WorkspaceSocket {
   send: (msg: Record<string, unknown>) => boolean;
   /** Subscribe to inbound frames. Returns an unsubscribe fn. */
   subscribe: (fn: (frame: ServerFrame) => void) => () => void;
+  /** The project's preview URL (the sandbox dev server), or null until minted. */
+  previewUrl: string | null;
 }
 
 const WorkspaceSocketContext = createContext<WorkspaceSocket | null>(null);
@@ -53,6 +55,7 @@ export function WorkspaceSocketProvider({
   children: ReactNode;
 }) {
   const [status, setStatus] = useState<WorkspaceStatus>('idle');
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const subscribers = useRef(new Set<(frame: ServerFrame) => void>());
 
@@ -86,7 +89,16 @@ export function WorkspaceSocketProvider({
       }
       // wsUrl is resolved server-side at runtime (not a NEXT_PUBLIC_* build
       // inline) so it's configurable without rebuilding the web image.
-      const { ticket, wsUrl } = (await res.json()) as { ticket: string; wsUrl?: string };
+      const {
+        ticket,
+        wsUrl,
+        previewUrl: pv,
+      } = (await res.json()) as {
+        ticket: string;
+        wsUrl?: string;
+        previewUrl?: string | null;
+      };
+      setPreviewUrl(pv ?? null);
       if (!wsUrl) {
         setStatus('error');
         return;
@@ -130,7 +142,7 @@ export function WorkspaceSocketProvider({
   }, [projectId]);
 
   return (
-    <WorkspaceSocketContext.Provider value={{ status, start, close, send, subscribe }}>
+    <WorkspaceSocketContext.Provider value={{ status, start, close, send, subscribe, previewUrl }}>
       {children}
     </WorkspaceSocketContext.Provider>
   );

@@ -10,10 +10,10 @@ _Created: 2026-05-31_
 
 - **Features verified:** 15 / 28 (54%)
 - **Total tasks:** 77
-- **Done:** 51 (66%)
+- **Done:** 52 (68%)
 - **Ready:** 25
 - **In progress:** 0
-- **Blocked:** 1
+- **Blocked:** 0
 
 ---
 
@@ -637,13 +637,7 @@ that closes the POC.
     > enables image-gen. sandbox.json sets base image and port 5173.
     _Task AC:_
     - Schema validation for template.json passes against the (yet-to-be-written) validator.
-  - :no_entry: **TASK-041** :checkered_flag: — End-to-end: create project from template, see preview URL render  `high` `medium` _(services/orchestrator, apps/web)_  
-    _blocked: Blocked on STORY-13 (Preview URL via Caddy wildcard) — the preview
-infra isn't built: no *.preview Caddy routes and nothing surfaces a
-preview URL. The 3js scaffold (TASK-039) + metadata (TASK-040) are
-done and build/seed; this end-to-end "preview renders the cube" step
-needs the preview URL plumbing first.
-_  
+  - :white_check_mark: **TASK-041** :checkered_flag: — End-to-end: create project from template, see preview URL render  `high` `medium` _(services/orchestrator, apps/web)_  
     _depends on: TASK-040, TASK-038, TASK-029_
     > POST /projects with template_id=react-threejs-scene copies
     > scaffold into the sandbox, runs `npm install`, exposes port
