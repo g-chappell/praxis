@@ -1741,6 +1741,8 @@ epics:
           Add a project list (open) and a delete that leaves no stale artifacts
           (row + sessions + sandbox container/volume) while logging the
           destructive action for traceability.
+        verified_at: '2026-06-03T15:42:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "The dashboard lists the signed-in user's projects, newest first, each opening its workspace."
           - "Deleting a project (with confirmation) removes the project row, its sessions, AND its sandbox container + named volume — no stale artifacts — and the deletion is logged (who/what/when) for traceability."
@@ -1756,7 +1758,7 @@ epics:
         tasks:
           - id: TASK-074
             title: "lib + API: list + delete projects (ownership-checked)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -1768,11 +1770,12 @@ epics:
               logs the deletion for traceability.
             depends_on: [TASK-075]
             attempt_count: 0
+            completed: '2026-06-03T15:42:00Z'
             task_acceptance:
               - "GET returns only the caller's projects; DELETE is ownership-checked, removes row + sessions, triggers sandbox destroy, and logs the action; covered by tests."
           - id: TASK-075
             title: "Orchestrator + Sandbox: destroy a project's sandbox (container + volume) (+ ADR)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator", "packages/sandbox"]
@@ -1783,11 +1786,12 @@ epics:
               the Sandbox-interface addition. Log the destructive action.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-03T15:42:00Z'
             task_acceptance:
               - "Destroying a project removes its container + named volume (and snapshot); Docker-gated integration test confirms no artifacts remain; action is logged."
           - id: TASK-076
             title: "Dashboard UI: project list with open + delete + empty state"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -1797,6 +1801,7 @@ epics:
               confirm step; an empty state when there are none.
             depends_on: [TASK-074]
             attempt_count: 0
+            completed: '2026-06-03T15:42:00Z'
             is_terminal: true
             task_acceptance:
               - "Dashboard lists projects (open), supports delete-with-confirm, and shows an empty state; verified in a browser drive."
