@@ -31,6 +31,7 @@ describe('@praxis/sandbox interface', () => {
       watchFiles: (): Unsubscribe => () => {},
       exposePort: async () => 'https://preview.example',
       stop: async () => {},
+      destroy: async () => {},
     };
 
     expect(typeof noop.start).toBe('function');

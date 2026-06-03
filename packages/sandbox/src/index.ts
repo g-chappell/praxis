@@ -70,6 +70,11 @@ export interface Sandbox {
   watchFiles(handle: SandboxHandle, cb: (event: FileEvent) => void): Unsubscribe;
   exposePort(handle: SandboxHandle, port: number): Promise<string>;
   stop(handle: SandboxHandle): Promise<void>;
+  /** Permanently remove a project's sandbox — container, named volume, and any
+   *  durable snapshot. Idempotent: a no-op when nothing exists. Used when a
+   *  project is deleted (leaves no stale artifacts). Takes a projectId because
+   *  the project may not be currently running. */
+  destroy(projectId: string): Promise<void>;
 }
 
 export { DockerSandbox, type DockerSandboxConfig } from './docker-sandbox.js';

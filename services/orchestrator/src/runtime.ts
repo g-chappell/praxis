@@ -70,6 +70,17 @@ export function deleteRoom(sessionId: string): void {
   rooms.delete(sessionId);
 }
 
+/** Tear down any in-memory rooms for a project (used when it's deleted): stop
+ *  each room's file watcher and drop it. The sandbox itself is destroyed
+ *  separately by the caller. */
+export function purgeProjectRooms(projectId: string): void {
+  for (const [sessionId, room] of rooms) {
+    if (room.projectId !== projectId) continue;
+    room.unwatchFiles?.();
+    rooms.delete(sessionId);
+  }
+}
+
 // ─── one-time WS tickets ──────────────────────────────────────────────
 interface Ticket {
   sessionId: string;

@@ -14,6 +14,8 @@ export interface ObjectStore {
   getSnapshot(projectId: string): Promise<Readable | null>;
   /** Whether a snapshot exists for the project. */
   hasSnapshot(projectId: string): Promise<boolean>;
+  /** Remove a project's snapshot (no-op when none exists). */
+  deleteSnapshot(projectId: string): Promise<void>;
 }
 
 function snapshotKey(projectId: string): string {
@@ -42,6 +44,10 @@ export class InMemoryObjectStore implements ObjectStore {
 
   async hasSnapshot(projectId: string): Promise<boolean> {
     return this.snapshots.has(projectId);
+  }
+
+  async deleteSnapshot(projectId: string): Promise<void> {
+    this.snapshots.delete(projectId);
   }
 }
 
@@ -118,6 +124,14 @@ export class MinioObjectStore implements ObjectStore {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  async deleteSnapshot(projectId: string): Promise<void> {
+    try {
+      await this.client.removeObject(this.bucket, snapshotKey(projectId));
+    } catch {
+      // No snapshot / bucket — nothing to remove.
     }
   }
 }
