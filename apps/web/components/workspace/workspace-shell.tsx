@@ -9,6 +9,7 @@ import {
   useDefaultLayout,
 } from 'react-resizable-panels';
 
+import type { ChatAuthor } from '@/components/workspace/chat-message';
 import { ChatPanel } from '@/components/workspace/chat-panel';
 import { CodeEditor } from '@/components/workspace/code-editor';
 import { FileTree } from '@/components/workspace/file-tree';
@@ -29,17 +30,23 @@ const PANEL_IDS = ['files', 'editor', 'chat'];
 const layoutStorage: LayoutStorage =
   typeof window === 'undefined' ? { getItem: () => null, setItem: () => {} } : window.localStorage;
 
-export function WorkspaceShell({ projectId }: { projectId: string }) {
+export function WorkspaceShell({
+  projectId,
+  currentUser,
+}: {
+  projectId: string;
+  currentUser: ChatAuthor;
+}) {
   return (
     <WorkspaceSocketProvider projectId={projectId}>
       <WorkspaceFilesProvider>
-        <ResizablePanels />
+        <ResizablePanels currentUser={currentUser} />
       </WorkspaceFilesProvider>
     </WorkspaceSocketProvider>
   );
 }
 
-function ResizablePanels() {
+function ResizablePanels({ currentUser }: { currentUser: ChatAuthor }) {
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: 'praxis-workspace-panels',
     panelIds: PANEL_IDS,
@@ -66,7 +73,7 @@ function ResizablePanels() {
         </div>
         <div className="w-1 bg-border" />
         <div className="flex min-w-0 basis-[28%] flex-col">
-          <ChatPane />
+          <ChatPane currentUser={currentUser} />
         </div>
       </div>
     );
@@ -92,7 +99,7 @@ function ResizablePanels() {
       <ResizeHandle />
 
       <Panel id="chat" defaultSize="28%" minSize="20%" className="flex min-w-0 flex-col">
-        <ChatPane />
+        <ChatPane currentUser={currentUser} />
       </Panel>
     </Group>
   );
@@ -120,12 +127,12 @@ function EditorPane() {
   );
 }
 
-function ChatPane() {
+function ChatPane({ currentUser }: { currentUser: ChatAuthor }) {
   return (
     <>
       <PaneHeader>Chat</PaneHeader>
       <div className="min-h-0 flex-1 p-4">
-        <ChatPanel />
+        <ChatPanel currentUser={currentUser} />
       </div>
     </>
   );

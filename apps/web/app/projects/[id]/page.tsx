@@ -23,11 +23,18 @@ export default async function ProjectWorkspacePage({ params }: { params: { id: s
     redirect('/dashboard');
   }
 
+  const currentUser = {
+    // `||` (not `??`): a user with no display name has name = '' (empty), which
+    // should still fall back to the email.
+    name: session.user.name || session.user.email,
+    image: session.user.image ?? null,
+  };
+
   return (
     <div className="flex h-screen flex-col">
       <AppNav />
       <main className="min-h-0 flex-1">
-        <WorkspaceShell projectId={params.id} />
+        <WorkspaceShell projectId={params.id} currentUser={currentUser} />
       </main>
     </div>
   );
