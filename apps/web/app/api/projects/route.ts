@@ -1,18 +1,17 @@
 // /api/projects — list (GET) and create (POST) the signed-in user's projects.
 
 import { headers } from 'next/headers';
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 import { projects } from '@praxis/db';
 import { db } from '@praxis/db/client';
 
 import { getAuth } from '@/lib/auth';
 import { ensurePersonalTeam, listUserProjects } from '@/lib/projects';
+import { DEFAULT_TEMPLATE_ID, isTemplateId } from '@/lib/templates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const TEMPLATE_ID = 'react-threejs-scene';
 
 export async function GET() {
   const session = await getAuth().api.getSession({ headers: await headers() });
@@ -22,21 +21,28 @@ export async function GET() {
   return NextResponse.json({ projects: await listUserProjects(session.user.id) });
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session?.user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
+  const body = (await req.json().catch(() => null)) as {
+    name?: unknown;
+    templateId?: unknown;
+  } | null;
+  const name =
+    typeof body?.name === 'string' && body.name.trim() ? body.name.trim() : 'Untitled project';
+  const templateId = isTemplateId(body?.templateId) ? body.templateId : DEFAULT_TEMPLATE_ID;
+  // Reject an explicit-but-unknown templateId rather than silently defaulting.
+  if (body?.templateId !== undefined && !isTemplateId(body.templateId)) {
+    return NextResponse.json({ error: 'unknown_template' }, { status: 400 });
+  }
+
   const teamId = await ensurePersonalTeam(session.user.id);
   const [project] = await db
     .insert(projects)
-    .values({
-      teamId,
-      name: 'Untitled project',
-      templateId: TEMPLATE_ID,
-      createdBy: session.user.id,
-    })
+    .values({ teamId, name, templateId, createdBy: session.user.id })
     .returning({ id: projects.id });
 
   return NextResponse.json({ id: project!.id });
