@@ -403,6 +403,26 @@ export class DockerSandbox implements Sandbox {
     this.activity.delete(handle.projectId);
   }
 
+  /** Permanently remove a project's sandbox: container, named volume, and any
+   *  durable snapshot. Idempotent — tolerates each artifact already being gone. */
+  async destroy(projectId: string): Promise<void> {
+    const container = await this.findByName(`praxis-sandbox-${projectId}`);
+    if (container) {
+      try {
+        await container.remove({ force: true, v: false });
+      } catch (err) {
+        if (!isAlreadyGone(err)) throw err;
+      }
+    }
+    try {
+      await this.docker.getVolume(`praxis-project-${projectId}`).remove({ force: true });
+    } catch (err) {
+      if (!isAlreadyGone(err)) throw err;
+    }
+    if (this.store) await this.store.deleteSnapshot(projectId);
+    this.activity.delete(projectId);
+  }
+
   /** Tar /workspace out of the container and PUT it to the object store. */
   private async snapshot(handle: SandboxHandle, container: Docker.Container): Promise<void> {
     if (!this.store) return;

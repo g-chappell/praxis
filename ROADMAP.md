@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 13 / 29 (45%)
+- **Features verified:** 14 / 29 (48%)
 - **Total tasks:** 77
-- **Done:** 41 (53%)
-- **Ready:** 36
+- **Done:** 44 (57%)
+- **Ready:** 33
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1075,7 +1075,7 @@ traceability throughout so future bugs are diagnosable.
     - Starting a fresh project seeds the template files into /workspace as the initial git commit (Docker-gated integration test).
     - STORY-27 acceptance_criteria satisfied.
 
-- **STORY-28** — Dashboard project list: open & delete
+- **STORY-28** — Dashboard project list: open & delete  [:white_check_mark: verified]
   > The dashboard renders only a 'New project' button — there is no list
   > query, no GET /api/projects, and no DELETE, so a user cannot return to
   > or remove a project. Projects are owned via the user's personal team.
@@ -1094,7 +1094,7 @@ traceability throughout so future bugs are diagnosable.
   **Out of scope:**
   - Sharing / teams management UI.
   - Rename from the list (possible follow-up).
-  - :black_circle: **TASK-074** — lib + API: list + delete projects (ownership-checked)  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-074** — lib + API: list + delete projects (ownership-checked)  `high` `medium` _(apps/web)_  
     _depends on: TASK-075_
     > Add listUserProjects(userId) and deleteProject(userId, projectId)
     > to lib/projects.ts (team-membership ownership). Add GET /api/projects
@@ -1103,14 +1103,14 @@ traceability throughout so future bugs are diagnosable.
     > logs the deletion for traceability.
     _Task AC:_
     - GET returns only the caller's projects; DELETE is ownership-checked, removes row + sessions, triggers sandbox destroy, and logs the action; covered by tests.
-  - :black_circle: **TASK-075** — Orchestrator + Sandbox: destroy a project's sandbox (container + volume) (+ ADR)  `high` `medium` _(services/orchestrator, packages/sandbox)_
+  - :white_check_mark: **TASK-075** — Orchestrator + Sandbox: destroy a project's sandbox (container + volume) (+ ADR)  `high` `medium` _(services/orchestrator, packages/sandbox)_
     > Add a Sandbox method + orchestrator endpoint to fully remove a
     > project's sandbox: stop/remove the container and delete the named
     > volume praxis-project-<id> (and any object-store snapshot). ADR for
     > the Sandbox-interface addition. Log the destructive action.
     _Task AC:_
     - Destroying a project removes its container + named volume (and snapshot); Docker-gated integration test confirms no artifacts remain; action is logged.
-  - :black_circle: **TASK-076** :checkered_flag: — Dashboard UI: project list with open + delete + empty state  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-076** :checkered_flag: — Dashboard UI: project list with open + delete + empty state  `high` `medium` _(apps/web)_  
     _depends on: TASK-074_
     > Render the user's projects on the dashboard (name + created date,
     > newest first), each opening its workspace; a delete action with a

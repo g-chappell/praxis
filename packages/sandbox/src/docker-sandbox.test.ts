@@ -197,4 +197,29 @@ describeDocker('DockerSandbox (real Docker)', () => {
     },
     T,
   );
+
+  it(
+    'destroy removes the container and named volume (no stale artifacts)',
+    async () => {
+      const pid = `test-${randomBytes(6).toString('hex')}`;
+      const h = await sandbox.start(pid, 'react-threejs-scene');
+      await sandbox.writeFile(h, 'gone.txt', 'bye');
+
+      await sandbox.destroy(pid);
+
+      // Container is gone.
+      const containers = await docker.listContainers({
+        all: true,
+        filters: { name: [`praxis-sandbox-${pid}`] },
+      });
+      expect(containers.length).toBe(0);
+      // Volume is gone.
+      await expect(docker.getVolume(`praxis-project-${pid}`).inspect()).rejects.toMatchObject({
+        statusCode: 404,
+      });
+      // Idempotent — a second destroy is a no-op.
+      await expect(sandbox.destroy(pid)).resolves.toBeUndefined();
+    },
+    T,
+  );
 });
