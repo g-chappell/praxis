@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { AppNav } from '@/components/app-nav';
+import { CreateProjectForm } from '@/components/create-project-form';
 import { DeleteProjectButton } from '@/components/delete-project-button';
-import { NewProjectButton } from '@/components/new-project-button';
 import { getAuth } from '@/lib/auth';
 import { listUserProjects } from '@/lib/projects';
 
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
             <h1 className="text-2xl font-semibold tracking-tight">Your projects</h1>
             <p className="text-sm text-muted-foreground">Open one to resume, or start a new one.</p>
           </div>
-          <NewProjectButton />
+          <CreateProjectForm />
         </div>
 
         {projects.length === 0 ? (

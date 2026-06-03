@@ -4,6 +4,8 @@
 
 import { type ChildProcessWithoutNullStreams, spawn as spawnProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { existsSync, statSync } from 'node:fs';
+import { join as pathJoin } from 'node:path';
 import * as posix from 'node:path/posix';
 import { PassThrough, Readable } from 'node:stream';
 
@@ -44,6 +46,10 @@ export interface DockerSandboxConfig {
   /** Durable snapshot store. When set, stop() snapshots /workspace and start()
    *  restores it into a fresh volume. Omit to disable persistence. */
   store?: ObjectStore;
+  /** Local directory holding template sources (`<templatesDir>/<templateId>/…`).
+   *  When set, start() seeds a fresh workspace from the chosen template. Omit to
+   *  disable seeding (fresh workspaces stay empty). */
+  templatesDir?: string;
   /** Override the dockerode instance (tests/alt sockets). */
   docker?: Docker;
 }
@@ -104,6 +110,25 @@ function execCapture(
   });
 }
 
+/** `docker cp <src> <dest>` (CLI — Bun-safe, unlike dockerode putArchive). */
+function dockerCp(src: string, dest: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawnProcess(DOCKER_CLI, ['cp', src, dest], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    const err: Buffer[] = [];
+    proc.stderr.on('data', (d: Buffer) => err.push(d));
+    proc.on('error', reject);
+    proc.on('close', (code) =>
+      code === 0
+        ? resolve()
+        : reject(
+            new Error(`docker cp failed (exit ${code}): ${Buffer.concat(err).toString('utf8')}`),
+          ),
+    );
+  });
+}
+
 /** Pipe `input` to a `docker exec -i` command's stdin and await its exit. Used
  *  to write files via the CLI: dockerode's putArchive sends a chunked request
  *  body the daemon rejects under Bun with `501 Unsupported transfer encoding`,
@@ -136,6 +161,7 @@ export class DockerSandbox implements Sandbox {
   private readonly network?: string;
   private readonly diskLimit?: string;
   private readonly store?: ObjectStore;
+  private readonly templatesDir?: string;
   /** Last exec/spawn activity per projectId, for idle detection. */
   private readonly activity = new Map<string, number>();
 
@@ -145,6 +171,7 @@ export class DockerSandbox implements Sandbox {
     this.network = config.network;
     this.diskLimit = config.diskLimit;
     this.store = config.store;
+    this.templatesDir = config.templatesDir;
   }
 
   private container(handle: SandboxHandle): Docker.Container {
@@ -202,16 +229,40 @@ export class DockerSandbox implements Sandbox {
 
     // Restore from the durable snapshot when the volume is fresh (first run, or
     // the local volume was reclaimed). A populated volume is left untouched.
+    let restored = false;
     if (this.store && (await this.isWorkspaceEmpty(handle.containerId))) {
-      await this.restore(handle, container);
+      restored = await this.restore(handle, container);
     }
-    // Initialise git in the project dir if still fresh after any restore.
+    // Fresh project, nothing restored → seed the chosen template (initial commit).
+    if (!restored && (await this.isWorkspaceEmpty(handle.containerId))) {
+      await this.seedTemplate(handle.containerId, templateId);
+    }
+    // Initialise git in the project dir if still fresh (no template seeded).
     await this.execSimple(handle.containerId, [
       'bash',
       '-lc',
       'cd /workspace && [ -d .git ] || git init -q',
     ]);
     return handle;
+  }
+
+  /** Copy templatesDir/<templateId> into a fresh /workspace and make it the
+   *  initial git commit. No-op when no templatesDir is configured or the
+   *  template doesn't exist on disk (unknown id → an empty workspace, as before).
+   *  Uses `docker cp` (the CLI is Bun-safe; dockerode putArchive 501s under Bun —
+   *  see ADR-0010/0014). */
+  private async seedTemplate(containerId: string, templateId: string): Promise<void> {
+    if (!this.templatesDir) return;
+    const src = pathJoin(this.templatesDir, templateId);
+    if (!existsSync(src) || !statSync(src).isDirectory()) return;
+    await dockerCp(`${src}/.`, `${containerId}:${WORKDIR}/`);
+    await execCapture(containerId, [
+      'bash',
+      '-lc',
+      `cd ${WORKDIR} && git init -q && git add -A && ` +
+        `git -c user.email=agent@praxis.local -c user.name=Praxis ` +
+        `commit -q -m "Seed ${templateId} template"`,
+    ]);
   }
 
   private async isWorkspaceEmpty(containerId: string): Promise<boolean> {

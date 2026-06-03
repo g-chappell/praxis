@@ -21,7 +21,13 @@ let _sandbox: DockerSandbox | undefined;
 export function getSandbox(): DockerSandbox {
   if (!_sandbox) {
     const store = MinioObjectStore.fromEnv() ?? undefined;
-    _sandbox = new DockerSandbox({ store, network: process.env.PRAXIS_NETWORK });
+    _sandbox = new DockerSandbox({
+      store,
+      network: process.env.PRAXIS_NETWORK,
+      // Templates ship in the orchestrator image at /app/templates (Dockerfile
+      // COPY templates/). Dev sets PRAXIS_TEMPLATES_DIR to the repo templates/.
+      templatesDir: process.env.PRAXIS_TEMPLATES_DIR ?? '/app/templates',
+    });
   }
   return _sandbox;
 }
