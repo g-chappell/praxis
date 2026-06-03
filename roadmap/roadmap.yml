@@ -721,7 +721,7 @@ epics:
         tasks:
           - id: TASK-030
             title: "Workspace layout components + resizable panels"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -730,6 +730,7 @@ epics:
               layout. Persists pane sizes per-user in localStorage.
             depends_on: [TASK-028]
             attempt_count: 0
+            completed: '2026-06-03T09:18:00Z'
             task_acceptance:
               - "Resizing a pane survives a page refresh."
           - id: TASK-031

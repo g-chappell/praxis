@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 11 / 25 (44%)
 - **Total tasks:** 68
-- **Done:** 35 (51%)
-- **Ready:** 33
+- **Done:** 36 (53%)
+- **Ready:** 32
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -446,7 +446,7 @@ URLs surfaced through a wildcard Caddy domain.
   **Out of scope:**
   - Yjs co-editing (post-POC).
   - Multi-cursor presence (STORY-11).
-  - :black_circle: **TASK-030** — Workspace layout components + resizable panels  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-030** — Workspace layout components + resizable panels  `high` `medium` _(apps/web)_  
     _depends on: TASK-028_
     > apps/web/components/Workspace with a 3-pane react-resizable-panels
     > layout. Persists pane sizes per-user in localStorage.
