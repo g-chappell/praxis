@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 15 / 28 (54%)
 - **Total tasks:** 77
-- **Done:** 49 (64%)
-- **Ready:** 27
+- **Done:** 51 (66%)
+- **Ready:** 25
 - **In progress:** 0
 - **Blocked:** 1
 
@@ -547,14 +547,14 @@ URLs surfaced through a wildcard Caddy domain.
   **Out of scope:**
   - Persistent preview URLs across sessions (Plus tier, productisation).
   - Custom user domains.
-  - :black_circle: **TASK-037** — Caddy on-demand TLS for *.preview.<domain>  `high` `medium` _(infrastructure/caddy)_  
+  - :white_check_mark: **TASK-037** — Caddy on-demand TLS for *.preview.<domain>  `high` `medium` _(infrastructure/caddy)_  
     _depends on: TASK-007, TASK-027_
     > Wildcard Caddy block with on_demand TLS and an ask endpoint
     > that the orchestrator answers (returns 200 iff the subdomain
     > maps to a live sandbox).
     _Task AC:_
     - Caddy validates and obtains a wildcard cert for the placeholder domain.
-  - :black_circle: **TASK-038** :checkered_flag: — Sandbox.exposePort → Caddy upstream registration  `high` `medium` _(packages/sandbox, services/orchestrator)_  
+  - :white_check_mark: **TASK-038** :checkered_flag: — Sandbox.exposePort → Caddy upstream registration  `high` `medium` _(packages/sandbox, services/orchestrator)_  
     _depends on: TASK-037, TASK-022_
     > exposePort returns the URL after writing a mapping in an
     > orchestrator-local store. /caddy/ask reads the store. On

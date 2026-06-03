@@ -62,6 +62,10 @@ export async function POST(req: NextRequest) {
   if (!res || !res.ok) {
     return NextResponse.json({ error: 'session_start_failed' }, { status: 502 });
   }
-  const { sessionId, ticket } = (await res.json()) as { sessionId: string; ticket: string };
-  return NextResponse.json({ sessionId, ticket, wsUrl });
+  const { sessionId, ticket, previewUrl } = (await res.json()) as {
+    sessionId: string;
+    ticket: string;
+    previewUrl?: string | null;
+  };
+  return NextResponse.json({ sessionId, ticket, wsUrl, previewUrl: previewUrl ?? null });
 }

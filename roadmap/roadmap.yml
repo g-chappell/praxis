@@ -889,7 +889,7 @@ epics:
         tasks:
           - id: TASK-037
             title: "Caddy on-demand TLS for *.preview.<domain>"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["infrastructure/caddy"]
@@ -899,11 +899,12 @@ epics:
               maps to a live sandbox).
             depends_on: [TASK-007, TASK-027]
             attempt_count: 0
+            completed: '2026-06-03T18:41:00Z'
             task_acceptance:
               - "Caddy validates and obtains a wildcard cert for the placeholder domain."
           - id: TASK-038
             title: "Sandbox.exposePort → Caddy upstream registration"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/sandbox", "services/orchestrator"]
@@ -914,6 +915,7 @@ epics:
               dropped from the ask endpoint).
             depends_on: [TASK-037, TASK-022]
             attempt_count: 0
+            completed: '2026-06-03T18:41:00Z'
             is_terminal: true
             task_acceptance:
               - "Integration test: expose port serving 'hello', curl URL returns 'hello'; stop, curl returns 5xx."
