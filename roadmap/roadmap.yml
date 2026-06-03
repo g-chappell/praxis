@@ -1002,7 +1002,7 @@ epics:
         tasks:
           - id: TASK-039
             title: "Scaffold templates/react-threejs-scene/"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["templates/react-threejs-scene"]
@@ -1012,11 +1012,12 @@ epics:
               skybox slot ready for an image-gen texture.
             depends_on: [TASK-001]
             attempt_count: 0
+            completed: '2026-06-03T16:54:00Z'
             task_acceptance:
               - "Local `npm run dev` renders the starter cube on http://localhost:5173."
           - id: TASK-040
             title: "template.json + AGENTS.md + mcp-servers.json + sandbox.json"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["templates/react-threejs-scene"]
@@ -1027,11 +1028,12 @@ epics:
               enables image-gen. sandbox.json sets base image and port 5173.
             depends_on: [TASK-039]
             attempt_count: 0
+            completed: '2026-06-03T16:54:00Z'
             task_acceptance:
               - "Schema validation for template.json passes against the (yet-to-be-written) validator."
           - id: TASK-041
             title: "End-to-end: create project from template, see preview URL render"
-            status: ready
+            status: blocked
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator", "apps/web"]
@@ -1042,6 +1044,12 @@ epics:
             depends_on: [TASK-040, TASK-038, TASK-029]
             attempt_count: 0
             is_terminal: true
+            blocked_reason: |
+              Blocked on STORY-13 (Preview URL via Caddy wildcard) — the preview
+              infra isn't built: no *.preview Caddy routes and nothing surfaces a
+              preview URL. The 3js scaffold (TASK-039) + metadata (TASK-040) are
+              done and build/seed; this end-to-end "preview renders the cube" step
+              needs the preview URL plumbing first.
             task_acceptance:
               - "End-to-end Playwright test creates a project and asserts the preview iframe renders the cube."
               - "STORY-14 acceptance_criteria satisfied."
