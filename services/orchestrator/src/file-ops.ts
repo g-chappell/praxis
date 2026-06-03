@@ -36,7 +36,10 @@ export async function handleFileList(
       .filter((s) => s.length > 0);
     send({ type: 'file_tree', paths });
   } catch (err) {
-    logger.error({ err: err instanceof Error ? err.message : String(err) }, 'file_ops.list_failed');
+    logger.error(
+      { err: err instanceof Error ? err.message : String(err), projectId: handle.projectId },
+      'file_ops.list_failed',
+    );
     send({ type: 'error', reason: 'file_list_failed' });
   }
 }
@@ -56,7 +59,11 @@ export async function handleFileRead(
   try {
     const content = await sandbox.readFile(handle, path);
     send({ type: 'file_contents', path, content });
-  } catch {
+  } catch (err) {
+    logger.error(
+      { err: err instanceof Error ? err.message : String(err), projectId: handle.projectId, path },
+      'file_ops.read_failed',
+    );
     send({ type: 'error', reason: 'read_failed', path });
   }
 }
@@ -82,7 +89,11 @@ export async function handleFileSave(
   try {
     await sandbox.writeFile(handle, path, content);
     send({ type: 'file_saved', path });
-  } catch {
+  } catch (err) {
+    logger.error(
+      { err: err instanceof Error ? err.message : String(err), projectId: handle.projectId, path },
+      'file_ops.save_failed',
+    );
     send({ type: 'error', reason: 'save_failed', path });
   }
 }

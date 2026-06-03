@@ -104,6 +104,32 @@ function execCapture(
   });
 }
 
+/** Pipe `input` to a `docker exec -i` command's stdin and await its exit. Used
+ *  to write files via the CLI: dockerode's putArchive sends a chunked request
+ *  body the daemon rejects under Bun with `501 Unsupported transfer encoding`,
+ *  so file writes (unlike getArchive reads) must go through the CLI — the same
+ *  Bun↔dockerode incompatibility ADR-0010 routed exec/spawn around. */
+function execWriteStdin(containerId: string, argv: string[], input: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = dockerExec(containerId, argv, { stdin: true });
+    const err: Buffer[] = [];
+    proc.stderr.on('data', (d: Buffer) => err.push(d));
+    proc.stdout.resume(); // drain `tee`'s echo so its pipe never blocks
+    proc.on('error', reject);
+    proc.on('close', (code) =>
+      code === 0
+        ? resolve()
+        : reject(
+            new Error(
+              `docker exec write failed (exit ${code}): ${Buffer.concat(err).toString('utf8')}`,
+            ),
+          ),
+    );
+    proc.stdin.write(input);
+    proc.stdin.end();
+  });
+}
+
 export class DockerSandbox implements Sandbox {
   private readonly docker: Docker;
   private readonly image: string;
@@ -264,15 +290,14 @@ export class DockerSandbox implements Sandbox {
   }
 
   async writeFile(handle: SandboxHandle, path: string, content: string): Promise<void> {
-    const container = this.container(handle);
+    this.touch(handle.projectId);
     const abs = inWorkspace(path);
     const dir = posix.dirname(abs);
-    const base = posix.basename(abs);
     await this.execSimple(handle.containerId, ['mkdir', '-p', dir]);
-    const pack = tar.pack();
-    pack.entry({ name: base }, content);
-    pack.finalize();
-    await container.putArchive(pack as unknown as NodeJS.ReadableStream, { path: dir });
+    // Write via `tee` over `docker exec -i` (not dockerode putArchive — that
+    // 501s under Bun; see execWriteStdin). `tee` takes the path as a single
+    // argv, so no shell quoting of the path is needed.
+    await execWriteStdin(handle.containerId, ['tee', abs], content);
   }
 
   async readFile(handle: SandboxHandle, path: string): Promise<string> {
@@ -391,6 +416,9 @@ export class DockerSandbox implements Sandbox {
     const snap = await this.store.getSnapshot(handle.projectId);
     if (!snap) return false;
     // getArchive(/workspace) tars entries as `workspace/…`; extract at `/`.
+    // KNOWN ISSUE (see ADR-0010 update): putArchive 501s under Bun for streamed
+    // uploads — this restore path must move to the docker CLI before object-store
+    // snapshots are relied on in prod. Out of scope for STORY-26 (file save).
     await container.putArchive(snap as unknown as NodeJS.ReadableStream, { path: '/' });
     return true;
   }

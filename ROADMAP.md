@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 12 / 29 (41%)
+- **Features verified:** 13 / 29 (45%)
 - **Total tasks:** 77
-- **Done:** 38 (49%)
-- **Ready:** 39
+- **Done:** 41 (53%)
+- **Ready:** 36
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -997,7 +997,7 @@ projects manageable (create-with-name, list, open, delete-with-full-
 cleanup) and closes those workspace gaps, with structured logging +
 traceability throughout so future bugs are diagnosable.
 
-- **STORY-26** — Fix workspace file save + scope file errors to the editor + observability
+- **STORY-26** — Fix workspace file save + scope file errors to the editor + observability  [:white_check_mark: verified]
   > Operator edited an agent-created file and hit "Session error" in chat;
   > the edit did NOT persist (verified: the project volume still held the
   > original content). Root cause is unknown because file-op failures are
@@ -1017,7 +1017,7 @@ traceability throughout so future bugs are diagnosable.
   3. If a save fails, an inline error shows by the Save button and the chat/session is unaffected
   **Out of scope:**
   - Multi-user concurrent-edit conflict resolution (Yjs, post-POC).
-  - :black_circle: **TASK-069** — Orchestrator: log file-op failures with cause + sessionId/path context  `high` `small` _(services/orchestrator)_
+  - :white_check_mark: **TASK-069** — Orchestrator: log file-op failures with cause + sessionId/path context  `high` `small` _(services/orchestrator)_
     > Log the underlying error in handleFileSave/handleFileRead/
     > handleFileList (currently only file_list logs), plus a broader
     > catch-logging pass on orchestrator handlers. Include sessionId +
@@ -1025,7 +1025,7 @@ traceability throughout so future bugs are diagnosable.
     > live save failure and future bugs.
     _Task AC:_
     - Each file-op handler logs the underlying error (message + sessionId + path) on failure; verified by a unit test asserting the log call.
-  - :black_circle: **TASK-070** :checkered_flag: — Deploy logging, reproduce the live save failure, root-cause + fix it  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-070** :checkered_flag: — Deploy logging, reproduce the live save failure, root-cause + fix it  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-069_
     > With TASK-069 deployed, reproduce the edit-save failure on the live
     > VPS (agent creates a file, user edits + saves), capture the real
@@ -1034,7 +1034,7 @@ traceability throughout so future bugs are diagnosable.
     _Task AC:_
     - The live save failure is reproduced, its cause captured in logs, and fixed; an edited file's new content is confirmed in the sandbox volume after save.
     - STORY-26 acceptance_criteria satisfied.
-  - :black_circle: **TASK-071** :checkered_flag: — Web: route file errors to the editor, not the chat session  `high` `small` _(apps/web)_
+  - :white_check_mark: **TASK-071** :checkered_flag: — Web: route file errors to the editor, not the chat session  `high` `small` _(apps/web)_
     > Stop the chat panel treating file-scoped error frames (those
     > carrying a `path`) as session errors / disabling input. Surface
     > read/save failures inline in the CodeEditor (e.g. a save-failed

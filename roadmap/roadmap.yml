@@ -1616,6 +1616,8 @@ epics:
           (which carry a `path`) render as "Session error" AND disable the chat
           input. Add file-op + handler logging, route file-scoped errors to the
           editor, and root-cause the live write failure.
+        verified_at: '2026-06-03T13:46:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Editing a file in Monaco and saving persists to the sandbox and reloads correctly after a page refresh (the STORY-10 AC, currently broken in prod)."
           - "A failed file read/save surfaces as an inline editor error (not a chat 'Session error') and never disables the chat input."
@@ -1629,7 +1631,7 @@ epics:
         tasks:
           - id: TASK-069
             title: "Orchestrator: log file-op failures with cause + sessionId/path context"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["services/orchestrator"]
@@ -1641,11 +1643,12 @@ epics:
               live save failure and future bugs.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-03T13:46:00Z'
             task_acceptance:
               - "Each file-op handler logs the underlying error (message + sessionId + path) on failure; verified by a unit test asserting the log call."
           - id: TASK-070
             title: "Deploy logging, reproduce the live save failure, root-cause + fix it"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -1656,13 +1659,14 @@ epics:
               edit persists to the sandbox volume.
             depends_on: [TASK-069]
             attempt_count: 0
+            completed: '2026-06-03T13:46:00Z'
             is_terminal: true
             task_acceptance:
               - "The live save failure is reproduced, its cause captured in logs, and fixed; an edited file's new content is confirmed in the sandbox volume after save."
               - "STORY-26 acceptance_criteria satisfied."
           - id: TASK-071
             title: "Web: route file errors to the editor, not the chat session"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -1673,6 +1677,7 @@ epics:
               state by the Save button) via WorkspaceFilesProvider.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-03T13:46:00Z'
             is_terminal: true
             task_acceptance:
               - "A file_save/file_read error renders inline in the editor and leaves the chat connected + input enabled; covered by a component/unit test."

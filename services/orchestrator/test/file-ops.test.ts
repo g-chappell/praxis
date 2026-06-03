@@ -8,6 +8,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SandboxHandle } from '@praxis/sandbox';
 
 import { handleFileList, handleFileRead, handleFileSave, safeRelPath } from '../src/file-ops';
+import { logger } from '../src/logger';
 
 const HANDLE: SandboxHandle = { projectId: 'p1', containerId: 'c1' };
 
@@ -105,5 +106,43 @@ describe('handleFileSave', () => {
     const { sent, send } = collector();
     await handleFileSave(send, { writeFile } as never, HANDLE, 'a.ts', 'body');
     expect(sent).toEqual([{ type: 'error', reason: 'save_failed', path: 'a.ts' }]);
+  });
+});
+
+describe('failure logging (TASK-069)', () => {
+  it('logs the underlying error with projectId + path on save failure', async () => {
+    const spy = vi.spyOn(logger, 'error').mockImplementation(() => logger);
+    try {
+      const writeFile = vi.fn(async () => {
+        throw new Error('501 unsupported transfer encoding');
+      });
+      await handleFileSave(collector().send, { writeFile } as never, HANDLE, 'src/a.ts', 'x');
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          err: '501 unsupported transfer encoding',
+          projectId: 'p1',
+          path: 'src/a.ts',
+        }),
+        'file_ops.save_failed',
+      );
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('logs on read failure too', async () => {
+    const spy = vi.spyOn(logger, 'error').mockImplementation(() => logger);
+    try {
+      const readFile = vi.fn(async () => {
+        throw new Error('file not found');
+      });
+      await handleFileRead(collector().send, { readFile } as never, HANDLE, 'missing.ts');
+      expect(spy).toHaveBeenCalledWith(
+        expect.objectContaining({ err: 'file not found', projectId: 'p1', path: 'missing.ts' }),
+        'file_ops.read_failed',
+      );
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

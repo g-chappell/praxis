@@ -28,6 +28,9 @@ interface WorkspaceFiles {
   loading: boolean;
   /** A file_save is outstanding. */
   saving: boolean;
+  /** A read/save error for the open file, surfaced inline in the editor (the
+   *  chat/session is unaffected). Null when the last op succeeded. */
+  error: string | null;
   /** Open a file in the editor (requests its contents). */
   select: (path: string) => void;
   /** Persist new contents for the open file. */
@@ -53,6 +56,7 @@ export function WorkspaceFilesProvider({ children }: { children: ReactNode }) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   // Mirrors selectedPath for the (stable) subscribe closure to match async frames.
   const selectedRef = useRef<string | null>(null);
 
@@ -85,18 +89,28 @@ export function WorkspaceFilesProvider({ children }: { children: ReactNode }) {
           if (frame.path === selectedRef.current) {
             setContent(asString(frame.content) ?? '');
             setLoading(false);
+            setError(null);
           }
           break;
         }
         case 'file_saved': {
-          if (frame.path === selectedRef.current) setSaving(false);
+          if (frame.path === selectedRef.current) {
+            setSaving(false);
+            setError(null);
+          }
           break;
         }
         case 'error': {
-          // A read/save failure for the open file — clear the in-flight flags.
+          // A file-scoped error (carries a `path`) is surfaced inline in the
+          // editor — NOT as a chat/session error. Clear the in-flight flags.
           if (frame.path && frame.path === selectedRef.current) {
             setLoading(false);
             setSaving(false);
+            setError(
+              frame.reason === 'read_failed'
+                ? 'Could not load this file.'
+                : 'Could not save — try again.',
+            );
           }
           break;
         }
@@ -109,6 +123,7 @@ export function WorkspaceFilesProvider({ children }: { children: ReactNode }) {
       selectedRef.current = path;
       setSelectedPath(path);
       setContent(null);
+      setError(null);
       setLoading(true);
       send({ type: 'file_read', path });
     },
@@ -119,6 +134,7 @@ export function WorkspaceFilesProvider({ children }: { children: ReactNode }) {
     (body: string) => {
       const path = selectedRef.current;
       if (!path) return;
+      setError(null);
       setSaving(true);
       setContent(body);
       send({ type: 'file_save', path, content: body });
@@ -127,7 +143,7 @@ export function WorkspaceFilesProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <Ctx.Provider value={{ files, selectedPath, content, loading, saving, select, save }}>
+    <Ctx.Provider value={{ files, selectedPath, content, loading, saving, error, select, save }}>
       {children}
     </Ctx.Provider>
   );
