@@ -776,6 +776,8 @@ epics:
           show in Monaco when both users have the same file open. Opening
           a file acquires a soft lock — the other user can see the file but
           can't edit until the lock is released.
+        verified_at: '2026-06-04T19:17:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Two browser sessions in the same project display each other in a presence list with avatar + name."
           - "When user A opens file X, user B sees a lock indicator on file X and Monaco for X is read-only for B."
@@ -806,7 +808,7 @@ epics:
               - "Two tabs in two windows see each other's cursor positions live."
           - id: TASK-034
             title: "File-lock acquire/release + read-only Monaco when locked"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web", "services/orchestrator"]
@@ -816,6 +818,7 @@ epics:
               read-only and shows lock owner in the file tree.
             depends_on: [TASK-033]
             attempt_count: 0
+            completed: '2026-06-04T19:17:00Z'
             is_terminal: true
             task_acceptance:
               - "Race test: simultaneous lock requests resolve deterministically (first writer wins)."
