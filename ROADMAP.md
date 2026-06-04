@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 18 / 30 (60%)
 - **Total tasks:** 83
-- **Done:** 54 (65%)
-- **Ready:** 29
+- **Done:** 58 (70%)
+- **Ready:** 25
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -670,7 +670,7 @@ URLs surfaced through a wildcard Caddy domain.
   - Per-project ACLs — access is team-scoped.
   - Roles/permissions — all team members are equal (no viewer/editor split).
   - Rate-limiting / abuse protection on invite creation.
-  - :black_circle: **TASK-081** — lib + API: create + accept invite (ownership-checked, single-use, 7-day TTL)  `high` `medium` _(apps/web)_
+  - :white_check_mark: **TASK-081** — lib + API: create + accept invite (ownership-checked, single-use, 7-day TTL)  `high` `medium` _(apps/web)_
     > lib/invites.ts:
     > - createInvite(userId, projectId) — ownership-checked via
     >   userOwnsProject; insert team_invites {teamId: project.teamId,
@@ -692,7 +692,7 @@ URLs surfaced through a wildcard Caddy domain.
     - acceptInvite inserts exactly one team_membership and stamps acceptedBy for a valid unused code; no duplicate membership when already a member.
     - acceptInvite returns 'invalid' / 'expired' / 'used' with no DB write in those cases.
     - POST /api/projects/[id]/invites -> 401 unauth, 403 non-owner, 200 {code,url,expiresAt}.
-  - :black_circle: **TASK-082** — Owner UI: Invite button + copyable link in the workspace header  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-082** — Owner UI: Invite button + copyable link in the workspace header  `high` `small` _(apps/web)_  
     _depends on: TASK-081_
     > Add an "Invite" button (testid workspace-invite-button) to the
     > project workspace header (near the STORY-11 presence bar). On
@@ -706,7 +706,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Clicking workspace-invite-button POSTs to the create endpoint and shows the /invite/<code> URL in invite-link-input.
     - invite-copy-button copies the full URL to the clipboard and confirms via a label change.
     - An 'expires in 7 days' note is shown beside the link.
-  - :black_circle: **TASK-083** — Invitee accept route /invite/[code] + sign-in callback round-trip  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-083** — Invitee accept route /invite/[code] + sign-in callback round-trip  `high` `medium` _(apps/web)_  
     _depends on: TASK-081_
     > Route /invite/[code] (kept OUT of the middleware matcher so it's
     > publicly reachable). Signed-in -> call acceptInvite; on 'ok'
@@ -723,7 +723,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Signed-out visit redirects to /signin?next=/invite/<code>; SignInForm uses `next` as the magic-link callbackURL (else /dashboard).
     - Expired/invalid/used code renders invite-error with the reason + invite-error-dashboard-link; no membership written.
     - An already-member visiting the link is redirected into the workspace with no duplicate membership.
-  - :black_circle: **TASK-084** :checkered_flag: — Verify: second account accepts an invite and joins the live project  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-084** :checkered_flag: — Verify: second account accepts an invite and joins the live project  `high` `small` _(apps/web)_  
     _depends on: TASK-082, TASK-083_
     > Automated gate: integration test of acceptInvite (non-member
     > joins; already-member no-op; expired/used produce no write) plus

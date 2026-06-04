@@ -13,6 +13,7 @@ import type { ChatAuthor } from '@/components/workspace/chat-message';
 import { ChatPanel } from '@/components/workspace/chat-panel';
 import { CodeEditor } from '@/components/workspace/code-editor';
 import { FileTree } from '@/components/workspace/file-tree';
+import { InviteButton } from '@/components/workspace/invite-button';
 import { PresenceBar } from '@/components/workspace/presence-bar';
 import { PreviewPane } from '@/components/workspace/preview-pane';
 import { cn } from '@/lib/utils';
@@ -45,14 +46,20 @@ export function WorkspaceShell({
     <WorkspaceSocketProvider projectId={projectId}>
       <WorkspaceFilesProvider>
         <WorkspacePresenceProvider>
-          <ResizablePanels currentUser={currentUser} />
+          <ResizablePanels projectId={projectId} currentUser={currentUser} />
         </WorkspacePresenceProvider>
       </WorkspaceFilesProvider>
     </WorkspaceSocketProvider>
   );
 }
 
-function ResizablePanels({ currentUser }: { currentUser: ChatAuthor }) {
+function ResizablePanels({
+  projectId,
+  currentUser,
+}: {
+  projectId: string;
+  currentUser: ChatAuthor;
+}) {
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: 'praxis-workspace-panels',
     panelIds: PANEL_IDS,
@@ -71,7 +78,7 @@ function ResizablePanels({ currentUser }: { currentUser: ChatAuthor }) {
     return (
       <div className="flex h-full">
         <div className="flex min-w-0 basis-[20%] flex-col">
-          <FilesPane />
+          <FilesPane projectId={projectId} />
         </div>
         <div className="w-1 bg-border" />
         <div className="flex min-w-0 basis-[52%] flex-col">
@@ -93,7 +100,7 @@ function ResizablePanels({ currentUser }: { currentUser: ChatAuthor }) {
       className="h-full"
     >
       <Panel id="files" defaultSize="20%" minSize="12%" className="flex min-w-0 flex-col">
-        <FilesPane />
+        <FilesPane projectId={projectId} />
       </Panel>
 
       <ResizeHandle />
@@ -111,10 +118,13 @@ function ResizablePanels({ currentUser }: { currentUser: ChatAuthor }) {
   );
 }
 
-function FilesPane() {
+function FilesPane({ projectId }: { projectId: string }) {
   return (
     <>
       <PaneHeader>Files</PaneHeader>
+      <div className="border-b px-3 py-2">
+        <InviteButton projectId={projectId} />
+      </div>
       <PresenceBar />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <FileTree />

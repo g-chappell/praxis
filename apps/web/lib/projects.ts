@@ -5,7 +5,7 @@
 import { and, desc, eq } from 'drizzle-orm';
 
 import { projects, teamMemberships, teams } from '@praxis/db';
-import { db } from '@praxis/db/client';
+import { type Database, db } from '@praxis/db/client';
 
 export interface ProjectSummary {
   id: string;
@@ -30,9 +30,14 @@ export async function ensurePersonalTeam(userId: string): Promise<string> {
   return team!.id;
 }
 
-/** True iff the user is a member of the team that owns the project. */
-export async function userOwnsProject(userId: string, projectId: string): Promise<boolean> {
-  const [row] = await db
+/** True iff the user is a member of the team that owns the project. The `db` is
+ *  injectable for persistence tests; defaults to the @praxis/db/client singleton. */
+export async function userOwnsProject(
+  userId: string,
+  projectId: string,
+  database: Database = db,
+): Promise<boolean> {
+  const [row] = await database
     .select({ id: projects.id })
     .from(projects)
     .innerJoin(teamMemberships, eq(teamMemberships.teamId, projects.teamId))
