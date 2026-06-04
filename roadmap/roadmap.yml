@@ -791,7 +791,7 @@ epics:
         tasks:
           - id: TASK-033
             title: "Presence + cursor messages and UI overlays"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web", "services/orchestrator"]
@@ -801,6 +801,7 @@ epics:
               Monaco using monaco-editor decorations API.
             depends_on: [TASK-031]
             attempt_count: 0
+            completed: '2026-06-04T18:59:00Z'
             task_acceptance:
               - "Two tabs in two windows see each other's cursor positions live."
           - id: TASK-034

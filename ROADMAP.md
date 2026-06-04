@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 17 / 29 (59%)
 - **Total tasks:** 79
-- **Done:** 52 (66%)
-- **Ready:** 27
+- **Done:** 53 (67%)
+- **Ready:** 26
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -486,7 +486,7 @@ URLs surfaced through a wildcard Caddy domain.
   **Out of scope:**
   - Character-level co-editing via Yjs (post-POC).
   - Follow mode (post-POC).
-  - :black_circle: **TASK-033** — Presence + cursor messages and UI overlays  `high` `medium` _(apps/web, services/orchestrator)_  
+  - :white_check_mark: **TASK-033** — Presence + cursor messages and UI overlays  `high` `medium` _(apps/web, services/orchestrator)_  
     _depends on: TASK-031_
     > presence (join/leave/heartbeat) and cursor messages over WS.
     > Presence list in the workspace header; cursor overlays in
