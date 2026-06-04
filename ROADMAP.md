@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 18 / 30 (60%)
 - **Total tasks:** 83
-- **Done:** 55 (66%)
-- **Ready:** 28
+- **Done:** 56 (67%)
+- **Ready:** 27
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -692,7 +692,7 @@ URLs surfaced through a wildcard Caddy domain.
     - acceptInvite inserts exactly one team_membership and stamps acceptedBy for a valid unused code; no duplicate membership when already a member.
     - acceptInvite returns 'invalid' / 'expired' / 'used' with no DB write in those cases.
     - POST /api/projects/[id]/invites -> 401 unauth, 403 non-owner, 200 {code,url,expiresAt}.
-  - :black_circle: **TASK-082** — Owner UI: Invite button + copyable link in the workspace header  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-082** — Owner UI: Invite button + copyable link in the workspace header  `high` `small` _(apps/web)_  
     _depends on: TASK-081_
     > Add an "Invite" button (testid workspace-invite-button) to the
     > project workspace header (near the STORY-11 presence bar). On

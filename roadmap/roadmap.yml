@@ -1105,7 +1105,7 @@ epics:
               - "POST /api/projects/[id]/invites -> 401 unauth, 403 non-owner, 200 {code,url,expiresAt}."
           - id: TASK-082
             title: "Owner UI: Invite button + copyable link in the workspace header"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -1120,6 +1120,7 @@ epics:
               inline.
             depends_on: [TASK-081]
             attempt_count: 0
+            completed: '2026-06-04T20:45:00Z'
             task_acceptance:
               - "Clicking workspace-invite-button POSTs to the create endpoint and shows the /invite/<code> URL in invite-link-input."
               - "invite-copy-button copies the full URL to the clipboard and confirms via a label change."
