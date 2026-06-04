@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 17 / 29 (59%)
+- **Features verified:** 18 / 29 (62%)
 - **Total tasks:** 79
-- **Done:** 52 (66%)
-- **Ready:** 27
+- **Done:** 54 (68%)
+- **Ready:** 25
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -469,7 +469,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Snapshot test of the chat panel rendering each message kind.
     - STORY-10 acceptance_criteria satisfied.
 
-- **STORY-11** — Presence, cursors, and file-level locks
+- **STORY-11** — Presence, cursors, and file-level locks  [:white_check_mark: verified]
   > Two browsers in the same project see each other. Per-user cursors
   > show in Monaco when both users have the same file open. Opening
   > a file acquires a soft lock — the other user can see the file but
@@ -486,14 +486,14 @@ URLs surfaced through a wildcard Caddy domain.
   **Out of scope:**
   - Character-level co-editing via Yjs (post-POC).
   - Follow mode (post-POC).
-  - :black_circle: **TASK-033** — Presence + cursor messages and UI overlays  `high` `medium` _(apps/web, services/orchestrator)_  
+  - :white_check_mark: **TASK-033** — Presence + cursor messages and UI overlays  `high` `medium` _(apps/web, services/orchestrator)_  
     _depends on: TASK-031_
     > presence (join/leave/heartbeat) and cursor messages over WS.
     > Presence list in the workspace header; cursor overlays in
     > Monaco using monaco-editor decorations API.
     _Task AC:_
     - Two tabs in two windows see each other's cursor positions live.
-  - :black_circle: **TASK-034** :checkered_flag: — File-lock acquire/release + read-only Monaco when locked  `high` `medium` _(apps/web, services/orchestrator)_  
+  - :white_check_mark: **TASK-034** :checkered_flag: — File-lock acquire/release + read-only Monaco when locked  `high` `medium` _(apps/web, services/orchestrator)_  
     _depends on: TASK-033_
     > Orchestrator tracks file_locks per project room. file_lock
     > and file_unlock messages over WS. Client marks Monaco

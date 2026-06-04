@@ -28,10 +28,14 @@ sessionsRoute.post('/', async (c) => {
   const body = (await c.req.json().catch(() => null)) as {
     projectId?: unknown;
     userId?: unknown;
+    userName?: unknown;
+    userImage?: unknown;
     apiKey?: unknown;
   } | null;
   const projectId = typeof body?.projectId === 'string' ? body.projectId : '';
   const userId = typeof body?.userId === 'string' ? body.userId : '';
+  const userName = typeof body?.userName === 'string' ? body.userName : '';
+  const userImage = typeof body?.userImage === 'string' ? body.userImage : null;
   // The web app decrypts the platform key (Node/libsodium) and passes it here —
   // the Bun orchestrator never loads libsodium. See runtime.ts SessionRoom.
   const apiKey = typeof body?.apiKey === 'string' ? body.apiKey : '';
@@ -90,7 +94,7 @@ sessionsRoute.post('/', async (c) => {
   const sessionId = session!.id;
 
   createRoom(sessionId, projectId, handle, apiKey);
-  const ticket = mintTicket(sessionId, userId);
+  const ticket = mintTicket({ sessionId, userId, userName, userImage });
   logger.info({ sessionId, projectId }, 'session.created');
 
   return c.json({ sessionId, ticket, previewUrl });

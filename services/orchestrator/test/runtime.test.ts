@@ -12,8 +12,18 @@ afterEach(() => {
 
 describe('tickets', () => {
   it('mint → consume once returns the claim; a second consume is null (single-use)', () => {
-    const ticket = mintTicket('sess-1', 'user-1');
-    expect(consumeTicket(ticket)).toEqual({ sessionId: 'sess-1', userId: 'user-1' });
+    const ticket = mintTicket({
+      sessionId: 'sess-1',
+      userId: 'user-1',
+      userName: 'Ada',
+      userImage: null,
+    });
+    expect(consumeTicket(ticket)).toEqual({
+      sessionId: 'sess-1',
+      userId: 'user-1',
+      userName: 'Ada',
+      userImage: null,
+    });
     expect(consumeTicket(ticket)).toBeNull();
   });
 
@@ -23,7 +33,12 @@ describe('tickets', () => {
 
   it('an expired ticket is null', () => {
     vi.useFakeTimers();
-    const ticket = mintTicket('sess-x', 'user-x');
+    const ticket = mintTicket({
+      sessionId: 'sess-x',
+      userId: 'user-x',
+      userName: 'X',
+      userImage: null,
+    });
     vi.advanceTimersByTime(61_000); // TTL is 60s
     expect(consumeTicket(ticket)).toBeNull();
   });

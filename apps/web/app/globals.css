@@ -49,3 +49,53 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Remote-peer cursors in Monaco (STORY-11). Plain CSS (not Tailwind utilities)
+   so the dynamically-applied decoration class names are never purged. The label
+   is injected text at the peer's caret column; the line marker highlights their
+   current line. Six colours, picked per user by a stable hash. */
+.peer-cursor-label {
+  border-radius: 2px;
+  padding: 0 3px;
+  margin-left: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  white-space: pre;
+}
+.peer-cursor-label0 {
+  background: #f43f5e;
+}
+.peer-cursor-label1 {
+  background: #f59e0b;
+}
+.peer-cursor-label2 {
+  background: #10b981;
+}
+.peer-cursor-label3 {
+  background: #3b82f6;
+}
+.peer-cursor-label4 {
+  background: #a855f7;
+}
+.peer-cursor-label5 {
+  background: #ec4899;
+}
+.peer-cursor-line0 {
+  border-left: 2px solid #f43f5e;
+}
+.peer-cursor-line1 {
+  border-left: 2px solid #f59e0b;
+}
+.peer-cursor-line2 {
+  border-left: 2px solid #10b981;
+}
+.peer-cursor-line3 {
+  border-left: 2px solid #3b82f6;
+}
+.peer-cursor-line4 {
+  border-left: 2px solid #a855f7;
+}
+.peer-cursor-line5 {
+  border-left: 2px solid #ec4899;
+}

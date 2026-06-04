@@ -14,6 +14,13 @@ import { db } from '@praxis/db/client';
 import type { FileEvent } from '@praxis/sandbox';
 
 import { handleFileList, handleFileRead, handleFileSave } from '../file-ops';
+import {
+  acquireLock,
+  cursorFrame,
+  presenceFrame,
+  releaseAbandonedLocks,
+  setMemberFile,
+} from '../presence-ops';
 import { logger } from '../logger';
 import { removePreview } from '../preview';
 import {
@@ -28,6 +35,9 @@ import {
 interface ConnectionState {
   id: string;
   sessionId: string;
+  userId: string;
+  userName: string;
+  userImage: string | null;
   messageCount: number;
 }
 
@@ -41,6 +51,14 @@ function send(ws: { send: (data: string) => void }, payload: unknown): void {
 function broadcast(room: SessionRoom | undefined, payload: unknown): void {
   if (!room) return;
   for (const sock of room.sockets) send(sock, payload);
+}
+
+/** Broadcast the room's full presence roster (STORY-11). Sent on join/leave and
+ *  whenever a member's open file changes, so every client has the live member
+ *  list (avatar + name) and who's viewing what. */
+function broadcastPresence(room: SessionRoom | undefined): void {
+  if (!room) return;
+  broadcast(room, presenceFrame(room));
 }
 
 /** Start the per-room sandbox file watcher once (on the first socket join), so
@@ -85,12 +103,26 @@ wsRoute.get(
         }
         const id = crypto.randomUUID();
         if (ws.raw) {
-          conns.set(ws.raw, { id, sessionId: claim.sessionId, messageCount: 0 });
+          conns.set(ws.raw, {
+            id,
+            sessionId: claim.sessionId,
+            userId: claim.userId,
+            userName: claim.userName,
+            userImage: claim.userImage,
+            messageCount: 0,
+          });
           room.sockets.add(ws.raw);
+          room.members.set(id, {
+            connId: id,
+            userId: claim.userId,
+            userName: claim.userName,
+            userImage: claim.userImage,
+          });
         }
         ensureWatcher(claim.sessionId);
         logger.info({ wsConnId: id, sessionId: claim.sessionId }, 'ws.open');
-        send(ws, { type: 'ready', sessionId: claim.sessionId });
+        send(ws, { type: 'ready', sessionId: claim.sessionId, connId: id });
+        broadcastPresence(room);
       },
 
       onMessage: async (evt, ws) => {
@@ -134,6 +166,10 @@ wsRoute.get(
           else await handleFileSave(reply, getSandbox(), room.handle, m.path, m.content);
           return;
         }
+        if (type === 'file_open' || type === 'cursor') {
+          handlePresence(ws, state, type, msg);
+          return;
+        }
 
         send(ws, { type: 'error', reason: 'unknown_type' });
       },
@@ -145,7 +181,11 @@ wsRoute.get(
         const room = getRoom(state.sessionId);
         if (room) {
           room.sockets.delete(raw);
+          room.members.delete(state.id);
+          // Free any file the leaving user held that no other tab still has open.
+          releaseAbandonedLocks(room, state.userId);
           if (room.sockets.size === 0) endSession(state.sessionId);
+          else broadcastPresence(room);
         }
         logger.info({ wsConnId: state.id, sessionId: state.sessionId }, 'ws.close');
       },
@@ -185,6 +225,38 @@ async function runPrompt(
     );
     send(ws, { type: 'error', reason: 'agent_error' });
   }
+}
+
+/** Presence/cursor messages (STORY-11/TASK-033). `file_open` records which file a
+ *  member is viewing (drives the roster + cursor scoping); `cursor` relays a live
+ *  caret position to the rest of the room, tagged with the sender's identity. */
+function handlePresence(
+  ws: { send: (data: string) => void },
+  state: ConnectionState,
+  type: 'file_open' | 'cursor',
+  msg: unknown,
+): void {
+  const room = getRoom(state.sessionId);
+  if (!room) {
+    send(ws, { type: 'error', reason: 'no_session' });
+    return;
+  }
+
+  if (type === 'file_open') {
+    const path = (msg as { path?: unknown }).path;
+    setMemberFile(room, state.id, path);
+    // Drop any lock this user no longer has open, then take the new file (soft,
+    // first-writer-wins). A failed acquire just means a peer holds it — the
+    // client renders read-only off the lock state in the presence frame.
+    releaseAbandonedLocks(room, state.userId);
+    if (typeof path === 'string') acquireLock(room, state.userId, path);
+    broadcastPresence(room);
+    return;
+  }
+
+  // cursor — relay to peers, stamped with who sent it (null = malformed/gone).
+  const frame = cursorFrame(room, state.id, msg);
+  if (frame) broadcast(room, frame);
 }
 
 // Last client left the room → stop the sandbox (snapshots to MinIO, ADR-0008)
