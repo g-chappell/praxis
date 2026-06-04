@@ -14,7 +14,13 @@ import { db } from '@praxis/db/client';
 import type { FileEvent } from '@praxis/sandbox';
 
 import { handleFileList, handleFileRead, handleFileSave } from '../file-ops';
-import { cursorFrame, presenceFrame, setMemberFile } from '../presence-ops';
+import {
+  acquireLock,
+  cursorFrame,
+  presenceFrame,
+  releaseAbandonedLocks,
+  setMemberFile,
+} from '../presence-ops';
 import { logger } from '../logger';
 import { removePreview } from '../preview';
 import {
@@ -176,6 +182,8 @@ wsRoute.get(
         if (room) {
           room.sockets.delete(raw);
           room.members.delete(state.id);
+          // Free any file the leaving user held that no other tab still has open.
+          releaseAbandonedLocks(room, state.userId);
           if (room.sockets.size === 0) endSession(state.sessionId);
           else broadcastPresence(room);
         }
@@ -235,7 +243,13 @@ function handlePresence(
   }
 
   if (type === 'file_open') {
-    setMemberFile(room, state.id, (msg as { path?: unknown }).path);
+    const path = (msg as { path?: unknown }).path;
+    setMemberFile(room, state.id, path);
+    // Drop any lock this user no longer has open, then take the new file (soft,
+    // first-writer-wins). A failed acquire just means a peer holds it — the
+    // client renders read-only off the lock state in the presence frame.
+    releaseAbandonedLocks(room, state.userId);
+    if (typeof path === 'string') acquireLock(room, state.userId, path);
     broadcastPresence(room);
     return;
   }

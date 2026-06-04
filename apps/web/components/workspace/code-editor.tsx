@@ -27,7 +27,8 @@ const MonacoEditor = dynamic(() => import('@monaco-editor/react').then((m) => m.
 // edits back through the sandbox. Save is a button and Ctrl/Cmd-S.
 export function CodeEditor() {
   const { selectedPath, content, loading, saving, error, save } = useWorkspaceFiles();
-  const { cursors, sendCursor } = useWorkspacePresence();
+  const { cursors, sendCursor, lockOwner } = useWorkspacePresence();
+  const lockedBy = selectedPath ? lockOwner(selectedPath) : null;
   const [draft, setDraft] = useState('');
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
@@ -40,11 +41,20 @@ export function CodeEditor() {
   selectedRef.current = selectedPath;
   const sendCursorRef = useRef(sendCursor);
   sendCursorRef.current = sendCursor;
+  // A peer holds the open file's lock → the editor is read-only for us.
+  const readOnly = lockedBy !== null;
+  const readOnlyRef = useRef(readOnly);
+  readOnlyRef.current = readOnly;
 
   // When a freshly-read file arrives, replace the draft.
   useEffect(() => {
     if (content !== null) setDraft(content);
   }, [content]);
+
+  // Toggle Monaco's read-only state as locks acquire/release without remounting.
+  useEffect(() => {
+    editorRef.current?.updateOptions({ readOnly });
+  }, [readOnly]);
 
   // Paint peers' carets for the open file as Monaco decorations. Re-runs as
   // their positions stream in or the open file changes.
@@ -64,11 +74,16 @@ export function CodeEditor() {
       <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
         <span className="truncate text-xs text-muted-foreground">{selectedPath}</span>
         <div className="flex items-center gap-2">
+          {lockedBy && (
+            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+              🔒 Locked by {lockedBy.userName}
+            </span>
+          )}
           {error && <span className="text-xs text-destructive">{error}</span>}
           <Button
             size="sm"
             variant="outline"
-            disabled={loading || saving}
+            disabled={loading || saving || lockedBy !== null}
             onClick={() => save(draft)}
           >
             {saving ? 'Saving…' : 'Save'}
@@ -88,8 +103,9 @@ export function CodeEditor() {
               editorRef.current = ed;
               monacoRef.current = monaco;
               decorationsRef.current = ed.createDecorationsCollection();
+              ed.updateOptions({ readOnly: readOnlyRef.current });
               ed.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-                saveRef.current(ed.getValue());
+                if (!readOnlyRef.current) saveRef.current(ed.getValue());
               });
               // Relay this client's caret to the room (throttled in the provider).
               ed.onDidChangeCursorPosition((e) => {

@@ -35,13 +35,24 @@ export interface PeerCursor {
   column: number;
 }
 
-interface WorkspacePresence {
+export interface FileLock {
+  path: string;
+  userId: string;
+}
+
+export interface WorkspacePresence {
   /** Full room roster, one entry per live connection (incl. this client). */
   members: PresenceMember[];
   /** This connection's id, or null until the socket is ready. */
   myConnId: string | null;
+  /** This client's user id (derived from the roster), or null until known. */
+  myUserId: string | null;
   /** Peer carets (this client excluded), the latest per connection. */
   cursors: PeerCursor[];
+  /** Soft file locks held across the room (path → owning user). */
+  locks: FileLock[];
+  /** The owner of a file's lock, or null if free / held by this client. */
+  lockOwner: (path: string) => PresenceMember | null;
   /** Relay this client's caret to the room. Throttled (~50ms) internally. */
   sendCursor: (filePath: string, line: number, column: number) => void;
 }
@@ -85,12 +96,26 @@ function asMembers(value: unknown): PresenceMember[] {
   return out;
 }
 
+function asLocks(value: unknown): FileLock[] {
+  if (!Array.isArray(value)) return [];
+  const out: FileLock[] = [];
+  for (const raw of value) {
+    if (typeof raw !== 'object' || raw === null) continue;
+    const l = raw as Record<string, unknown>;
+    if (typeof l.path === 'string' && typeof l.userId === 'string') {
+      out.push({ path: l.path, userId: l.userId });
+    }
+  }
+  return out;
+}
+
 export function WorkspacePresenceProvider({ children }: { children: ReactNode }) {
   const { status, send, subscribe } = useWorkspaceSocket();
   const { selectedPath } = useWorkspaceFiles();
   const [members, setMembers] = useState<PresenceMember[]>([]);
   const [myConnId, setMyConnId] = useState<string | null>(null);
   const [cursors, setCursors] = useState<PeerCursor[]>([]);
+  const [locks, setLocks] = useState<FileLock[]>([]);
   const myConnRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -106,6 +131,7 @@ export function WorkspacePresenceProvider({ children }: { children: ReactNode })
         case 'presence': {
           const next = asMembers(frame.members);
           setMembers(next);
+          setLocks(asLocks(frame.locks));
           // Drop carets for peers no longer in the room.
           const live = new Set(next.map((m) => m.connId));
           setCursors((prev) => prev.filter((c) => live.has(c.connId)));
@@ -178,5 +204,22 @@ export function WorkspacePresenceProvider({ children }: { children: ReactNode })
     };
   }, []);
 
-  return <Ctx.Provider value={{ members, myConnId, cursors, sendCursor }}>{children}</Ctx.Provider>;
+  const myUserId = members.find((m) => m.connId === myConnId)?.userId ?? null;
+
+  // The peer holding a file's lock, or null when it's free or held by us (so a
+  // file we locked is never read-only to ourselves).
+  const lockOwner = useCallback(
+    (path: string): PresenceMember | null => {
+      const lock = locks.find((l) => l.path === path);
+      if (!lock || lock.userId === myUserId) return null;
+      return members.find((m) => m.userId === lock.userId) ?? null;
+    },
+    [locks, members, myUserId],
+  );
+
+  return (
+    <Ctx.Provider value={{ members, myConnId, myUserId, cursors, locks, lockOwner, sendCursor }}>
+      {children}
+    </Ctx.Provider>
+  );
 }
