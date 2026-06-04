@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 18 / 29 (62%)
-- **Total tasks:** 79
-- **Done:** 54 (68%)
-- **Ready:** 25
+- **Features verified:** 18 / 30 (60%)
+- **Total tasks:** 83
+- **Done:** 54 (65%)
+- **Ready:** 29
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -641,6 +641,102 @@ URLs surfaced through a wildcard Caddy domain.
     _Task AC:_
     - Live on the VPS: editing a file in a running 3js project reloads the preview pane with no manual refresh.
     - STORY-30 acceptance_criteria satisfied.
+
+- **STORY-31** — Share a project via invite link
+  > A project owner generates a single-use, 7-day invite link from the
+  > workspace header. Whoever opens it (signing in via magic-link if
+  > needed) joins the project's team and lands in the shared workspace.
+  > Built on the existing team_invites table (inviteCode + expiresAt +
+  > acceptedBy) — no schema change; access is team-scoped, matching
+  > userOwnsProject(). This is the on-ramp that makes STORY-11's
+  > presence / cursors / locks usable by two real people.
+  **Acceptance criteria:**
+  - From the workspace header, the owner can generate a copyable invite link encoding a single-use code valid for 7 days.
+  - A signed-out person opening a valid link is routed through magic-link sign-in and, on return, is added to the project's team and lands in the shared project's workspace.
+  - A signed-in non-member opening a valid link joins the team and lands in the shared workspace; an existing member just lands in the workspace with no duplicate membership.
+  - An expired, invalid, or already-used link shows a friendly error page naming the reason, makes no team change, and offers a path back to the dashboard.
+  - After a second user joins, both users appear in the same project's STORY-11 presence list (verified live).
+  **User flow:**
+  1. Owner is in the project workspace → clicks 'Invite' in the header
+  2. A panel reveals a copyable /invite/<code> link with an 'expires in 7 days' note → owner copies and sends it out-of-band
+  3. Invitee (signed out) opens the link → redirected to /signin?next=/invite/<code> → enters email → opens the magic-link email → returns to /invite/<code>
+  4. System adds them to the team and redirects into the shared project's workspace
+  5. Invitee (already signed in) opens the link → joined immediately → lands in the workspace
+  6. Both users now see each other in the presence list (STORY-11)
+  **Out of scope:**
+  - Email-address-targeted invites (sending the link via email from the app).
+  - Revoking, listing, or early-expiring invites; viewing/removing team members.
+  - Reusable (multi-acceptor) links — single acceptedBy keeps it single-use.
+  - Per-project ACLs — access is team-scoped.
+  - Roles/permissions — all team members are equal (no viewer/editor split).
+  - Rate-limiting / abuse protection on invite creation.
+  - :black_circle: **TASK-081** — lib + API: create + accept invite (ownership-checked, single-use, 7-day TTL)  `high` `medium` _(apps/web)_
+    > lib/invites.ts:
+    > - createInvite(userId, projectId) — ownership-checked via
+    >   userOwnsProject; insert team_invites {teamId: project.teamId,
+    >   inviteCode: <url-safe random>, expiresAt: now+7d}; return
+    >   {code, expiresAt}. Reject (403) when the caller isn't a team member.
+    > - acceptInvite(userId, code) — look up by inviteCode and return a
+    >   discriminated result: 'invalid' (no row) | 'expired'
+    >   (expiresAt<now) | 'used' (acceptedBy set & != userId) | 'ok'.
+    >   On 'ok' for a non-member: insert one team_membership + stamp
+    >   acceptedBy. Idempotent when already a member (no write). Resolve
+    >   the landing project as the team's newest project; return
+    >   {status, teamId, projectId|null, alreadyMember}.
+    > Routes: POST /api/projects/[id]/invites (401/403/200
+    > {code,url,expiresAt}); POST /api/invites/[code]/accept (401 unauth,
+    > else the status shape). Boundary validation only; team_invites
+    > already exists (no migration).
+    _Task AC:_
+    - createInvite returns a unique url-safe code + expiresAt ~7 days out; 403 when the caller isn't a member of the project's team.
+    - acceptInvite inserts exactly one team_membership and stamps acceptedBy for a valid unused code; no duplicate membership when already a member.
+    - acceptInvite returns 'invalid' / 'expired' / 'used' with no DB write in those cases.
+    - POST /api/projects/[id]/invites -> 401 unauth, 403 non-owner, 200 {code,url,expiresAt}.
+  - :black_circle: **TASK-082** — Owner UI: Invite button + copyable link in the workspace header  `high` `small` _(apps/web)_  
+    _depends on: TASK-081_
+    > Add an "Invite" button (testid workspace-invite-button) to the
+    > project workspace header (near the STORY-11 presence bar). On
+    > click, POST /api/projects/[id]/invites and reveal the returned
+    > absolute /invite/<code> URL in a read-only field (testid
+    > invite-link-input) with an "expires in 7 days" note and a copy
+    > button (testid invite-copy-button) that writes the URL to the
+    > clipboard and confirms ("Copied"). Handle the request error state
+    > inline.
+    _Task AC:_
+    - Clicking workspace-invite-button POSTs to the create endpoint and shows the /invite/<code> URL in invite-link-input.
+    - invite-copy-button copies the full URL to the clipboard and confirms via a label change.
+    - An 'expires in 7 days' note is shown beside the link.
+  - :black_circle: **TASK-083** — Invitee accept route /invite/[code] + sign-in callback round-trip  `high` `medium` _(apps/web)_  
+    _depends on: TASK-081_
+    > Route /invite/[code] (kept OUT of the middleware matcher so it's
+    > publicly reachable). Signed-in -> call acceptInvite; on 'ok'
+    > redirect to /projects/<projectId> (or /dashboard when null);
+    > already-member redirects straight in. Signed-out -> redirect to
+    > /signin?next=/invite/<code>. Update SignInForm to read the `next`
+    > param and pass it as the magic-link callbackURL (fallback
+    > /dashboard), so verification returns to the accept route.
+    > 'invalid'/'expired'/'used' -> render an error page (testid
+    > invite-error) naming the reason with a dashboard link (testid
+    > invite-error-dashboard-link); no membership created.
+    _Task AC:_
+    - Signed-in visit to /invite/<valid> joins the team and redirects to the shared project workspace.
+    - Signed-out visit redirects to /signin?next=/invite/<code>; SignInForm uses `next` as the magic-link callbackURL (else /dashboard).
+    - Expired/invalid/used code renders invite-error with the reason + invite-error-dashboard-link; no membership written.
+    - An already-member visiting the link is redirected into the workspace with no duplicate membership.
+  - :black_circle: **TASK-084** :checkered_flag: — Verify: second account accepts an invite and joins the live project  `high` `small` _(apps/web)_  
+    _depends on: TASK-082, TASK-083_
+    > Automated gate: integration test of acceptInvite (non-member
+    > joins; already-member no-op; expired/used produce no write) plus
+    > the accept route's redirect target. Where feasible, a Playwright
+    > pass where a second account opens the captured link, signs in via
+    > the dev mailer, and is redirected into the shared project. The
+    > full "both users in the presence list" check is multiplayer/live —
+    > verified on the VPS post-deploy (per the deploy-layer-live
+    > convention), not asserted in CI.
+    _Task AC:_
+    - Integration test: acceptInvite adds the second user to the team and the accept route resolves to the shared project.
+    - A used/expired link yields the error path with no membership change.
+    - Manual VPS check recorded: both users appear in the project's presence list after the invite is accepted.
 
 ## EPIC-04 — Template, git, polish
 
