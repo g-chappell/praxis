@@ -1127,7 +1127,7 @@ epics:
               - "An 'expires in 7 days' note is shown beside the link."
           - id: TASK-083
             title: "Invitee accept route /invite/[code] + sign-in callback round-trip"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -1144,6 +1144,7 @@ epics:
               invite-error-dashboard-link); no membership created.
             depends_on: [TASK-081]
             attempt_count: 0
+            completed: '2026-06-04T20:51:00Z'
             task_acceptance:
               - "Signed-in visit to /invite/<valid> joins the team and redirects to the shared project workspace."
               - "Signed-out visit redirects to /signin?next=/invite/<code>; SignInForm uses `next` as the magic-link callbackURL (else /dashboard)."

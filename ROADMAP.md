@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 18 / 30 (60%)
 - **Total tasks:** 83
-- **Done:** 56 (67%)
-- **Ready:** 27
+- **Done:** 57 (69%)
+- **Ready:** 26
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -706,7 +706,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Clicking workspace-invite-button POSTs to the create endpoint and shows the /invite/<code> URL in invite-link-input.
     - invite-copy-button copies the full URL to the clipboard and confirms via a label change.
     - An 'expires in 7 days' note is shown beside the link.
-  - :black_circle: **TASK-083** — Invitee accept route /invite/[code] + sign-in callback round-trip  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-083** — Invitee accept route /invite/[code] + sign-in callback round-trip  `high` `medium` _(apps/web)_  
     _depends on: TASK-081_
     > Route /invite/[code] (kept OUT of the middleware matcher so it's
     > publicly reachable). Signed-in -> call acceptInvite; on 'ok'
