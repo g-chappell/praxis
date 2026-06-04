@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 18 / 30 (60%)
 - **Total tasks:** 83
-- **Done:** 54 (65%)
-- **Ready:** 29
+- **Done:** 55 (66%)
+- **Ready:** 28
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -670,7 +670,7 @@ URLs surfaced through a wildcard Caddy domain.
   - Per-project ACLs — access is team-scoped.
   - Roles/permissions — all team members are equal (no viewer/editor split).
   - Rate-limiting / abuse protection on invite creation.
-  - :black_circle: **TASK-081** — lib + API: create + accept invite (ownership-checked, single-use, 7-day TTL)  `high` `medium` _(apps/web)_
+  - :white_check_mark: **TASK-081** — lib + API: create + accept invite (ownership-checked, single-use, 7-day TTL)  `high` `medium` _(apps/web)_
     > lib/invites.ts:
     > - createInvite(userId, projectId) — ownership-checked via
     >   userOwnsProject; insert team_invites {teamId: project.teamId,

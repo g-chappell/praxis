@@ -1074,7 +1074,7 @@ epics:
         tasks:
           - id: TASK-081
             title: "lib + API: create + accept invite (ownership-checked, single-use, 7-day TTL)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -1097,6 +1097,7 @@ epics:
               already exists (no migration).
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-04T20:41:00Z'
             task_acceptance:
               - "createInvite returns a unique url-safe code + expiresAt ~7 days out; 403 when the caller isn't a member of the project's team."
               - "acceptInvite inserts exactly one team_membership and stamps acceptedBy for a valid unused code; no duplicate membership when already a member."
