@@ -1,0 +1,134 @@
+// Persistence tests for project invite create/accept (STORY-31). Real Postgres
+// (tier-3: no DB mocks), gated behind RUN_DB_TESTS=1 so CI without a database
+// still passes. Run locally with:
+//   pnpm db:up
+//   RUN_DB_TESTS=1 TEST_DATABASE_URL=postgres://praxis:praxis@127.0.0.1:5433/praxis \
+//     pnpm exec vitest run --root ../.. apps/web/lib/invites.integration
+
+import { randomUUID } from 'node:crypto';
+
+import { and, eq } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
+
+import { projects, teamInvites, teamMemberships, teams, users } from '@praxis/db';
+import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
+
+import { ForbiddenError, acceptInvite, createInvite } from './invites';
+
+const describeDb = dbTestsEnabled() ? describe : describe.skip;
+
+async function seedUser(db: TestDb): Promise<string> {
+  const [u] = await db
+    .insert(users)
+    .values({ email: `invite-${randomUUID()}@example.test` })
+    .returning({ id: users.id });
+  return u!.id;
+}
+
+/** A team owned by `ownerId` with one project; returns ids for assertions. */
+async function seedTeamWithProject(db: TestDb, ownerId: string) {
+  const [team] = await db
+    .insert(teams)
+    .values({ name: 'T', createdBy: ownerId })
+    .returning({ id: teams.id });
+  await db.insert(teamMemberships).values({ teamId: team!.id, userId: ownerId });
+  const [project] = await db
+    .insert(projects)
+    .values({ teamId: team!.id, name: 'P', templateId: 'react-threejs-scene', createdBy: ownerId })
+    .returning({ id: projects.id });
+  return { teamId: team!.id, projectId: project!.id };
+}
+
+async function memberCount(db: TestDb, teamId: string, userId: string): Promise<number> {
+  const rows = await db
+    .select({ userId: teamMemberships.userId })
+    .from(teamMemberships)
+    .where(and(eq(teamMemberships.teamId, teamId), eq(teamMemberships.userId, userId)));
+  return rows.length;
+}
+
+describeDb('invites (real DB)', () => {
+  it('createInvite: owner mints a 7-day code; a non-member is forbidden', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const stranger = await seedUser(db);
+      const { teamId, projectId } = await seedTeamWithProject(db, owner);
+
+      const { code, expiresAt } = await createInvite(owner, projectId, { db });
+      expect(code).toMatch(/^[A-Za-z0-9_-]{16,}$/);
+      const days = (expiresAt.getTime() - Date.now()) / 86_400_000;
+      expect(days).toBeGreaterThan(6.9);
+      expect(days).toBeLessThan(7.1);
+
+      const [row] = await db.select().from(teamInvites).where(eq(teamInvites.inviteCode, code));
+      expect(row!.teamId).toBe(teamId);
+
+      await expect(createInvite(stranger, projectId, { db })).rejects.toBeInstanceOf(
+        ForbiddenError,
+      );
+    });
+  });
+
+  it('acceptInvite: a non-member joins exactly once and lands on the team project', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const joiner = await seedUser(db);
+      const { teamId, projectId } = await seedTeamWithProject(db, owner);
+      const { code } = await createInvite(owner, projectId, { db });
+
+      const r = await acceptInvite(joiner, code, { db });
+      expect(r).toEqual({ status: 'ok', teamId, projectId, alreadyMember: false });
+      expect(await memberCount(db, teamId, joiner)).toBe(1);
+
+      // Code is now consumed (acceptedBy stamped).
+      const [inv] = await db.select().from(teamInvites).where(eq(teamInvites.inviteCode, code));
+      expect(inv!.acceptedBy).toBe(joiner);
+    });
+  });
+
+  it('acceptInvite: an existing member is a no-op that does NOT consume the code', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const { teamId, projectId } = await seedTeamWithProject(db, owner);
+      const { code } = await createInvite(owner, projectId, { db });
+
+      const r = await acceptInvite(owner, code, { db });
+      expect(r).toMatchObject({ status: 'ok', alreadyMember: true, teamId, projectId });
+      expect(await memberCount(db, teamId, owner)).toBe(1); // no duplicate
+
+      const [inv] = await db.select().from(teamInvites).where(eq(teamInvites.inviteCode, code));
+      expect(inv!.acceptedBy).toBeNull(); // not consumed — still usable by a real invitee
+    });
+  });
+
+  it('acceptInvite: invalid / expired / used all reject with no membership change', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const a = await seedUser(db);
+      const b = await seedUser(db);
+      const { teamId, projectId } = await seedTeamWithProject(db, owner);
+
+      expect(await acceptInvite(a, 'no-such-code', { db })).toEqual({ status: 'invalid' });
+
+      // Expired.
+      const expired = randomBytesCode();
+      await db.insert(teamInvites).values({
+        teamId,
+        inviteCode: expired,
+        expiresAt: new Date(Date.now() - 1000),
+      });
+      expect(await acceptInvite(a, expired, { db })).toEqual({ status: 'expired' });
+      expect(await memberCount(db, teamId, a)).toBe(0);
+
+      // Used: first acceptor wins, a second different user is rejected.
+      const { code } = await createInvite(owner, projectId, { db });
+      await acceptInvite(a, code, { db });
+      expect(await acceptInvite(b, code, { db })).toEqual({ status: 'used' });
+      expect(await memberCount(db, teamId, b)).toBe(0);
+    });
+  });
+});
+
+function randomBytesCode(): string {
+  return randomUUID().replace(/-/g, '');
+}
