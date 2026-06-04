@@ -56,7 +56,13 @@ export async function POST(req: NextRequest) {
   const res = await fetch(`${orchestratorUrl}/sessions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-internal-secret': internalSecret },
-    body: JSON.stringify({ projectId, userId: session.user.id, apiKey }),
+    body: JSON.stringify({
+      projectId,
+      userId: session.user.id,
+      userName: session.user.name || session.user.email,
+      userImage: session.user.image ?? null,
+      apiKey,
+    }),
   }).catch(() => null);
 
   if (!res || !res.ok) {

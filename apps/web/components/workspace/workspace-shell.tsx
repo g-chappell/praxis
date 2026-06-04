@@ -13,9 +13,11 @@ import type { ChatAuthor } from '@/components/workspace/chat-message';
 import { ChatPanel } from '@/components/workspace/chat-panel';
 import { CodeEditor } from '@/components/workspace/code-editor';
 import { FileTree } from '@/components/workspace/file-tree';
+import { PresenceBar } from '@/components/workspace/presence-bar';
 import { PreviewPane } from '@/components/workspace/preview-pane';
 import { cn } from '@/lib/utils';
 import { WorkspaceFilesProvider } from '@/components/workspace/workspace-files';
+import { WorkspacePresenceProvider } from '@/components/workspace/workspace-presence';
 import { WorkspaceSocketProvider } from '@/components/workspace/workspace-socket';
 
 // Three-panel workspace shell (STORY-10): file tree | editor | chat, hosted on a
@@ -42,7 +44,9 @@ export function WorkspaceShell({
   return (
     <WorkspaceSocketProvider projectId={projectId}>
       <WorkspaceFilesProvider>
-        <ResizablePanels currentUser={currentUser} />
+        <WorkspacePresenceProvider>
+          <ResizablePanels currentUser={currentUser} />
+        </WorkspacePresenceProvider>
       </WorkspaceFilesProvider>
     </WorkspaceSocketProvider>
   );
@@ -111,6 +115,7 @@ function FilesPane() {
   return (
     <>
       <PaneHeader>Files</PaneHeader>
+      <PresenceBar />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <FileTree />
       </div>
