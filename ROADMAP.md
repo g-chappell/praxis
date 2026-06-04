@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 18 / 30 (60%)
 - **Total tasks:** 83
-- **Done:** 57 (69%)
-- **Ready:** 26
+- **Done:** 58 (70%)
+- **Ready:** 25
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -723,7 +723,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Signed-out visit redirects to /signin?next=/invite/<code>; SignInForm uses `next` as the magic-link callbackURL (else /dashboard).
     - Expired/invalid/used code renders invite-error with the reason + invite-error-dashboard-link; no membership written.
     - An already-member visiting the link is redirected into the workspace with no duplicate membership.
-  - :black_circle: **TASK-084** :checkered_flag: — Verify: second account accepts an invite and joins the live project  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-084** :checkered_flag: — Verify: second account accepts an invite and joins the live project  `high` `small` _(apps/web)_  
     _depends on: TASK-082, TASK-083_
     > Automated gate: integration test of acceptInvite (non-member
     > joins; already-member no-op; expired/used produce no write) plus

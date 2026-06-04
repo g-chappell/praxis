@@ -1152,7 +1152,7 @@ epics:
               - "An already-member visiting the link is redirected into the workspace with no duplicate membership."
           - id: TASK-084
             title: "Verify: second account accepts an invite and joins the live project"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -1167,6 +1167,7 @@ epics:
               convention), not asserted in CI.
             depends_on: [TASK-082, TASK-083]
             attempt_count: 0
+            completed: '2026-06-04T20:57:00Z'
             is_terminal: true
             task_acceptance:
               - "Integration test: acceptInvite adds the second user to the team and the accept route resolves to the shared project."
