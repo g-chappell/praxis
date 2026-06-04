@@ -1,13 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth-client';
+import { safeNextPath } from '@/lib/safe-redirect';
 
 export function SignInForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Where to land after the magic link is verified — used by the invite flow to
+  // return to /invite/<code>. Guarded against open redirects; defaults /dashboard.
+  const callbackURL = safeNextPath(searchParams.get('next'));
   const [email, setEmail] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +25,7 @@ export function SignInForm() {
     try {
       const { error: signInError } = await authClient.signIn.magicLink({
         email,
-        callbackURL: '/dashboard',
+        callbackURL,
       });
 
       if (signInError) {

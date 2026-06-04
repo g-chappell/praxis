@@ -1,3 +1,5 @@
+import { Suspense } from 'react';
+
 import { SignInForm } from '@/components/sign-in-form';
 
 export const metadata = {
@@ -14,7 +16,9 @@ export default function SignInPage() {
             We&apos;ll email you a one-time sign-in link.
           </p>
         </div>
-        <SignInForm />
+        <Suspense fallback={null}>
+          <SignInForm />
+        </Suspense>
       </div>
     </main>
   );
