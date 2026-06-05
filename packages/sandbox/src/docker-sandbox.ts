@@ -245,7 +245,7 @@ export class DockerSandbox implements Sandbox {
     await this.execSimple(handle.containerId, [
       'bash',
       '-lc',
-      "cd /workspace && { [ -d .git ] || git init -q; }; " +
+      'cd /workspace && { [ -d .git ] || git init -q; }; ' +
         "grep -qxF '.praxis-agent/' .git/info/exclude 2>/dev/null || echo '.praxis-agent/' >> .git/info/exclude",
     ]);
     return handle;
