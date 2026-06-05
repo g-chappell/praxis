@@ -1662,6 +1662,70 @@ epics:
               - "Integration test (Docker + key): a fact stated pre-teardown is recalled in a fresh post-teardown session; fallback path surfaces the notice."
               - "STORY-36 acceptance_criteria satisfied."
 
+      - id: STORY-37
+        title: "Persistent chat history: shown to everyone on (re)join"
+        description: |
+          Today the orchestrator broadcasts chat frames live but keeps no
+          transcript, so a user who joins mid-session — or reopens the project
+          later — starts with an empty chat and sees only new messages (operator
+          report after the STORY-32/33 live test). This persists the full chat
+          transcript per project and replays it to every client on join. Storage
+          is the existing (currently unused) events table, keyed by project_id +
+          time-indexed, so history spans ALL sessions of a project (survives
+          teardowns). Complements STORY-36 (which restores the agent's memory;
+          this restores the displayed transcript). No migration.
+        acceptance_criteria:
+          - "Every chat message — a user's prompt, the agent's text reply (assembled per turn), tool calls, file-change notices, and errors — is persisted to the events table keyed by project, with its author and kind."
+          - "When a user opens or rejoins a project, the chat panel shows the FULL prior transcript across all of that project's sessions, correctly attributed, before any new live messages."
+          - "A user joining a live session mid-conversation sees everything said before they joined, not just subsequent messages."
+          - "Persisted history survives a full teardown — reopening the project on a later session still shows the whole conversation."
+        user_flow:
+          - "Users A and B chat with the agent; each message is persisted."
+          - "B refreshes or leaves and rejoins → the chat panel shows the full history, not just new messages."
+          - "Later, either user reopens the project → the entire prior conversation is there."
+        out_of_scope:
+          - "Editing or deleting past messages; per-message read receipts."
+          - "Persisting raw streaming text-chunks (only assembled messages are stored)."
+          - "Retention caps / pagination tuning (revisit if transcripts grow large)."
+        tasks:
+          - id: TASK-102
+            title: "Orchestrator: persist + serve project chat history via the events table"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              As the orchestrator broadcasts chat (STORY-32), also persist each
+              message to events (projectId, userId, eventType, payload{author,…}):
+              user_prompt on a prompt; assembled agent_text on turn-complete (sum
+              the text-chunks of the turn); tool_call, file_change, agent_error as
+              they occur. On a socket join (ws.ts onOpen), query events for the
+              project ordered by created_at and send a chat_history frame (the
+              ordered message list) to that socket before live frames. Keyed by
+              projectId so history spans sessions.
+            depends_on: [TASK-086]
+            attempt_count: 0
+            task_acceptance:
+              - "Unit/integration: prompting persists a user_prompt + an assembled agent_text row; a joining socket receives a chat_history frame with the prior messages in order."
+          - id: TASK-103
+            title: "Web: chat panel renders the history backfill on join"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              The chat panel handles the chat_history frame: map persisted events
+              (user_prompt / agent_text / tool_call / file_change / agent_error) to
+              ChatMessage kinds, attributed to their author, and render them as the
+              initial transcript before/above live messages. Idempotent if a
+              history frame arrives again (e.g. reconnect).
+            depends_on: [TASK-102]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "A chat_history frame renders the prior messages in order with correct authors; subsequent live frames append after it."
+              - "STORY-37 acceptance_criteria satisfied."
+
   - id: EPIC-04
     title: "Template, git, polish"
     description: |

@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 20 / 35 (57%)
-- **Total tasks:** 100
-- **Done:** 68 (68%)
-- **Ready:** 32
+- **Features verified:** 20 / 36 (56%)
+- **Total tasks:** 102
+- **Done:** 68 (67%)
+- **Ready:** 34
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1071,6 +1071,52 @@ URLs surfaced through a wildcard Caddy domain.
     _Task AC:_
     - Integration test (Docker + key): a fact stated pre-teardown is recalled in a fresh post-teardown session; fallback path surfaces the notice.
     - STORY-36 acceptance_criteria satisfied.
+
+- **STORY-37** — Persistent chat history: shown to everyone on (re)join
+  > Today the orchestrator broadcasts chat frames live but keeps no
+  > transcript, so a user who joins mid-session — or reopens the project
+  > later — starts with an empty chat and sees only new messages (operator
+  > report after the STORY-32/33 live test). This persists the full chat
+  > transcript per project and replays it to every client on join. Storage
+  > is the existing (currently unused) events table, keyed by project_id +
+  > time-indexed, so history spans ALL sessions of a project (survives
+  > teardowns). Complements STORY-36 (which restores the agent's memory;
+  > this restores the displayed transcript). No migration.
+  **Acceptance criteria:**
+  - Every chat message — a user's prompt, the agent's text reply (assembled per turn), tool calls, file-change notices, and errors — is persisted to the events table keyed by project, with its author and kind.
+  - When a user opens or rejoins a project, the chat panel shows the FULL prior transcript across all of that project's sessions, correctly attributed, before any new live messages.
+  - A user joining a live session mid-conversation sees everything said before they joined, not just subsequent messages.
+  - Persisted history survives a full teardown — reopening the project on a later session still shows the whole conversation.
+  **User flow:**
+  1. Users A and B chat with the agent; each message is persisted.
+  2. B refreshes or leaves and rejoins → the chat panel shows the full history, not just new messages.
+  3. Later, either user reopens the project → the entire prior conversation is there.
+  **Out of scope:**
+  - Editing or deleting past messages; per-message read receipts.
+  - Persisting raw streaming text-chunks (only assembled messages are stored).
+  - Retention caps / pagination tuning (revisit if transcripts grow large).
+  - :black_circle: **TASK-102** — Orchestrator: persist + serve project chat history via the events table  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-086_
+    > As the orchestrator broadcasts chat (STORY-32), also persist each
+    > message to events (projectId, userId, eventType, payload{author,…}):
+    > user_prompt on a prompt; assembled agent_text on turn-complete (sum
+    > the text-chunks of the turn); tool_call, file_change, agent_error as
+    > they occur. On a socket join (ws.ts onOpen), query events for the
+    > project ordered by created_at and send a chat_history frame (the
+    > ordered message list) to that socket before live frames. Keyed by
+    > projectId so history spans sessions.
+    _Task AC:_
+    - Unit/integration: prompting persists a user_prompt + an assembled agent_text row; a joining socket receives a chat_history frame with the prior messages in order.
+  - :black_circle: **TASK-103** :checkered_flag: — Web: chat panel renders the history backfill on join  `high` `small` _(apps/web)_  
+    _depends on: TASK-102_
+    > The chat panel handles the chat_history frame: map persisted events
+    > (user_prompt / agent_text / tool_call / file_change / agent_error) to
+    > ChatMessage kinds, attributed to their author, and render them as the
+    > initial transcript before/above live messages. Idempotent if a
+    > history frame arrives again (e.g. reconnect).
+    _Task AC:_
+    - A chat_history frame renders the prior messages in order with correct authors; subsequent live frames append after it.
+    - STORY-37 acceptance_criteria satisfied.
 
 ## EPIC-04 — Template, git, polish
 
