@@ -20,6 +20,10 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [errored, setErrored] = useState(false);
+  // A transient, non-fatal notice shown above the input (STORY-33): the shared
+  // agent was busy with another turn, or it restarted. Never disables input —
+  // cleared when the user sends their next prompt.
+  const [notice, setNotice] = useState<string | null>(null);
   // True while the agent is streaming a `text` run; reset by any non-text event
   // so the next text-chunk starts a fresh message.
   const streamingRef = useRef(false);
@@ -107,6 +111,15 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
           author: (frame.author as ChatAuthor | undefined) ?? authorRef.current,
           text: typeof frame.text === 'string' ? frame.text : '',
         });
+      } else if (frame.type === 'agent_busy') {
+        // The shared agent is mid-turn, so this prompt wasn't run (STORY-33).
+        // Surface a transient notice; the input stays live so they can retry.
+        setNotice('The agent is finishing another turn — your message wasn’t sent. Try again in a moment.');
+      } else if (frame.type === 'agent_restarted') {
+        // The agent process was re-opened after dying — files persist, but the
+        // earlier conversation context is gone (STORY-33).
+        streamingRef.current = false;
+        setNotice('The agent restarted — your files are intact, but earlier chat context was reset.');
       } else if (frame.type === 'error' && frame.path === undefined) {
         // Only session-scoped errors (no `path`) touch the chat. File read/save
         // errors carry a `path` and are surfaced in the editor instead, so a
@@ -129,6 +142,7 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
     if (!text) return;
     if (!send({ type: 'prompt', text })) return;
     streamingRef.current = false;
+    setNotice(null);
     pushMessage({ id: nextId(), kind: 'user', author: currentUser, text });
     setInput('');
   }
@@ -163,6 +177,12 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
       )}
 
       <ChatTranscript messages={messages} />
+
+      {notice && (
+        <p role="status" className="text-xs text-muted-foreground">
+          {notice}
+        </p>
+      )}
 
       <form onSubmit={sendPrompt} className="flex items-center gap-2">
         <Avatar name={currentUser.name} image={currentUser.image} />
