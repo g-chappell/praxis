@@ -57,6 +57,25 @@ export function caddyAsk(domain: string | null | undefined): boolean {
   return slug !== null && registry.has(slug);
 }
 
+/** If this is a preview-host WebSocket upgrade, return the slug; else null
+ *  (STORY-30). Vite's HMR client connects to `wss://<slug>.preview.<domain>` — we
+ *  tunnel that upgrade to the sandbox dev server; plain HTTP previews still go
+ *  through proxyToSandbox. Node-safe (no Bun) so it stays unit-testable. */
+export function previewWsSlug(
+  host: string | null | undefined,
+  upgradeHeader: string | null | undefined,
+): string | null {
+  if ((upgradeHeader ?? '').toLowerCase() !== 'websocket') return null;
+  return slugForHost(host);
+}
+
+/** The upstream `ws://` URL for a preview WS upgrade — the sandbox dev server,
+ *  preserving the request path + query (Vite's HMR endpoint). */
+export function upstreamWsUrl(target: PreviewTarget, req: Request): string {
+  const url = new URL(req.url);
+  return `ws://${target.ip}:${target.port}${url.pathname}${url.search}`;
+}
+
 const HOP_BY_HOP = ['host', 'connection', 'keep-alive', 'transfer-encoding', 'upgrade'];
 
 /** Reverse-proxy a preview HTTP request to the sandbox dev server. (Vite HMR's
