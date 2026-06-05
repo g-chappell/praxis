@@ -14,10 +14,12 @@ import { ChatPanel } from '@/components/workspace/chat-panel';
 import { CodeEditor } from '@/components/workspace/code-editor';
 import { FileTree } from '@/components/workspace/file-tree';
 import { InviteButton } from '@/components/workspace/invite-button';
+import { ControlBar } from '@/components/workspace/control-bar';
 import { PresenceBar } from '@/components/workspace/presence-bar';
 import { PreviewPane } from '@/components/workspace/preview-pane';
 import { cn } from '@/lib/utils';
 import { WorkspaceFilesProvider } from '@/components/workspace/workspace-files';
+import { WorkspaceControlProvider } from '@/components/workspace/workspace-control';
 import { WorkspacePresenceProvider } from '@/components/workspace/workspace-presence';
 import { WorkspaceSocketProvider } from '@/components/workspace/workspace-socket';
 
@@ -46,7 +48,9 @@ export function WorkspaceShell({
     <WorkspaceSocketProvider projectId={projectId}>
       <WorkspaceFilesProvider>
         <WorkspacePresenceProvider>
-          <ResizablePanels projectId={projectId} currentUser={currentUser} />
+          <WorkspaceControlProvider>
+            <ResizablePanels projectId={projectId} currentUser={currentUser} />
+          </WorkspaceControlProvider>
         </WorkspacePresenceProvider>
       </WorkspaceFilesProvider>
     </WorkspaceSocketProvider>
@@ -126,6 +130,7 @@ function FilesPane({ projectId }: { projectId: string }) {
         <InviteButton projectId={projectId} />
       </div>
       <PresenceBar />
+      <ControlBar />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <FileTree />
       </div>

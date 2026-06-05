@@ -159,7 +159,7 @@ wsRoute.get(
         }
         ensureWatcher(claim.sessionId);
         logger.info({ wsConnId: id, sessionId: claim.sessionId }, 'ws.open');
-        send(ws, { type: 'ready', sessionId: claim.sessionId, connId: id });
+        send(ws, { type: 'ready', sessionId: claim.sessionId, connId: id, userId: claim.userId });
         broadcastPresence(room);
         // Replay the project's full chat transcript to this socket (STORY-37) so a
         // late joiner / re-opener sees the whole conversation, not just new messages.
