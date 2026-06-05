@@ -1553,6 +1553,107 @@ epics:
               - "Unit test (fake timers): teardown fires after the grace window when sockets stay empty; a rejoin within the window cancels it; a non-empty socket set at elapse skips teardown."
               - "STORY-35 acceptance_criteria satisfied."
 
+      - id: STORY-36
+        title: "Cross-session agent memory: persist the store + session/load"
+        description: |
+          Implements ADR-0017 (Accepted). Today the in-sandbox agent's session
+          history + memory live under the ephemeral container home dir
+          (~/.local/share/claude, ~/.config/claude), while only /workspace is
+          durable (named volume + MinIO, ADR-0008) — so a true teardown (closed
+          tab, idle sweep) forgets everything, even though claude-agent-acp@0.39.0
+          supports ACP session/load (stable). This Story makes a project's agent
+          memory durable and resumes the prior conversation on a fresh session:
+          relocate the SDK's store onto a persisted path, and call loadSession
+          (with a newSession fallback) instead of always newSession. Builds on
+          ADR-0016 (persistent shared agent) + STORY-35 (refresh grace window).
+          ACP change — see ADR-0017.
+        acceptance_criteria:
+          - "After a full teardown and a fresh session in the same project, the agent resumes the prior conversation (a fact stated before teardown is recalled after) — verified live with a real agent."
+          - "The agent's session/config store persists across teardown (it no longer lives only on the ephemeral container layer); the persisted store is hidden from the user's file tree, file watcher, and git."
+          - "If the prior session can't be resumed (missing/corrupt/incompatible store), the agent starts fresh with a surfaced 'couldn't resume earlier conversation' notice — never a hard error."
+          - "Deleting a project purges its persisted agent store (no orphaned memory left behind)."
+        user_flow:
+          - "A user works with the agent, then everyone leaves and the session tears down (past the grace window)."
+          - "Later they reopen the project; a fresh agent session loads the prior conversation and the agent remembers what was discussed."
+          - "If the store can't be loaded, they see a brief 'starting a fresh conversation — earlier context couldn't be restored' notice and continue."
+        out_of_scope:
+          - "Per-user transcript split (one shared session per project, per ADR-0016)."
+          - "A user-facing 'reset agent memory' control (likely follow-up)."
+          - "ACP session/load for non-Claude agents (Codex) — same swap point, separate work."
+        tasks:
+          - id: TASK-098
+            title: "Verify the agent store path + relocation mechanism (sandbox)"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["packages/sandbox"]
+            description: |
+              Run the sandbox base image and confirm WHERE claude-agent-acp@0.39.0
+              + the bundled @anthropic-ai/claude-code actually write session
+              history and config, and that setting HOME (or a config-dir env var)
+              relocates the whole store. Document the verified path + env var in
+              docs/conventions/orchestrator-runtime.md (or the deploy runbook) so
+              TASK-099 relocates the right thing. Mandatory per ADR-0017 (don't
+              hard-code from third-party docs).
+            depends_on: [TASK-087]
+            attempt_count: 0
+            task_acceptance:
+              - "Documented: the exact on-disk store path in the base image and the env var that relocates it, confirmed by inspecting a running container."
+          - id: TASK-099
+            title: "Persist + relocate the agent store onto durable storage"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["packages/acp-host", "services/orchestrator"]
+            description: |
+              Spawn the agent with HOME (or the verified env var from TASK-098)
+              pointed at a durable, hidden path that survives teardown — default a
+              dotted dir under the persisted /workspace volume (e.g.
+              /workspace/.praxis-agent) so it rides the existing MinIO snapshot.
+              Exclude that path from the file list + file watcher (file-ops /
+              presence) and add it to the sandbox git ignore so it never shows in
+              the user's tree or commits. Project delete must purge it.
+            depends_on: [TASK-098]
+            attempt_count: 0
+            task_acceptance:
+              - "The agent's store is written under the persisted path; it does not appear in file_list, file_changed events, or git status; project delete removes it."
+          - id: TASK-100
+            title: "Resume the prior conversation via ACP session/load"
+            status: ready
+            priority: high
+            complexity: large
+            workspaces: ["packages/acp-host", "services/orchestrator", "packages/db"]
+            description: |
+              Persist the ACP sessionId per project (a column on projects or a
+              sessions lookup + migration). Extend AcpHost.openAgent to accept an
+              optional resumeSessionId; when present, call connection.loadSession
+              instead of newSession; on load failure or no prior id, fall back to
+              newSession and emit a 'couldn't resume' signal (reuse the STORY-33
+              agent_restarted-style channel). The orchestrator records the new
+              sessionId after a fresh open and passes the stored one on reopen.
+            depends_on: [TASK-099, TASK-088]
+            attempt_count: 0
+            task_acceptance:
+              - "Unit/integration: openAgent with a known resumeSessionId calls loadSession; an unknown/failed id falls back to newSession and surfaces the couldn't-resume signal; the sessionId is persisted after a fresh open."
+          - id: TASK-101
+            title: "Verify resume-across-teardown end to end"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              Docker+key integration (gated like the acp-host live test): in one
+              session tell the agent a fact, tear the session down fully, reopen,
+              and assert the agent recalls it (loadSession path). Plus unit
+              coverage for the fallback notice. The full live two-user check is on
+              the VPS post-deploy per the deploy-layer-live convention.
+            depends_on: [TASK-100]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Integration test (Docker + key): a fact stated pre-teardown is recalled in a fresh post-teardown session; fallback path surfaces the notice."
+              - "STORY-36 acceptance_criteria satisfied."
+
   - id: EPIC-04
     title: "Template, git, polish"
     description: |

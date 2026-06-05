@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 18 / 34 (53%)
-- **Total tasks:** 96
-- **Done:** 64 (67%)
-- **Ready:** 32
+- **Features verified:** 18 / 35 (51%)
+- **Total tasks:** 100
+- **Done:** 64 (64%)
+- **Ready:** 36
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1002,6 +1002,75 @@ URLs surfaced through a wildcard Caddy domain.
     _Task AC:_
     - Unit test (fake timers): teardown fires after the grace window when sockets stay empty; a rejoin within the window cancels it; a non-empty socket set at elapse skips teardown.
     - STORY-35 acceptance_criteria satisfied.
+
+- **STORY-36** — Cross-session agent memory: persist the store + session/load
+  > Implements ADR-0017 (Accepted). Today the in-sandbox agent's session
+  > history + memory live under the ephemeral container home dir
+  > (~/.local/share/claude, ~/.config/claude), while only /workspace is
+  > durable (named volume + MinIO, ADR-0008) — so a true teardown (closed
+  > tab, idle sweep) forgets everything, even though claude-agent-acp@0.39.0
+  > supports ACP session/load (stable). This Story makes a project's agent
+  > memory durable and resumes the prior conversation on a fresh session:
+  > relocate the SDK's store onto a persisted path, and call loadSession
+  > (with a newSession fallback) instead of always newSession. Builds on
+  > ADR-0016 (persistent shared agent) + STORY-35 (refresh grace window).
+  > ACP change — see ADR-0017.
+  **Acceptance criteria:**
+  - After a full teardown and a fresh session in the same project, the agent resumes the prior conversation (a fact stated before teardown is recalled after) — verified live with a real agent.
+  - The agent's session/config store persists across teardown (it no longer lives only on the ephemeral container layer); the persisted store is hidden from the user's file tree, file watcher, and git.
+  - If the prior session can't be resumed (missing/corrupt/incompatible store), the agent starts fresh with a surfaced 'couldn't resume earlier conversation' notice — never a hard error.
+  - Deleting a project purges its persisted agent store (no orphaned memory left behind).
+  **User flow:**
+  1. A user works with the agent, then everyone leaves and the session tears down (past the grace window).
+  2. Later they reopen the project; a fresh agent session loads the prior conversation and the agent remembers what was discussed.
+  3. If the store can't be loaded, they see a brief 'starting a fresh conversation — earlier context couldn't be restored' notice and continue.
+  **Out of scope:**
+  - Per-user transcript split (one shared session per project, per ADR-0016).
+  - A user-facing 'reset agent memory' control (likely follow-up).
+  - ACP session/load for non-Claude agents (Codex) — same swap point, separate work.
+  - :black_circle: **TASK-098** — Verify the agent store path + relocation mechanism (sandbox)  `high` `small` _(packages/sandbox)_  
+    _depends on: TASK-087_
+    > Run the sandbox base image and confirm WHERE claude-agent-acp@0.39.0
+    > + the bundled @anthropic-ai/claude-code actually write session
+    > history and config, and that setting HOME (or a config-dir env var)
+    > relocates the whole store. Document the verified path + env var in
+    > docs/conventions/orchestrator-runtime.md (or the deploy runbook) so
+    > TASK-099 relocates the right thing. Mandatory per ADR-0017 (don't
+    > hard-code from third-party docs).
+    _Task AC:_
+    - Documented: the exact on-disk store path in the base image and the env var that relocates it, confirmed by inspecting a running container.
+  - :black_circle: **TASK-099** — Persist + relocate the agent store onto durable storage  `high` `medium` _(packages/acp-host, services/orchestrator)_  
+    _depends on: TASK-098_
+    > Spawn the agent with HOME (or the verified env var from TASK-098)
+    > pointed at a durable, hidden path that survives teardown — default a
+    > dotted dir under the persisted /workspace volume (e.g.
+    > /workspace/.praxis-agent) so it rides the existing MinIO snapshot.
+    > Exclude that path from the file list + file watcher (file-ops /
+    > presence) and add it to the sandbox git ignore so it never shows in
+    > the user's tree or commits. Project delete must purge it.
+    _Task AC:_
+    - The agent's store is written under the persisted path; it does not appear in file_list, file_changed events, or git status; project delete removes it.
+  - :black_circle: **TASK-100** — Resume the prior conversation via ACP session/load  `high` `large` _(packages/acp-host, services/orchestrator, packages/db)_  
+    _depends on: TASK-099, TASK-088_
+    > Persist the ACP sessionId per project (a column on projects or a
+    > sessions lookup + migration). Extend AcpHost.openAgent to accept an
+    > optional resumeSessionId; when present, call connection.loadSession
+    > instead of newSession; on load failure or no prior id, fall back to
+    > newSession and emit a 'couldn't resume' signal (reuse the STORY-33
+    > agent_restarted-style channel). The orchestrator records the new
+    > sessionId after a fresh open and passes the stored one on reopen.
+    _Task AC:_
+    - Unit/integration: openAgent with a known resumeSessionId calls loadSession; an unknown/failed id falls back to newSession and surfaces the couldn't-resume signal; the sessionId is persisted after a fresh open.
+  - :black_circle: **TASK-101** :checkered_flag: — Verify resume-across-teardown end to end  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-100_
+    > Docker+key integration (gated like the acp-host live test): in one
+    > session tell the agent a fact, tear the session down fully, reopen,
+    > and assert the agent recalls it (loadSession path). Plus unit
+    > coverage for the fallback notice. The full live two-user check is on
+    > the VPS post-deploy per the deploy-layer-live convention.
+    _Task AC:_
+    - Integration test (Docker + key): a fact stated pre-teardown is recalled in a fresh post-teardown session; fallback path surfaces the notice.
+    - STORY-36 acceptance_criteria satisfied.
 
 ## EPIC-04 — Template, git, polish
 
