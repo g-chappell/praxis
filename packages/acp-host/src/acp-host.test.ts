@@ -138,7 +138,11 @@ describe('ClaudeAcpHost — persistent AgentSession (ADR-0016)', () => {
     // Authenticates with the platform API key and nothing else (ADR-0009).
     const [, command, opts] = spawn.mock.calls[0]!;
     expect(command).toBe('claude-agent-acp');
-    expect(opts?.env).toEqual({ ANTHROPIC_API_KEY: 'sk-ant-test' });
+    // Platform key + the relocated HOME so the agent store persists (ADR-0017).
+    expect(opts?.env).toEqual({
+      ANTHROPIC_API_KEY: 'sk-ant-test',
+      HOME: '/workspace/.praxis-agent',
+    });
     await session.close();
   });
 

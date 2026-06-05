@@ -84,6 +84,17 @@ export const ACP_AGENT_COMMAND = 'claude-agent-acp';
 /** The sandbox working directory (base image WORKDIR). Must be absolute. */
 const WORKSPACE_DIR = '/workspace';
 
+/** Directory name of the agent's relocated store under the workspace (STORY-36).
+ *  Consumers exclude it from file views + git (see orchestrator / sandbox). */
+export const AGENT_STORE_DIRNAME = '.praxis-agent';
+
+/** The agent's HOME inside the sandbox (ADR-0017). claude-code stores its config
+ *  + session history under $HOME (.claude.json, .claude/projects/*.jsonl that ACP
+ *  session/load reads). Pointing HOME at a hidden dir under the persisted
+ *  /workspace volume makes that store survive a teardown, enabling cross-session
+ *  memory. Auto-created by the agent on first run. */
+const AGENT_HOME = `${WORKSPACE_DIR}/${AGENT_STORE_DIRNAME}`;
+
 /**
  * `AcpHost` backed by the `claude-agent-acp` adapter (ADR-0009). Talks ACP to a
  * persistent agent process spawned inside the sandbox via the `Sandbox`
@@ -125,8 +136,10 @@ class ClaudeAgentSession implements AgentSession {
       cwd: WORKSPACE_DIR,
       // The agent authenticates with the platform API key. We deliberately pass
       // ONLY this key — no CLAUDE_CODE_OAUTH_TOKEN — so there is no ambiguous or
-      // ToS-risky subscription fallback (ADR-0009).
-      env: { ANTHROPIC_API_KEY: apiKey },
+      // ToS-risky subscription fallback (ADR-0009). HOME points the agent's store
+      // at a persisted, hidden dir so its memory + session history survive a
+      // teardown (ADR-0017/STORY-36).
+      env: { ANTHROPIC_API_KEY: apiKey, HOME: AGENT_HOME },
     });
 
     const session = new ClaudeAgentSession(proc);
