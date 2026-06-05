@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 23 / 36 (64%)
 - **Total tasks:** 102
-- **Done:** 77 (75%)
-- **Ready:** 25
+- **Done:** 79 (77%)
+- **Ready:** 23
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -622,7 +622,7 @@ URLs surfaced through a wildcard Caddy domain.
   **Out of scope:**
   - HMR for templates other than react-threejs-scene (the mechanism should generalise, but only the 3js template is in scope to verify).
   - Collaborative multi-user cursor/edit sync (post-POC, Yjs).
-  - :black_circle: **TASK-079** — Orchestrator: tunnel the preview WebSocket upgrade to the sandbox dev server  `med` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-079** — Orchestrator: tunnel the preview WebSocket upgrade to the sandbox dev server  `med` `medium` _(services/orchestrator)_  
     _depends on: TASK-038_
     > In the preview proxy, detect a WebSocket upgrade on a
     > preview-host request and tunnel it to the sandbox dev server
@@ -631,7 +631,7 @@ URLs surfaced through a wildcard Caddy domain.
     > requests untouched.
     _Task AC:_
     - A WebSocket upgrade to a live preview host is proxied to the sandbox dev server and frames pass both ways; a non-upgrade request still serves over the HTTP path.
-  - :black_circle: **TASK-080** :checkered_flag: — Verify preview hot-reload live + document Vite HMR config  `med` `small` _(services/orchestrator, templates/react-threejs-scene)_  
+  - :white_check_mark: **TASK-080** :checkered_flag: — Verify preview hot-reload live + document Vite HMR config  `med` `small` _(services/orchestrator, templates/react-threejs-scene)_  
     _depends on: TASK-079_
     > On the VPS, edit a file in a running 3js project and confirm the
     > preview pane hot-reloads without a manual refresh. Capture any
