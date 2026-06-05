@@ -136,9 +136,19 @@ ${tasks}
 }
 
 function renderTaskBody(task, story, epic, idToNum) {
-  const ac = (task.task_acceptance || []).map((a) => `- ${a}`).join('\n');
-  const deps = (task.depends_on || []).map((d) => `- ${refMd(d, idToNum)}`).join('\n');
-  const ws = (task.workspaces || []).map((w) => `\`${w}\``).join(', ');
+  // Defensive: yaml-lite only parses single-line flow arrays; a malformed field
+  // (e.g. a multi-line `workspaces:`) parses as a non-array. Coerce so one bad
+  // task can't crash the whole issue sync (the data fix is single-line arrays).
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const ac = arr(task.task_acceptance)
+    .map((a) => `- ${a}`)
+    .join('\n');
+  const deps = arr(task.depends_on)
+    .map((d) => `- ${refMd(d, idToNum)}`)
+    .join('\n');
+  const ws = arr(task.workspaces)
+    .map((w) => `\`${w}\``)
+    .join(', ');
   return `**Task** \`${task.id}\` mirrors \`roadmap/roadmap.yml\`. Parent story: ${refMd(story.id, idToNum)}. Epic: ${refMd(epic.id, idToNum)}.
 
 ${(task.description || '').trim()}

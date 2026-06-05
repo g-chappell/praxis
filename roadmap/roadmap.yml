@@ -1896,8 +1896,7 @@ epics:
             status: ready
             priority: high
             complexity: medium
-            workspaces:
-              ["templates/react-threejs-scene", "packages/sandbox", "services/orchestrator"]
+            workspaces: ["templates/react-threejs-scene", "packages/sandbox", "services/orchestrator"]
             description: |
               Per ADR-0018 (Path A — confirmed by spike): at project creation the
               orchestrator seeds /workspace/.mcp.json (server command, no secrets) +
