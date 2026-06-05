@@ -1198,7 +1198,7 @@ that closes the POC.
     > and rejects with an explicit error after the cap is hit.
     _Task AC:_
     - Integration test crosses the cap and observes a clean refusal.
-  - :black_circle: **TASK-044** :checkered_flag: — Wire MCP server into the react-threejs-scene sandbox  `high` `medium`  
+  - :black_circle: **TASK-044** :checkered_flag: — Wire MCP server into the react-threejs-scene sandbox  `high` `medium` _(templates/react-threejs-scene, packages/sandbox, services/orchestrator)_  
     _depends on: TASK-042, TASK-040, TASK-022, TASK-106_
     > Per ADR-0018 (Path A — confirmed by spike): at project creation the
     > orchestrator seeds /workspace/.mcp.json (server command, no secrets) +
