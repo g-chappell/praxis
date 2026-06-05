@@ -75,4 +75,40 @@ describeLive('ClaudeAcpHost round-trip (real sandbox + agent)', () => {
     },
     TURN_TIMEOUT * 2,
   );
+
+  it(
+    'resumes a prior conversation across a process teardown via session/load (STORY-36)',
+    async () => {
+      const drain = async (s: Awaited<ReturnType<typeof host.openAgent>>, text: string) => {
+        const events: AcpEvent[] = [];
+        for await (const event of s.prompt(text, { onPermission: async () => 'allow' })) {
+          events.push(event);
+        }
+        return events;
+      };
+
+      // Session 1: tell the agent a fact, capture its id, then kill the process.
+      const s1 = await host.openAgent(sandbox, handle, API_KEY!);
+      await drain(s1, 'Remember the word "marmalade". Reply with exactly: marmalade');
+      const priorId = s1.sessionId;
+      await s1.close(); // kills the agent process; the store persists on the volume
+
+      // Session 2: a brand-new process, resuming the prior session by id. The
+      // store lives under HOME=/workspace/.praxis-agent (persisted), so loadSession
+      // restores the conversation.
+      const s2 = await host.openAgent(sandbox, handle, API_KEY!, { resumeSessionId: priorId });
+      try {
+        expect(s2.resumed).toBe(true);
+        const recall = await drain(
+          s2,
+          'What word did I ask you to remember? Reply with just that word.',
+        );
+        expect(recall.filter((e) => e.type === 'error')).toHaveLength(0);
+        expect(recall.some((e) => e.type === 'text-chunk' && /marmalade/i.test(e.text))).toBe(true);
+      } finally {
+        await s2.close();
+      }
+    },
+    TURN_TIMEOUT * 2,
+  );
 });

@@ -57,3 +57,21 @@ an in-memory registry, gated by on-demand-TLS `/caddy/ask`. We do **not**
 mutate the shared multi-tenant Caddy dynamically. Known follow-up: the
 preview serves over plain HTTP, so Vite's **HMR WebSocket is not proxied** —
 the preview renders and updates on a manual refresh, but does not live-reload.
+
+## Agent memory store location (STORY-36 / ADR-0017)
+
+The in-sandbox agent (`claude-agent-acp` wrapping `@anthropic-ai/claude-code`)
+stores its **config + session history under `$HOME`** — verified on
+`praxis-sandbox-base:latest` (claude-code 2.1.160): `$HOME/.claude.json` and
+`$HOME/.claude/` (the latter holds `projects/<cwd-hash>/*.jsonl` transcripts
+that ACP `session/load` reads). **Setting `HOME` relocates the whole store**
+(the third-party "`~/.local/share/claude`" claim is wrong for this version).
+
+So for durable cross-session memory we spawn the agent with
+`HOME=/workspace/.praxis-agent` — a hidden dir under the persisted project
+volume (named volume + MinIO snapshot, ADR-0008), so the store survives a
+teardown for free. Because it lives inside `/workspace`, it is **excluded from
+the file list, the file-watcher broadcast, and the sandbox `.gitignore`** so it
+never leaks into the user's tree, `file_changed` stream, or commits. Project
+delete purges it with the volume. (Aside: claude-code also writes a cwd-relative
+`/workspace/backups/` dir on its own — pre-existing, unrelated.)

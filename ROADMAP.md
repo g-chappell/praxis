@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 18 / 35 (51%)
 - **Total tasks:** 100
-- **Done:** 64 (64%)
-- **Ready:** 36
+- **Done:** 68 (68%)
+- **Ready:** 32
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1028,7 +1028,7 @@ URLs surfaced through a wildcard Caddy domain.
   - Per-user transcript split (one shared session per project, per ADR-0016).
   - A user-facing 'reset agent memory' control (likely follow-up).
   - ACP session/load for non-Claude agents (Codex) — same swap point, separate work.
-  - :black_circle: **TASK-098** — Verify the agent store path + relocation mechanism (sandbox)  `high` `small` _(packages/sandbox)_  
+  - :white_check_mark: **TASK-098** — Verify the agent store path + relocation mechanism (sandbox)  `high` `small` _(packages/sandbox)_  
     _depends on: TASK-087_
     > Run the sandbox base image and confirm WHERE claude-agent-acp@0.39.0
     > + the bundled @anthropic-ai/claude-code actually write session
@@ -1039,7 +1039,7 @@ URLs surfaced through a wildcard Caddy domain.
     > hard-code from third-party docs).
     _Task AC:_
     - Documented: the exact on-disk store path in the base image and the env var that relocates it, confirmed by inspecting a running container.
-  - :black_circle: **TASK-099** — Persist + relocate the agent store onto durable storage  `high` `medium` _(packages/acp-host, services/orchestrator)_  
+  - :white_check_mark: **TASK-099** — Persist + relocate the agent store onto durable storage  `high` `medium` _(packages/acp-host, services/orchestrator)_  
     _depends on: TASK-098_
     > Spawn the agent with HOME (or the verified env var from TASK-098)
     > pointed at a durable, hidden path that survives teardown — default a
@@ -1050,7 +1050,7 @@ URLs surfaced through a wildcard Caddy domain.
     > the user's tree or commits. Project delete must purge it.
     _Task AC:_
     - The agent's store is written under the persisted path; it does not appear in file_list, file_changed events, or git status; project delete removes it.
-  - :black_circle: **TASK-100** — Resume the prior conversation via ACP session/load  `high` `large` _(packages/acp-host, services/orchestrator, packages/db)_  
+  - :white_check_mark: **TASK-100** — Resume the prior conversation via ACP session/load  `high` `large` _(packages/acp-host, services/orchestrator, packages/db)_  
     _depends on: TASK-099, TASK-088_
     > Persist the ACP sessionId per project (a column on projects or a
     > sessions lookup + migration). Extend AcpHost.openAgent to accept an
@@ -1061,7 +1061,7 @@ URLs surfaced through a wildcard Caddy domain.
     > sessionId after a fresh open and passes the stored one on reopen.
     _Task AC:_
     - Unit/integration: openAgent with a known resumeSessionId calls loadSession; an unknown/failed id falls back to newSession and surfaces the couldn't-resume signal; the sessionId is persisted after a fresh open.
-  - :black_circle: **TASK-101** :checkered_flag: — Verify resume-across-teardown end to end  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-101** :checkered_flag: — Verify resume-across-teardown end to end  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-100_
     > Docker+key integration (gated like the acp-host live test): in one
     > session tell the agent a fact, tear the session down fully, reopen,

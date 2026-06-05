@@ -237,11 +237,16 @@ export class DockerSandbox implements Sandbox {
     if (!restored && (await this.isWorkspaceEmpty(handle.containerId))) {
       await this.seedTemplate(handle.containerId, templateId);
     }
-    // Initialise git in the project dir if still fresh (no template seeded).
+    // Initialise git in the project dir if still fresh (no template seeded), and
+    // locally ignore the agent's store dir (HOME=/workspace/.praxis-agent,
+    // ADR-0017) via .git/info/exclude so it never lands in the user's commits.
+    // The literal mirrors @praxis/acp-host AGENT_STORE_DIRNAME — can't import it
+    // here (acp-host depends on this package; importing back would be circular).
     await this.execSimple(handle.containerId, [
       'bash',
       '-lc',
-      'cd /workspace && [ -d .git ] || git init -q',
+      'cd /workspace && { [ -d .git ] || git init -q; }; ' +
+        "grep -qxF '.praxis-agent/' .git/info/exclude 2>/dev/null || echo '.praxis-agent/' >> .git/info/exclude",
     ]);
     return handle;
   }
@@ -387,7 +392,10 @@ export class DockerSandbox implements Sandbox {
       try {
         const wrapped =
           `echo $$ > ${pidFile}; ` +
-          `exec inotifywait -m -r -q -e create,modify,delete,move --format '%e|%w%f' ${WORKDIR}`;
+          // Exclude the agent's store dir (HOME=/workspace/.praxis-agent, ADR-0017)
+          // so its per-turn churn never floods the room as file_changed events.
+          `exec inotifywait -m -r -q -e create,modify,delete,move ` +
+          `--exclude '(^|/)\\.praxis-agent(/|$)' --format '%e|%w%f' ${WORKDIR}`;
         proc = dockerExec(containerId, ['bash', '-lc', wrapped]);
         if (stopped) {
           proc.kill();

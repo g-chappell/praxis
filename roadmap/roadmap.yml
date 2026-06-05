@@ -1583,7 +1583,7 @@ epics:
         tasks:
           - id: TASK-098
             title: "Verify the agent store path + relocation mechanism (sandbox)"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/sandbox"]
@@ -1597,11 +1597,12 @@ epics:
               hard-code from third-party docs).
             depends_on: [TASK-087]
             attempt_count: 0
+            completed: '2026-06-05T12:57:00Z'
             task_acceptance:
               - "Documented: the exact on-disk store path in the base image and the env var that relocates it, confirmed by inspecting a running container."
           - id: TASK-099
             title: "Persist + relocate the agent store onto durable storage"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/acp-host", "services/orchestrator"]
@@ -1615,11 +1616,12 @@ epics:
               the user's tree or commits. Project delete must purge it.
             depends_on: [TASK-098]
             attempt_count: 0
+            completed: '2026-06-05T12:57:00Z'
             task_acceptance:
               - "The agent's store is written under the persisted path; it does not appear in file_list, file_changed events, or git status; project delete removes it."
           - id: TASK-100
             title: "Resume the prior conversation via ACP session/load"
-            status: ready
+            status: done
             priority: high
             complexity: large
             workspaces: ["packages/acp-host", "services/orchestrator", "packages/db"]
@@ -1633,11 +1635,12 @@ epics:
               sessionId after a fresh open and passes the stored one on reopen.
             depends_on: [TASK-099, TASK-088]
             attempt_count: 0
+            completed: '2026-06-05T12:57:00Z'
             task_acceptance:
               - "Unit/integration: openAgent with a known resumeSessionId calls loadSession; an unknown/failed id falls back to newSession and surfaces the couldn't-resume signal; the sessionId is persisted after a fresh open."
           - id: TASK-101
             title: "Verify resume-across-teardown end to end"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -1649,6 +1652,7 @@ epics:
               the VPS post-deploy per the deploy-layer-live convention.
             depends_on: [TASK-100]
             attempt_count: 0
+            completed: '2026-06-05T12:57:00Z'
             is_terminal: true
             task_acceptance:
               - "Integration test (Docker + key): a fact stated pre-teardown is recalled in a fresh post-teardown session; fallback path surfaces the notice."

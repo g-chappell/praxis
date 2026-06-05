@@ -70,6 +70,10 @@ export interface SessionRoom {
   // Opened lazily on the first prompt, reused across turns and users, re-opened if
   // it dies, and closed on teardown. Undefined until the first prompt.
   agent?: AgentSession;
+  // The ACP session id to resume across teardowns (ADR-0017/STORY-36). Seeded from
+  // projects.agent_session_id at room creation; updated to the live id after each
+  // open. Passed as resumeSessionId so a fresh agent loads the prior conversation.
+  agentSessionId?: string;
   sockets: Set<ServerWebSocket<unknown>>;
   // Live presence: connId → member identity (STORY-11/TASK-033). Mutated on WS
   // open/close; broadcast to the room as `presence`.
@@ -131,12 +135,20 @@ export interface TurnAcquire {
   agent?: AgentSession;
   /** True when a dead agent was just re-opened (the room should be told). */
   restarted: boolean;
+  /** A fresh agent was opened this call → persist `room.agentSessionId` (STORY-36). */
+  opened: boolean;
+  /** A resume was attempted (a prior session id existed) but the agent started
+   *  fresh → surface a "couldn't resume earlier conversation" notice. */
+  resumeFailed: boolean;
 }
 
 /** Claim the room's single persistent agent for a turn (ADR-0016/STORY-33). Opens
  *  it lazily on the first prompt, re-opens it if it died (flagging `restarted`),
  *  and reports `busy` when a turn is already in flight so the caller can reject
- *  rather than race a second turn. The opened agent is stored on the room. */
+ *  rather than race a second turn. On open it resumes the project's prior ACP
+ *  session via `resumeSessionId` (ADR-0017/STORY-36), falling back to a fresh
+ *  session (flagging `resumeFailed`) when there's no prior id or the load fails.
+ *  The opened agent + its live session id are stored on the room. */
 export async function acquireRoomTurn(
   room: SessionRoom,
   host: AcpHost,
@@ -144,17 +156,25 @@ export async function acquireRoomTurn(
 ): Promise<TurnAcquire> {
   let agent = room.agent;
   let restarted = false;
+  let opened = false;
+  let resumeFailed = false;
   if (!agent || !agent.alive) {
     restarted = agent !== undefined; // had one before → it died → re-open
+    const resumeSessionId = room.agentSessionId;
     try {
-      agent = await host.openAgent(sandbox, room.handle, room.apiKey);
+      agent = await host.openAgent(sandbox, room.handle, room.apiKey, { resumeSessionId });
     } catch {
-      return { status: 'error', restarted: false };
+      return { status: 'error', restarted: false, opened: false, resumeFailed: false };
     }
     room.agent = agent;
+    room.agentSessionId = agent.sessionId; // the live id (resumed or fresh)
+    opened = true;
+    resumeFailed = resumeSessionId !== undefined && !agent.resumed;
   }
-  if (agent.busy) return { status: 'busy', restarted: false };
-  return { status: 'ready', agent, restarted };
+  if (agent.busy) {
+    return { status: 'busy', restarted: false, opened: false, resumeFailed: false };
+  }
+  return { status: 'ready', agent, restarted, opened, resumeFailed };
 }
 
 export function deleteRoom(sessionId: string): void {

@@ -2,8 +2,13 @@
 // ACP-speaking agent inside a Sandbox and streams typed events across many prompt
 // turns over one shared session.
 
-export { ClaudeAcpHost, ACP_AGENT_COMMAND, AgentBusyError } from './acp-host.js';
-export type { AcpHost, AgentSession, PromptOptions } from './acp-host.js';
+export {
+  ClaudeAcpHost,
+  ACP_AGENT_COMMAND,
+  AGENT_STORE_DIRNAME,
+  AgentBusyError,
+} from './acp-host.js';
+export type { AcpHost, AgentSession, OpenAgentOptions, PromptOptions } from './acp-host.js';
 export type {
   AcpEvent,
   TextChunkEvent,
