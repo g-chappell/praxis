@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 18 / 32 (56%)
-- **Total tasks:** 88
-- **Done:** 63 (72%)
-- **Ready:** 25
+- **Features verified:** 18 / 33 (55%)
+- **Total tasks:** 95
+- **Done:** 63 (66%)
+- **Ready:** 32
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -856,6 +856,107 @@ URLs surfaced through a wildcard Caddy domain.
     _Task AC:_
     - Chat panel renders agent_busy without disabling input and shows the restarted notice.
     - STORY-33 acceptance_criteria satisfied.
+
+- **STORY-34** — Prompt-control modes: serialised queue + turn-based handoff
+  > STORY-33 gives a project room ONE shared persistent agent, but the only
+  > coordination today is a blunt agent_busy reject when two users prompt at
+  > once. This adds two toggleable control modes (the operator's requirement)
+  > so a pair can actually coordinate who drives the shared agent. Builds on
+  > STORY-32 (shared room/chat) + STORY-33 (shared agent). Decisions from
+  > /ux-discovery: default = serialised; mode persists per project; only the
+  > project owner switches mode; turn-based handoff = holder passes/releases +
+  > non-holders request → holder approves/declines; initial controller = owner;
+  > serialised queue is visible + author-cancelable (FIFO); if the holder
+  > disconnects, control auto-releases and a remaining user can claim it;
+  > interactive tool-permission routing stays auto-allow (deferred).
+  **Acceptance criteria:**
+  - The active mode (serialised | turn-based) shows in the workspace header, persists per project across sessions, and is editable by the project owner only (others see it read-only).
+  - Serialised mode (default): while a turn runs, further prompts from any user are QUEUED (not rejected); the pending queue is visible to all with author + text; a user can cancel their own queued prompt; queued prompts run FIFO as turns complete.
+  - Turn-based mode: exactly one user holds control; only the holder can prompt; non-holders' input is disabled showing '<holder> has control'; the project owner holds control first.
+  - Turn-based handoff: the holder can release or pass control to a named user; a non-holder can request control, which the holder approves or declines; if the holder disconnects, control auto-releases and any remaining user can claim it.
+  - Switching modes is owner-only, broadcasts to the room, and switching to turn-based clears the serialised queue (with a notice) and sets the holder to the owner.
+  **User flow:**
+  1. Owner opens the project; the header shows 'Serialised' (default, loaded from the project setting).
+  2. Both users type prompts; the agent runs them in turn; a second prompt appears in the visible queue and runs when the current turn finishes.
+  3. Owner toggles to 'Turn-based'; the owner now holds control; the invited user's input is disabled with 'Owner has control'.
+  4. Invited user clicks 'Request control'; the owner sees the request and clicks 'Approve'; control passes; now the invited user can prompt and the owner's input is disabled.
+  5. Invited user clicks 'Release'; control returns to the owner.
+  **Out of scope:**
+  - Routing interactive tool-permission approvals to the controller (auto-allow retained — separate later story).
+  - Per-user prompt threads (one shared transcript), >2-user delegation chains, Yjs co-editing.
+  - :black_circle: **TASK-090** — DB: projects.controlMode column + migration  `high` `small` _(packages/db)_
+    > Add a controlMode column to the projects table (text, values
+    > 'serialised' | 'turn_based', default 'serialised') via Drizzle schema +
+    > a generated migration. Codegen types updated. The orchestrator reads it
+    > on room create and persists owner mode-switches to it.
+    _Task AC:_
+    - Migration adds projects.controlMode defaulting to 'serialised'; existing rows backfill to 'serialised'.
+    - Drizzle codegen drift check passes.
+  - :black_circle: **TASK-091** — Orchestrator: control-state foundation + owner-gated set_mode  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-090_
+    > SessionRoom gains the live control state: mode (loaded from
+    > projects.controlMode on room create), controlHolder (userId | null),
+    > pending control requests, and the serialised queue. New WS messages:
+    > set_mode (owner-only; rejected from non-owner; persists to
+    > projects.controlMode). Broadcast a control_state frame (mode, holder,
+    > requests, queue summary) to the room on every change. The web app passes
+    > the authenticated user's ownerness into the session so the orchestrator
+    > can gate owner-only actions server-side.
+    _Task AC:_
+    - set_mode from a non-owner is rejected; from the owner it updates room state, persists to projects.controlMode, and broadcasts control_state.
+    - control_state is broadcast to all sockets on mode/holder/queue change.
+  - :black_circle: **TASK-092** — Orchestrator: serialised queue (enqueue / drain / cancel)  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-091_
+    > In serialised mode, a prompt arriving while a turn is in flight is
+    > ENQUEUED (FIFO) instead of returning agent_busy; on turn-complete the
+    > next queued prompt drains automatically against the shared agent. New WS
+    > message cancel_queued (author-only) removes a pending entry. A user
+    > leaving drops their queued entries. Switching to turn-based clears the
+    > queue (notice). Queue changes broadcast via control_state.
+    _Task AC:_
+    - Integration test: with a turn active, a second prompt enqueues; on completion it drains and runs; the author can cancel a queued entry; a leaver's entries are dropped.
+  - :black_circle: **TASK-093** — Orchestrator: turn-based control + handoff  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-091_
+    > In turn-based mode, only controlHolder may prompt (a non-holder prompt
+    > is rejected not_in_control); the owner is the initial holder. WS messages:
+    > request_control, grant_control / decline_control (holder only),
+    > release_control, pass_control (to a named userId). On holder disconnect,
+    > control auto-releases (null) and a remaining user's request auto-grants.
+    > All transitions broadcast control_state.
+    _Task AC:_
+    - Integration test: non-holder prompt is rejected; request→grant transfers control; release vacates; holder disconnect auto-releases and a remaining user can claim.
+  - :black_circle: **TASK-094** — Web: control bar — mode toggle + turn-based control UI  `high` `medium` _(apps/web)_  
+    _depends on: TASK-093_
+    > A ControlBar in the workspace header (next to PresenceBar) consuming the
+    > control_state frame: shows the active mode with an owner-only toggle
+    > (read-only for non-owners); in turn-based shows who holds control, a
+    > 'Request control' button for non-holders, 'Approve'/'Decline' on an
+    > incoming request for the holder, and 'Release' / 'Pass to <user>' for the
+    > holder. The chat input is disabled for non-holders with '<holder> has
+    > control'. Keyboard-accessible; SR labels reflect control state; the
+    > request-approval surface is an accessible dismissible prompt, not a
+    > vanishing toast.
+    _Task AC:_
+    - Owner sees an editable mode toggle; non-owner sees it read-only. In turn-based, a non-holder's input is disabled with '<holder> has control' and Request/Approve/Release controls drive handoff off control_state.
+  - :black_circle: **TASK-095** — Web: serialised queue UI  `high` `small` _(apps/web)_  
+    _depends on: TASK-092_
+    > In serialised mode, render the pending queue from control_state (each
+    > entry: author avatar+name + prompt text) with a cancel control on the
+    > current user's own entries (sends cancel_queued). Integrates with the
+    > chat panel; the agent_busy notice is replaced by the queued state.
+    _Task AC:_
+    - A queued prompt shows in the list with its author; the author sees a cancel control that removes it; non-authors cannot cancel it.
+  - :black_circle: **TASK-096** :checkered_flag: — E2E/integration: both modes end to end  `med` `medium` _(apps/web)_  
+    _depends on: TASK-094, TASK-095_
+    > Two-client coverage: serialised (enqueue + cancel-own + FIFO drain) and
+    > turn-based (owner initial control → invited user requests → owner approves
+    > → invited prompts → release), plus owner-only mode switch (non-owner
+    > rejected). Live two-browser shared-session behaviour is verified on the
+    > VPS post-deploy per the deploy-layer-live convention.
+    _Task AC:_
+    - Serialised: a second prompt during a turn enqueues, the author can cancel it, and it drains on completion.
+    - Turn-based: request→approve transfers control, the non-holder's input gates correctly, release returns control.
+    - STORY-34 acceptance_criteria satisfied.
 
 ## EPIC-04 — Template, git, polish
 
