@@ -1690,7 +1690,7 @@ epics:
         tasks:
           - id: TASK-102
             title: "Orchestrator: persist + serve project chat history via the events table"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -1705,11 +1705,12 @@ epics:
               projectId so history spans sessions.
             depends_on: [TASK-086]
             attempt_count: 0
+            completed: '2026-06-05T14:36:00Z'
             task_acceptance:
               - "Unit/integration: prompting persists a user_prompt + an assembled agent_text row; a joining socket receives a chat_history frame with the prior messages in order."
           - id: TASK-103
             title: "Web: chat panel renders the history backfill on join"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -1721,6 +1722,7 @@ epics:
               history frame arrives again (e.g. reconnect).
             depends_on: [TASK-102]
             attempt_count: 0
+            completed: '2026-06-05T14:36:00Z'
             is_terminal: true
             task_acceptance:
               - "A chat_history frame renders the prior messages in order with correct authors; subsequent live frames append after it."
