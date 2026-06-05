@@ -170,6 +170,10 @@ export const projects = pgTable('projects', {
   name: text('name').notNull(),
   templateId: text('template_id').notNull(),
   harness: text('harness').notNull().default('claude-code'),
+  // The project's persistent ACP agent session id (ADR-0017/STORY-36). Set after
+  // a fresh agent opens; passed back as resumeSessionId on the next open so the
+  // agent resumes the prior conversation via session/load. Null until first run.
+  agentSessionId: text('agent_session_id'),
   createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });

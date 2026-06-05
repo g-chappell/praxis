@@ -10,7 +10,7 @@ import { createBunWebSocket } from 'hono/bun';
 import type { ServerWebSocket } from 'bun';
 
 import { AgentBusyError } from '@praxis/acp-host';
-import { sessions } from '@praxis/db';
+import { projects, sessions } from '@praxis/db';
 import { db } from '@praxis/db/client';
 import type { FileEvent } from '@praxis/sandbox';
 
@@ -258,8 +258,14 @@ async function runPrompt(
     return;
   }
   const agent = turn.agent!;
-  // The dead agent was re-opened (files persist; conversation memory resets).
-  if (turn.restarted) broadcast(room, { type: 'agent_restarted' });
+  // A fresh agent was opened → persist its ACP session id so a later session
+  // resumes this conversation via session/load (ADR-0017/STORY-36).
+  if (turn.opened) persistAgentSession(room);
+  // A resume was attempted (prior session id existed) but the agent started
+  // fresh → tell the room its earlier chat context couldn't be restored. Reuses
+  // the agent_restarted frame the client already renders (files intact, memory
+  // reset). A successful resume (incl. seamless recovery after a crash) is silent.
+  if (turn.resumeFailed) broadcast(room, { type: 'agent_restarted' });
 
   // Shared chat (STORY-32): echo the prompt to peers (the sender renders it
   // optimistically), then fan the agent's stream out to the whole room, each
@@ -290,6 +296,23 @@ async function runPrompt(
       author,
     });
   }
+}
+
+/** Persist the room's live ACP session id onto the project so a later session
+ *  resumes this conversation via session/load (ADR-0017/STORY-36). Fire-and-forget
+ *  — a failed write just means the next session starts fresh. */
+function persistAgentSession(room: SessionRoom): void {
+  if (!room.agentSessionId) return;
+  void db
+    .update(projects)
+    .set({ agentSessionId: room.agentSessionId })
+    .where(eq(projects.id, room.projectId))
+    .catch((err: unknown) =>
+      logger.warn(
+        { projectId: room.projectId, err: err instanceof Error ? err.message : String(err) },
+        'agent_session.persist_failed',
+      ),
+    );
 }
 
 /** Presence/cursor messages (STORY-11/TASK-033). `file_open` records which file a

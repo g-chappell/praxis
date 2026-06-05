@@ -52,6 +52,21 @@ export interface AgentSession {
   readonly alive: boolean;
   /** True while a turn is in flight (one active turn per session). */
   readonly busy: boolean;
+  /** The ACP session id — persist it so a later open can resume this conversation
+   *  via `resumeSessionId` (ADR-0017). */
+  readonly sessionId: string;
+  /** True when this session was resumed from a prior one via ACP session/load;
+   *  false when it was created fresh (no `resumeSessionId`, the agent lacks the
+   *  loadSession capability, or the load failed and we fell back to a new session). */
+  readonly resumed: boolean;
+}
+
+/** Options for opening an agent session (ADR-0017). */
+export interface OpenAgentOptions {
+  /** A prior ACP session id to resume via session/load. When the agent advertises
+   *  the `loadSession` capability and the load succeeds, the conversation history
+   *  is restored; otherwise the host falls back to a fresh session. */
+  resumeSessionId?: string;
 }
 
 /** Thrown by `AgentSession.prompt` when a turn is already in flight. The
@@ -73,7 +88,12 @@ export interface AcpHost {
    * Anthropic API key the agent authenticates with — the project owner's billing
    * identity (ADR-0009), bound once for the whole shared session.
    */
-  openAgent(sandbox: Sandbox, handle: SandboxHandle, apiKey: string): Promise<AgentSession>;
+  openAgent(
+    sandbox: Sandbox,
+    handle: SandboxHandle,
+    apiKey: string,
+    options?: OpenAgentOptions,
+  ): Promise<AgentSession>;
 }
 
 /** The ACP agent binary inside the sandbox (the `claude-agent-acp` adapter,
@@ -101,8 +121,13 @@ const AGENT_HOME = `${WORKSPACE_DIR}/${AGENT_STORE_DIRNAME}`;
  * interface.
  */
 export class ClaudeAcpHost implements AcpHost {
-  openAgent(sandbox: Sandbox, handle: SandboxHandle, apiKey: string): Promise<AgentSession> {
-    return ClaudeAgentSession.open(sandbox, handle, apiKey);
+  openAgent(
+    sandbox: Sandbox,
+    handle: SandboxHandle,
+    apiKey: string,
+    options?: OpenAgentOptions,
+  ): Promise<AgentSession> {
+    return ClaudeAgentSession.open(sandbox, handle, apiKey, options);
   }
 }
 
@@ -110,6 +135,7 @@ export class ClaudeAcpHost implements AcpHost {
 class ClaudeAgentSession implements AgentSession {
   private connection!: ClientSideConnection;
   private acpSessionId!: string;
+  private _resumed = false;
   // The active turn's event sink + permission handler, set for the duration of a
   // prompt() turn and cleared when it drains. `sessionUpdate`/`requestPermission`
   // callbacks (which fire only during a turn) read these.
@@ -127,10 +153,19 @@ class ClaudeAgentSession implements AgentSession {
     return this.currentQueue !== undefined;
   }
 
+  get sessionId(): string {
+    return this.acpSessionId;
+  }
+
+  get resumed(): boolean {
+    return this._resumed;
+  }
+
   static async open(
     sandbox: Sandbox,
     handle: SandboxHandle,
     apiKey: string,
+    options?: OpenAgentOptions,
   ): Promise<ClaudeAgentSession> {
     const proc = await sandbox.spawn(handle, ACP_AGENT_COMMAND, {
       cwd: WORKSPACE_DIR,
@@ -150,12 +185,34 @@ class ClaudeAgentSession implements AgentSession {
     // the consumer opens a fresh session on its next prompt (ADR-0016).
     void session.connection.closed.then(() => session.handleClosed());
 
-    await session.connection.initialize({
+    const init = await session.connection.initialize({
       protocolVersion: PROTOCOL_VERSION,
       // Minimal client: the agent runs in the sandbox with direct filesystem
       // access, so we advertise no client-side fs/terminal capabilities.
       clientCapabilities: {},
     });
+
+    // Resume the prior conversation when asked and the agent can (ADR-0017). On
+    // any failure (capability absent, unknown/expired id, load error) fall back
+    // to a fresh session — never block the user on a bad resume. loadSession
+    // replays history via session/update notifications before it resolves; those
+    // arrive with no active turn, so they're ignored (we don't re-render history).
+    const canLoad = init.agentCapabilities?.loadSession === true;
+    if (options?.resumeSessionId && canLoad) {
+      try {
+        await session.connection.loadSession({
+          sessionId: options.resumeSessionId,
+          cwd: WORKSPACE_DIR,
+          mcpServers: [],
+        });
+        session.acpSessionId = options.resumeSessionId;
+        session._resumed = true;
+        return session;
+      } catch {
+        // fall through to a fresh session
+      }
+    }
+
     const acp = await session.connection.newSession({ cwd: WORKSPACE_DIR, mcpServers: [] });
     session.acpSessionId = acp.sessionId;
     return session;

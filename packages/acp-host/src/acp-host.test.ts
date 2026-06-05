@@ -317,4 +317,70 @@ describe('ClaudeAcpHost — persistent AgentSession (ADR-0016)', () => {
     expect(session.alive).toBe(false);
     expect(kill).toHaveBeenCalled();
   });
+
+  it('resumes a prior conversation via loadSession when the agent advertises it (ADR-0017)', async () => {
+    let loadedWith: string | undefined;
+    const { sandbox } = harness(() => ({
+      async initialize() {
+        return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: { loadSession: true } };
+      },
+      async newSession() {
+        return { sessionId: 'fresh' };
+      },
+      async loadSession({ sessionId }) {
+        loadedWith = sessionId;
+        return {};
+      },
+      async authenticate() {
+        return {};
+      },
+      async cancel() {},
+      prompt: async () => ({ stopReason: 'end_turn' }),
+    }));
+
+    const host = new ClaudeAcpHost();
+    const session = await host.openAgent(sandbox, HANDLE, 'sk-ant-test', {
+      resumeSessionId: 'prior-123',
+    });
+    expect(loadedWith).toBe('prior-123');
+    expect(session.resumed).toBe(true);
+    expect(session.sessionId).toBe('prior-123');
+    await session.close();
+  });
+
+  it('falls back to a fresh session when loadSession fails (resumed=false)', async () => {
+    const { sandbox } = harness(() => ({
+      async initialize() {
+        return { protocolVersion: PROTOCOL_VERSION, agentCapabilities: { loadSession: true } };
+      },
+      async newSession() {
+        return { sessionId: 'fresh-after-fail' };
+      },
+      async loadSession() {
+        throw new Error('no such session');
+      },
+      async authenticate() {
+        return {};
+      },
+      async cancel() {},
+      prompt: async () => ({ stopReason: 'end_turn' }),
+    }));
+
+    const host = new ClaudeAcpHost();
+    const session = await host.openAgent(sandbox, HANDLE, 'sk-ant-test', {
+      resumeSessionId: 'gone',
+    });
+    expect(session.resumed).toBe(false);
+    expect(session.sessionId).toBe('fresh-after-fail');
+    await session.close();
+  });
+
+  it('creates a fresh session and exposes its id when no resume is requested', async () => {
+    const { sandbox } = harness(makeAgent(() => async () => ({ stopReason: 'end_turn' })));
+    const host = new ClaudeAcpHost();
+    const session = await host.openAgent(sandbox, HANDLE, 'sk-ant-test');
+    expect(session.resumed).toBe(false);
+    expect(session.sessionId).toBe(SESSION);
+    await session.close();
+  });
 });

@@ -31,12 +31,13 @@ async function ensureRoom(
   projectId: string,
   templateId: string,
   apiKey: string,
+  agentSessionId: string | null,
 ): Promise<SessionRoom> {
   const live = getRoomByProject(projectId);
   if (live) return live;
   const inflight = creating.get(projectId);
   if (inflight) return inflight;
-  const create = createProjectRoom(projectId, templateId, apiKey).finally(() =>
+  const create = createProjectRoom(projectId, templateId, apiKey, agentSessionId).finally(() =>
     creating.delete(projectId),
   );
   creating.set(projectId, create);
@@ -49,6 +50,7 @@ async function createProjectRoom(
   projectId: string,
   templateId: string,
   apiKey: string,
+  agentSessionId: string | null,
 ): Promise<SessionRoom> {
   // start() restores from MinIO if the volume is empty (ADR-0008).
   const handle = await getSandbox().start(projectId, templateId);
@@ -92,6 +94,10 @@ async function createProjectRoom(
   const sessionId = session!.id;
 
   const room = createRoom(sessionId, projectId, handle, apiKey, previewUrl);
+  // Seed the resume id so the first prompt's openAgent loads the prior
+  // conversation via session/load (ADR-0017/STORY-36). Null on a project's first
+  // ever session.
+  room.agentSessionId = agentSessionId ?? undefined;
   logger.info({ sessionId, projectId }, 'session.created');
   return room;
 }
@@ -121,7 +127,7 @@ sessionsRoute.post('/', async (c) => {
   }
 
   const [project] = await db
-    .select({ templateId: projects.templateId })
+    .select({ templateId: projects.templateId, agentSessionId: projects.agentSessionId })
     .from(projects)
     .where(eq(projects.id, projectId))
     .limit(1);
@@ -132,7 +138,8 @@ sessionsRoute.post('/', async (c) => {
   // Attach to the project's live room, or create it once (STORY-32). A second
   // user joining an active project reuses the same session/sandbox/preview — only
   // their WS ticket is per-user, stamped with their identity for presence + chat.
-  const room = await ensureRoom(projectId, project.templateId, apiKey);
+  // The stored agent session id seeds cross-session resume (STORY-36).
+  const room = await ensureRoom(projectId, project.templateId, apiKey, project.agentSessionId);
   const ticket = mintTicket({ sessionId: room.sessionId, userId, userName, userImage });
   logger.info({ sessionId: room.sessionId, projectId, userId }, 'session.joined');
 

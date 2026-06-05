@@ -27,6 +27,8 @@ function fakeSession(overrides: Partial<AgentSession> = {}): AgentSession {
   return {
     alive: true,
     busy: false,
+    sessionId: 'sess-fake',
+    resumed: false,
     prompt: () => (async function* () {})(),
     cancel: () => {},
     close: vi.fn(async () => {}),
@@ -102,18 +104,61 @@ describe('rooms', () => {
 describe('acquireRoomTurn (STORY-33)', () => {
   const handle = { projectId: 'p-turn', containerId: 'c1' };
 
-  it('opens the agent on the first turn and stores it on the room', async () => {
-    const session = fakeSession();
+  it('opens the agent on the first turn and stores it + its session id on the room', async () => {
+    const session = fakeSession({ sessionId: 'acp-new' });
     const host = { openAgent: vi.fn(async () => session) } as unknown as AcpHost;
     createRoom('sess-turn-1', 'p-turn', handle, 'sk');
     const room = getRoom('sess-turn-1')!;
     try {
       const turn = await acquireRoomTurn(room, host, SANDBOX);
-      expect(turn).toEqual({ status: 'ready', agent: session, restarted: false });
-      expect(host.openAgent).toHaveBeenCalledOnce();
+      // First open, no prior session id → fresh, opened, no resume attempted.
+      expect(turn).toEqual({
+        status: 'ready',
+        agent: session,
+        restarted: false,
+        opened: true,
+        resumeFailed: false,
+      });
+      expect(host.openAgent).toHaveBeenCalledWith(SANDBOX, room.handle, 'sk', {
+        resumeSessionId: undefined,
+      });
       expect(room.agent).toBe(session);
+      expect(room.agentSessionId).toBe('acp-new'); // persisted for next-session resume
     } finally {
       deleteRoom('sess-turn-1');
+    }
+  });
+
+  it('passes the stored session id as resumeSessionId and reports a clean resume', async () => {
+    const resumed = fakeSession({ sessionId: 'acp-prior', resumed: true });
+    const host = { openAgent: vi.fn(async () => resumed) } as unknown as AcpHost;
+    createRoom('sess-turn-1b', 'p-turn', handle, 'sk');
+    const room = getRoom('sess-turn-1b')!;
+    room.agentSessionId = 'acp-prior'; // a prior session to resume (STORY-36)
+    try {
+      const turn = await acquireRoomTurn(room, host, SANDBOX);
+      expect(host.openAgent).toHaveBeenCalledWith(SANDBOX, room.handle, 'sk', {
+        resumeSessionId: 'acp-prior',
+      });
+      expect(turn.resumeFailed).toBe(false);
+      expect(room.agentSessionId).toBe('acp-prior');
+    } finally {
+      deleteRoom('sess-turn-1b');
+    }
+  });
+
+  it('flags resumeFailed when a resume was attempted but the agent started fresh', async () => {
+    const fresh = fakeSession({ sessionId: 'acp-fresh', resumed: false });
+    const host = { openAgent: vi.fn(async () => fresh) } as unknown as AcpHost;
+    createRoom('sess-turn-1c', 'p-turn', handle, 'sk');
+    const room = getRoom('sess-turn-1c')!;
+    room.agentSessionId = 'acp-stale'; // prior id that can't be loaded
+    try {
+      const turn = await acquireRoomTurn(room, host, SANDBOX);
+      expect(turn.resumeFailed).toBe(true);
+      expect(room.agentSessionId).toBe('acp-fresh'); // replaced with the live id
+    } finally {
+      deleteRoom('sess-turn-1c');
     }
   });
 
@@ -141,7 +186,13 @@ describe('acquireRoomTurn (STORY-33)', () => {
     room.agent = fakeSession({ alive: false }); // previous agent died
     try {
       const turn = await acquireRoomTurn(room, host, SANDBOX);
-      expect(turn).toEqual({ status: 'ready', agent: fresh, restarted: true });
+      expect(turn).toEqual({
+        status: 'ready',
+        agent: fresh,
+        restarted: true,
+        opened: true,
+        resumeFailed: false,
+      });
       expect(host.openAgent).toHaveBeenCalledOnce();
       expect(room.agent).toBe(fresh);
     } finally {

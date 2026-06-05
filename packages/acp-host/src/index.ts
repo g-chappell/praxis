@@ -8,7 +8,7 @@ export {
   AGENT_STORE_DIRNAME,
   AgentBusyError,
 } from './acp-host.js';
-export type { AcpHost, AgentSession, PromptOptions } from './acp-host.js';
+export type { AcpHost, AgentSession, OpenAgentOptions, PromptOptions } from './acp-host.js';
 export type {
   AcpEvent,
   TextChunkEvent,
