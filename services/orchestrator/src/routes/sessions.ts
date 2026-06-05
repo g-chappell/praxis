@@ -14,50 +14,48 @@ import { db } from '@praxis/db/client';
 
 import { logger } from '../logger';
 import { previewUrlFor, registerPreview } from '../preview';
-import { createRoom, getSandbox, mintTicket } from '../runtime';
+import { createRoom, getRoomByProject, getSandbox, mintTicket, type SessionRoom } from '../runtime';
 import { readTemplateConfig } from '../templates';
 
 export const sessionsRoute = new Hono();
 
-sessionsRoute.post('/', async (c) => {
-  const secret = process.env.ORCHESTRATOR_INTERNAL_SECRET;
-  if (!secret || c.req.header('x-internal-secret') !== secret) {
-    return c.json({ error: 'forbidden' }, 403);
-  }
+// Per-project create-lock (STORY-32): two users opening the same project at once
+// must not each boot a sandbox / insert a session row. The first caller's create
+// promise is parked here; concurrent callers await it and then attach to the room
+// it produced. Cleared when the create settles.
+const creating = new Map<string, Promise<SessionRoom>>();
 
-  const body = (await c.req.json().catch(() => null)) as {
-    projectId?: unknown;
-    userId?: unknown;
-    userName?: unknown;
-    userImage?: unknown;
-    apiKey?: unknown;
-  } | null;
-  const projectId = typeof body?.projectId === 'string' ? body.projectId : '';
-  const userId = typeof body?.userId === 'string' ? body.userId : '';
-  const userName = typeof body?.userName === 'string' ? body.userName : '';
-  const userImage = typeof body?.userImage === 'string' ? body.userImage : null;
-  // The web app decrypts the platform key (Node/libsodium) and passes it here —
-  // the Bun orchestrator never loads libsodium. See runtime.ts SessionRoom.
-  const apiKey = typeof body?.apiKey === 'string' ? body.apiKey : '';
-  if (!projectId || !userId || !apiKey) {
-    return c.json({ error: 'bad_request' }, 400);
-  }
+/** The live room for a project, creating it once if absent. Concurrent first
+ *  joiners share a single create; everyone after attaches to the existing room. */
+async function ensureRoom(
+  projectId: string,
+  templateId: string,
+  apiKey: string,
+): Promise<SessionRoom> {
+  const live = getRoomByProject(projectId);
+  if (live) return live;
+  const inflight = creating.get(projectId);
+  if (inflight) return inflight;
+  const create = createProjectRoom(projectId, templateId, apiKey).finally(() =>
+    creating.delete(projectId),
+  );
+  creating.set(projectId, create);
+  return create;
+}
 
-  const [project] = await db
-    .select({ templateId: projects.templateId })
-    .from(projects)
-    .where(eq(projects.id, projectId))
-    .limit(1);
-  if (!project) {
-    return c.json({ error: 'project_not_found' }, 404);
-  }
-
+/** Boot the sandbox, register the preview, start the dev server, insert the
+ *  session row, and open the room — the one-time setup for a project's session. */
+async function createProjectRoom(
+  projectId: string,
+  templateId: string,
+  apiKey: string,
+): Promise<SessionRoom> {
   // start() restores from MinIO if the volume is empty (ADR-0008).
-  const handle = await getSandbox().start(projectId, project.templateId);
+  const handle = await getSandbox().start(projectId, templateId);
 
   // Register the preview: map the project's slug → the sandbox's dev-server port
   // so Caddy's wildcard proxies <projectId>.preview.<domain> here (STORY-13).
-  const { previewPort, setup, dev } = readTemplateConfig(project.templateId);
+  const { previewPort, setup, dev } = readTemplateConfig(templateId);
   let previewUrl: string | null = null;
   try {
     const addr = await getSandbox().exposePort(handle, previewPort); // http://<ip>:<port>
@@ -93,9 +91,50 @@ sessionsRoute.post('/', async (c) => {
     .returning({ id: sessions.id });
   const sessionId = session!.id;
 
-  createRoom(sessionId, projectId, handle, apiKey);
-  const ticket = mintTicket({ sessionId, userId, userName, userImage });
+  const room = createRoom(sessionId, projectId, handle, apiKey, previewUrl);
   logger.info({ sessionId, projectId }, 'session.created');
+  return room;
+}
 
-  return c.json({ sessionId, ticket, previewUrl });
+sessionsRoute.post('/', async (c) => {
+  const secret = process.env.ORCHESTRATOR_INTERNAL_SECRET;
+  if (!secret || c.req.header('x-internal-secret') !== secret) {
+    return c.json({ error: 'forbidden' }, 403);
+  }
+
+  const body = (await c.req.json().catch(() => null)) as {
+    projectId?: unknown;
+    userId?: unknown;
+    userName?: unknown;
+    userImage?: unknown;
+    apiKey?: unknown;
+  } | null;
+  const projectId = typeof body?.projectId === 'string' ? body.projectId : '';
+  const userId = typeof body?.userId === 'string' ? body.userId : '';
+  const userName = typeof body?.userName === 'string' ? body.userName : '';
+  const userImage = typeof body?.userImage === 'string' ? body.userImage : null;
+  // The web app decrypts the platform key (Node/libsodium) and passes it here —
+  // the Bun orchestrator never loads libsodium. See runtime.ts SessionRoom.
+  const apiKey = typeof body?.apiKey === 'string' ? body.apiKey : '';
+  if (!projectId || !userId || !apiKey) {
+    return c.json({ error: 'bad_request' }, 400);
+  }
+
+  const [project] = await db
+    .select({ templateId: projects.templateId })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+  if (!project) {
+    return c.json({ error: 'project_not_found' }, 404);
+  }
+
+  // Attach to the project's live room, or create it once (STORY-32). A second
+  // user joining an active project reuses the same session/sandbox/preview — only
+  // their WS ticket is per-user, stamped with their identity for presence + chat.
+  const room = await ensureRoom(projectId, project.templateId, apiKey);
+  const ticket = mintTicket({ sessionId: room.sessionId, userId, userName, userImage });
+  logger.info({ sessionId: room.sessionId, projectId, userId }, 'session.joined');
+
+  return c.json({ sessionId: room.sessionId, ticket, previewUrl: room.previewUrl });
 });

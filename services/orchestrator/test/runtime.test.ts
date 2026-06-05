@@ -4,7 +4,14 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { consumeTicket, createRoom, deleteRoom, getRoom, mintTicket } from '../src/runtime';
+import {
+  consumeTicket,
+  createRoom,
+  deleteRoom,
+  getRoom,
+  getRoomByProject,
+  mintTicket,
+} from '../src/runtime';
 
 afterEach(() => {
   vi.useRealTimers();
@@ -57,5 +64,18 @@ describe('rooms', () => {
 
     deleteRoom('sess-2');
     expect(getRoom('sess-2')).toBeUndefined();
+  });
+
+  it('getRoomByProject finds the live room for a project, undefined after delete (STORY-32)', () => {
+    const handle = { projectId: 'proj-rb', containerId: 'c1' };
+    createRoom('sess-rb', 'proj-rb', handle, 'sk-ant-test', 'https://proj-rb.preview.test');
+
+    const room = getRoomByProject('proj-rb');
+    expect(room?.sessionId).toBe('sess-rb');
+    expect(room?.previewUrl).toBe('https://proj-rb.preview.test');
+    expect(getRoomByProject('no-such-project')).toBeUndefined();
+
+    deleteRoom('sess-rb');
+    expect(getRoomByProject('proj-rb')).toBeUndefined();
   });
 });
