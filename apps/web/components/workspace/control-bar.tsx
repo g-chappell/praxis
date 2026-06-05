@@ -11,8 +11,7 @@ export function ControlBar() {
   const c = useWorkspaceControl();
   const { members } = useWorkspacePresence();
   const people = uniqueByUser(members);
-  const nameOf = (userId: string) =>
-    people.find((m) => m.userId === userId)?.userName ?? 'a user';
+  const nameOf = (userId: string) => people.find((m) => m.userId === userId)?.userName ?? 'a user';
 
   const iRequested = c.myUserId !== null && c.requests.includes(c.myUserId);
 
