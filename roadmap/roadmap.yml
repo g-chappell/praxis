@@ -827,10 +827,17 @@ epics:
       - id: STORY-12
         title: "Prompt queue with two-user attribution"
         description: |
+          SUPERSEDED by STORY-34 (prompt-control modes, #230) — its serialised
+          mode delivered the per-project FIFO queue + per-user attribution + the
+          visible queue UI. Closed without separate implementation; tasks point
+          at #230. Original scope below.
+
           Both users in a project can submit prompts. Only one turn runs at
           a time. Other prompts queue with visible position. The agent's
           response is attributed to the user who prompted, in the chat
           panel, in the agent_turns row, and in git commit metadata.
+        verified_at: '2026-06-05T18:40:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "If user A submits a prompt while user B's prompt is mid-turn, user A's prompt shows queue_position=1 until B's turn completes, then runs."
           - "After completion, agent_turns row has prompting_user_id set; chat panel attributes the response to the prompter."
@@ -845,7 +852,7 @@ epics:
         tasks:
           - id: TASK-035
             title: "Orchestrator FIFO queue per project + ACP attribution wrap"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator", "packages/acp-host"]
@@ -856,11 +863,13 @@ epics:
               after stream end.
             depends_on: [TASK-027]
             attempt_count: 0
+            completed: '2026-06-05T18:39:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/230
             task_acceptance:
               - "Integration test queues 3 prompts and confirms strict FIFO ordering."
           - id: TASK-036
             title: "Frontend: queue position UI + attribution in chat"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -870,6 +879,8 @@ epics:
               prompter's avatar + name.
             depends_on: [TASK-035, TASK-032]
             attempt_count: 0
+            completed: '2026-06-05T18:39:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/230
             is_terminal: true
             task_acceptance:
               - "Manual two-browser test: A's prompt queues behind B's, runs after, both attributed correctly."
@@ -930,6 +941,11 @@ epics:
       - id: STORY-25
         title: "Persist + replay chat transcript across reconnect"
         description: |
+          SUPERSEDED by STORY-37 (persistent chat history, #228) — it persists
+          the transcript (events table) and replays it, attributed, on every
+          (re)join, which is this Story's AC. Closed without separate
+          implementation; tasks point at #228. Original scope below.
+
           Today a page reload restores the sandbox FILE state (MinIO,
           ADR-0008) but the chat history is empty — the agent_turns table
           exists in packages/db (prompt_text, response_text,
@@ -938,6 +954,8 @@ epics:
           happens, and hydrate the chat panel from agent_turns when a user
           re-opens the workspace, preserving each message's original
           per-user attribution.
+        verified_at: '2026-06-05T18:40:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Prompting then reloading the workspace shows the prior prompts and agent responses in the chat panel."
           - "Each restored message keeps its prompting-user attribution (avatar + name)."
@@ -951,7 +969,7 @@ epics:
         tasks:
           - id: TASK-067
             title: "Orchestrator: persist an agent_turns row per prompt turn"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -963,11 +981,13 @@ epics:
               live stream.
             depends_on: [TASK-032]
             attempt_count: 0
+            completed: '2026-06-05T18:39:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/228
             task_acceptance:
               - "After a prompt turn completes, an agent_turns row exists with the prompt text, response text, prompting user, and completed_at set."
           - id: TASK-068
             title: "Hydrate chat panel from agent_turns on reconnect"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web", "services/orchestrator"]
@@ -979,6 +999,8 @@ epics:
               live socket stream.
             depends_on: [TASK-067]
             attempt_count: 0
+            completed: '2026-06-05T18:39:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/228
             is_terminal: true
             task_acceptance:
               - "Reloading a workspace that had prior turns renders those turns in the chat panel with correct per-user attribution."

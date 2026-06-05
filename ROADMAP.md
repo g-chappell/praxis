@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 23 / 36 (64%)
+- **Features verified:** 25 / 36 (69%)
 - **Total tasks:** 102
-- **Done:** 79 (77%)
-- **Ready:** 23
+- **Done:** 83 (81%)
+- **Ready:** 19
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -502,7 +502,12 @@ URLs surfaced through a wildcard Caddy domain.
     - Race test: simultaneous lock requests resolve deterministically (first writer wins).
     - STORY-11 acceptance_criteria satisfied.
 
-- **STORY-12** — Prompt queue with two-user attribution
+- **STORY-12** — Prompt queue with two-user attribution  [:white_check_mark: verified]
+  > SUPERSEDED by STORY-34 (prompt-control modes, #230) — its serialised
+  > mode delivered the per-project FIFO queue + per-user attribution + the
+  > visible queue UI. Closed without separate implementation; tasks point
+  > at #230. Original scope below.
+  > 
   > Both users in a project can submit prompts. Only one turn runs at
   > a time. Other prompts queue with visible position. The agent's
   > response is attributed to the user who prompted, in the chat
@@ -518,7 +523,7 @@ URLs surfaced through a wildcard Caddy domain.
   **Out of scope:**
   - Cross-project queuing.
   - Priority levels / preemption.
-  - :black_circle: **TASK-035** — Orchestrator FIFO queue per project + ACP attribution wrap  `high` `medium` _(services/orchestrator, packages/acp-host)_  
+  - :white_check_mark: **TASK-035** — Orchestrator FIFO queue per project + ACP attribution wrap  `high` `medium` _(services/orchestrator, packages/acp-host)_ · [PR](https://github.com/g-chappell/praxis/pull/230)  
     _depends on: TASK-027_
     > Per-project queue of pending prompts. Each prompt wrapped with
     > an attribution header (invisible to the agent) before being
@@ -526,7 +531,7 @@ URLs surfaced through a wildcard Caddy domain.
     > after stream end.
     _Task AC:_
     - Integration test queues 3 prompts and confirms strict FIFO ordering.
-  - :black_circle: **TASK-036** :checkered_flag: — Frontend: queue position UI + attribution in chat  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-036** :checkered_flag: — Frontend: queue position UI + attribution in chat  `high` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/230)  
     _depends on: TASK-035, TASK-032_
     > Show queue_position on the user's own pending message. When
     > a turn starts, swap to 'thinking…'. Chat messages show the
@@ -564,7 +569,12 @@ URLs surfaced through a wildcard Caddy domain.
     - Integration test: expose port serving 'hello', curl URL returns 'hello'; stop, curl returns 5xx.
     - STORY-13 acceptance_criteria satisfied.
 
-- **STORY-25** — Persist + replay chat transcript across reconnect
+- **STORY-25** — Persist + replay chat transcript across reconnect  [:white_check_mark: verified]
+  > SUPERSEDED by STORY-37 (persistent chat history, #228) — it persists
+  > the transcript (events table) and replays it, attributed, on every
+  > (re)join, which is this Story's AC. Closed without separate
+  > implementation; tasks point at #228. Original scope below.
+  > 
   > Today a page reload restores the sandbox FILE state (MinIO,
   > ADR-0008) but the chat history is empty — the agent_turns table
   > exists in packages/db (prompt_text, response_text,
@@ -583,7 +593,7 @@ URLs surfaced through a wildcard Caddy domain.
   **Out of scope:**
   - Agent/Claude conversation-context continuity across sessions (the model re-reading its own prior turns) — transcript display only.
   - Live multi-user presence and cursors (STORY-11).
-  - :black_circle: **TASK-067** — Orchestrator: persist an agent_turns row per prompt turn  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-067** — Orchestrator: persist an agent_turns row per prompt turn  `high` `medium` _(services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/228)  
     _depends on: TASK-032_
     > On a prompt, insert an agent_turns row (project_id, session_id,
     > prompting_user_id, prompt_text, started_at). On the
@@ -592,7 +602,7 @@ URLs surfaced through a wildcard Caddy domain.
     > live stream.
     _Task AC:_
     - After a prompt turn completes, an agent_turns row exists with the prompt text, response text, prompting user, and completed_at set.
-  - :black_circle: **TASK-068** :checkered_flag: — Hydrate chat panel from agent_turns on reconnect  `high` `medium` _(apps/web, services/orchestrator)_  
+  - :white_check_mark: **TASK-068** :checkered_flag: — Hydrate chat panel from agent_turns on reconnect  `high` `medium` _(apps/web, services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/228)  
     _depends on: TASK-067_
     > On workspace open, fetch the project's prior agent_turns
     > (ordered by started_at) and render them in the chat panel as
