@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 18 / 32 (56%)
 - **Total tasks:** 88
-- **Done:** 60 (68%)
-- **Ready:** 28
+- **Done:** 63 (72%)
+- **Ready:** 25
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -823,7 +823,7 @@ URLs surfaced through a wildcard Caddy domain.
   - Prompt-control modes (serialised queue vs turn-based handoff, toggleable) — STORY-34, pending a /ux-discovery pass on the handoff flow.
   - Routing interactive tool permissions to the controlling user — depends on STORY-34; auto-allow retained as today.
   - Character-level co-editing via Yjs (post-POC).
-  - :black_circle: **TASK-087** — Reshape AcpHost to a persistent session lifecycle  `high` `large` _(packages/acp-host)_  
+  - :white_check_mark: **TASK-087** — Reshape AcpHost to a persistent session lifecycle  `high` `large` _(packages/acp-host)_  
     _depends on: TASK-086_
     > Replace turn-scoped spawnAndPrompt with a session lifecycle:
     > openAgent(sandbox, handle, apiKey) → AgentSession with
@@ -836,7 +836,7 @@ URLs surfaced through a wildcard Caddy domain.
     > to a multi-turn session. ACP change per ADR-0016.
     _Task AC:_
     - Integration test: two prompts over one AgentSession reuse a single process/session and the second turn sees the first turn's context; a concurrent prompt is rejected, not raced.
-  - :black_circle: **TASK-088** — Orchestrator: hold the shared AgentSession on the room  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-088** — Orchestrator: hold the shared AgentSession on the room  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-087_
     > Store the AgentSession on SessionRoom (runtime.ts); open it lazily
     > on the first prompt in ws.ts runPrompt and reuse it thereafter;
@@ -847,7 +847,7 @@ URLs surfaced through a wildcard Caddy domain.
     > teardown / last-socket / idle sweep). No idle-shutdown change.
     _Task AC:_
     - A second prompt during an active turn yields agent_busy and does not spawn a second agent; closing the room kills the agent process (no leak).
-  - :black_circle: **TASK-089** :checkered_flag: — Web: surface agent busy + restarted; verify continuity  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-089** :checkered_flag: — Web: surface agent busy + restarted; verify continuity  `high` `small` _(apps/web)_  
     _depends on: TASK-088_
     > Chat panel handles the 'agent_busy' signal (transient notice, input
     > not disabled) and the 'agent_restarted' notice. Verify end-to-end

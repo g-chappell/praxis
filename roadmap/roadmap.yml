@@ -1284,7 +1284,7 @@ epics:
         tasks:
           - id: TASK-087
             title: "Reshape AcpHost to a persistent session lifecycle"
-            status: ready
+            status: done
             priority: high
             complexity: large
             workspaces: ["packages/acp-host"]
@@ -1300,11 +1300,12 @@ epics:
               to a multi-turn session. ACP change per ADR-0016.
             depends_on: [TASK-086]
             attempt_count: 0
+            completed: '2026-06-05T09:28:00Z'
             task_acceptance:
               - "Integration test: two prompts over one AgentSession reuse a single process/session and the second turn sees the first turn's context; a concurrent prompt is rejected, not raced."
           - id: TASK-088
             title: "Orchestrator: hold the shared AgentSession on the room"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -1318,11 +1319,12 @@ epics:
               teardown / last-socket / idle sweep). No idle-shutdown change.
             depends_on: [TASK-087]
             attempt_count: 0
+            completed: '2026-06-05T09:28:00Z'
             task_acceptance:
               - "A second prompt during an active turn yields agent_busy and does not spawn a second agent; closing the room kills the agent process (no leak)."
           - id: TASK-089
             title: "Web: surface agent busy + restarted; verify continuity"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -1333,6 +1335,7 @@ epics:
               two-browser shared-session check is live on the VPS post-deploy.
             depends_on: [TASK-088]
             attempt_count: 0
+            completed: '2026-06-05T09:28:00Z'
             is_terminal: true
             task_acceptance:
               - "Chat panel renders agent_busy without disabling input and shows the restarted notice."
