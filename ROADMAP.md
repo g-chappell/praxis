@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 18 / 35 (51%)
+- **Features verified:** 20 / 35 (57%)
 - **Total tasks:** 100
 - **Done:** 68 (68%)
 - **Ready:** 32
@@ -738,7 +738,7 @@ URLs surfaced through a wildcard Caddy domain.
     - A used/expired link yields the error path with no membership change.
     - Manual VPS check recorded: both users appear in the project's presence list after the invite is accepted.
 
-- **STORY-32** — Shared project room: cross-user presence and chat
+- **STORY-32** — Shared project room: cross-user presence and chat  [:white_check_mark: verified]
   > Two users in the same project must join ONE live session room, not
   > separate ones. Today POST /sessions unconditionally inserts a new
   > sessions row and createRoom(sessionId) per connection, while the
@@ -794,7 +794,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Two connected clients both receive the same agent_event stream and the prompt is attributed to its sender in both transcripts.
     - STORY-32 acceptance_criteria satisfied.
 
-- **STORY-33** — Single persistent shared agent per project room
+- **STORY-33** — Single persistent shared agent per project room  [:white_check_mark: verified]
   > Implements ADR-0016. Today ClaudeAcpHost.spawnAndPrompt spawns a fresh
   > claude-agent-acp process + new ACP session per prompt and kills it on
   > turn end — so there is no conversation continuity even for one user,
