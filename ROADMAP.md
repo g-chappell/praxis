@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 20 / 36 (56%)
+- **Features verified:** 23 / 36 (64%)
 - **Total tasks:** 102
 - **Done:** 70 (69%)
 - **Ready:** 32
@@ -958,7 +958,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Turn-based: request→approve transfers control, the non-holder's input gates correctly, release returns control.
     - STORY-34 acceptance_criteria satisfied.
 
-- **STORY-35** — Survive brief disconnects: reconnect grace window
+- **STORY-35** — Survive brief disconnects: reconnect grace window  [:white_check_mark: verified]
   > Today the orchestrator tears a room down the instant the last socket
   > leaves (ws.ts onClose → endSession), which kills the shared persistent
   > agent (STORY-33). So a solo user refreshing the page loses their live
@@ -1003,7 +1003,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Unit test (fake timers): teardown fires after the grace window when sockets stay empty; a rejoin within the window cancels it; a non-empty socket set at elapse skips teardown.
     - STORY-35 acceptance_criteria satisfied.
 
-- **STORY-36** — Cross-session agent memory: persist the store + session/load
+- **STORY-36** — Cross-session agent memory: persist the store + session/load  [:white_check_mark: verified]
   > Implements ADR-0017 (Accepted). Today the in-sandbox agent's session
   > history + memory live under the ephemeral container home dir
   > (~/.local/share/claude, ~/.config/claude), while only /workspace is
@@ -1072,7 +1072,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Integration test (Docker + key): a fact stated pre-teardown is recalled in a fresh post-teardown session; fallback path surfaces the notice.
     - STORY-36 acceptance_criteria satisfied.
 
-- **STORY-37** — Persistent chat history: shown to everyone on (re)join
+- **STORY-37** — Persistent chat history: shown to everyone on (re)join  [:white_check_mark: verified]
   > Today the orchestrator broadcasts chat frames live but keeps no
   > transcript, so a user who joins mid-session — or reopens the project
   > later — starts with an empty chat and sees only new messages (operator
