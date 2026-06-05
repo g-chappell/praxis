@@ -111,6 +111,38 @@ The deploy moved off SSH-push to the self-hosted runner — see
 **ADR-0011** and the runner Setup-history / daily-ops in
 `deploy-web.md`. The `VPS_*` secrets are no longer used.
 
+### Troubleshooting: deploy stuck on `queued` (wedged runner)
+
+Symptom: a PR merged, the `build` job went green (image pushed to GHCR), but
+`/health` still reports the **old** `gitSha` — the `deploy` job sits `queued`
+for many minutes and the live container never rolls. Seen after a *previous*
+deploy failed mid-run (e.g. the disk-filled-up failure), which can leave the
+self-hosted runner **"online but not dispatching"**: it answers the GitHub
+listener yet never picks up the queued job.
+
+Confirm it's the runner, not a real lock:
+
+```bash
+# The deploy job is queued with no competing run and the runner idle:
+gh run view <run-id> --json jobs -q '.jobs[] | "\(.name) \(.status)"'   # build success, deploy queued
+gh run list --limit 15 --json status -q '[.[]|select(.status=="in_progress" or .status=="queued")]|length'  # only this one
+gh api repos/g-chappell/praxis/actions/runners -q '.runners[] | "\(.name) \(.status) busy=\(.busy)"'         # online busy=false
+```
+
+If the runner is `online busy=false` yet the job won't start, restart it — it's
+idle, so nothing is lost; the queued job is grabbed within seconds:
+
+```bash
+sudo systemctl restart actions.runner.g-chappell-praxis.praxis-vps.service
+# then watch it land:
+gh run watch <run-id> --exit-status
+curl -s https://api.praxis.blacksail.dev/health   # gitSha should now be the new commit
+```
+
+(If the original failure was a full disk — the common cause — also run
+`infrastructure/deploy/praxis-hygiene.sh` first; see `docs/conventions/deploy.md`
+→ Disk hygiene.)
+
 ---
 
 ## Setup history (one-time work, done 2026-06-01)
