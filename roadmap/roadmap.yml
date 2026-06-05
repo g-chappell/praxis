@@ -1530,7 +1530,7 @@ epics:
         tasks:
           - id: TASK-097
             title: "Orchestrator: defer room teardown with a reconnect grace window"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["services/orchestrator"]
@@ -1547,6 +1547,7 @@ epics:
               sockets non-empty at elapse → not called.
             depends_on: [TASK-088]
             attempt_count: 0
+            completed: '2026-06-05T10:51:00Z'
             is_terminal: true
             task_acceptance:
               - "Unit test (fake timers): teardown fires after the grace window when sockets stay empty; a rejoin within the window cancels it; a non-empty socket set at elapse skips teardown."

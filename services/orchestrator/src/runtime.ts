@@ -81,6 +81,10 @@ export interface SessionRoom {
   // socket joins, STORY-10/TASK-031). Called on teardown so inotifywait in the
   // container is killed. Undefined until the watcher starts.
   unwatchFiles?: Unsubscribe;
+  // Pending deferred-teardown timer (STORY-35): set when the last socket leaves,
+  // cleared when a socket rejoins within the grace window. Lets a page refresh
+  // reconnect to the same live room + agent instead of losing the session.
+  teardownTimer?: ReturnType<typeof setTimeout>;
 }
 
 const rooms = new Map<string, SessionRoom>();
@@ -155,6 +159,32 @@ export async function acquireRoomTurn(
 
 export function deleteRoom(sessionId: string): void {
   rooms.delete(sessionId);
+}
+
+/** Defer a room's teardown by a grace window (STORY-35) instead of ending it the
+ *  instant the last socket leaves. `onElapse` runs only if the room is still
+ *  empty when the timer fires — a reconnecting socket cancels it via
+ *  cancelRoomTeardown, so a page refresh keeps the same live room + agent.
+ *  No-op if a teardown is already scheduled. */
+export function scheduleRoomTeardown(
+  room: SessionRoom,
+  graceMs: number,
+  onElapse: (sessionId: string) => void,
+): void {
+  if (room.teardownTimer) return;
+  room.teardownTimer = setTimeout(() => {
+    room.teardownTimer = undefined;
+    if (room.sockets.size === 0) onElapse(room.sessionId);
+  }, graceMs);
+}
+
+/** Cancel a pending deferred teardown (STORY-35) — called when a socket (re)joins
+ *  the room so a brief disconnect/refresh doesn't end the session. */
+export function cancelRoomTeardown(room: SessionRoom): void {
+  if (room.teardownTimer) {
+    clearTimeout(room.teardownTimer);
+    room.teardownTimer = undefined;
+  }
 }
 
 /** Tear down any in-memory rooms for a project (used when it's deleted): stop

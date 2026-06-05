@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 18 / 34 (53%)
 - **Total tasks:** 96
-- **Done:** 63 (66%)
-- **Ready:** 33
+- **Done:** 64 (67%)
+- **Ready:** 32
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -987,7 +987,7 @@ URLs surfaced through a wildcard Caddy domain.
   **Out of scope:**
   - Cross-session memory after a true teardown (persisting durable facts to workspace CLAUDE.md/AGENTS.md, or ACP session-load to resume a conversation) — separate investigation + story.
   - Per-user reconnection tokens / resumable WS cursors (the client re-mints a session on reload).
-  - :black_circle: **TASK-097** :checkered_flag: — Orchestrator: defer room teardown with a reconnect grace window  `high` `small` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-097** :checkered_flag: — Orchestrator: defer room teardown with a reconnect grace window  `high` `small` _(services/orchestrator)_  
     _depends on: TASK-088_
     > Add a per-room teardown timer to SessionRoom plus
     > scheduleRoomTeardown(room, graceMs, onElapse) / cancelRoomTeardown(room)
