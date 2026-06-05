@@ -9,6 +9,8 @@ import {
   type ChatMessage,
   ChatTranscript,
 } from '@/components/workspace/chat-message';
+import { PromptQueue } from '@/components/workspace/prompt-queue';
+import { useWorkspaceControl } from '@/components/workspace/workspace-control';
 import { type ServerFrame, useWorkspaceSocket } from '@/components/workspace/workspace-socket';
 
 // Session chat (STORY-09 → STORY-10), reading the shared workspace socket. Renders
@@ -17,6 +19,9 @@ import { type ServerFrame, useWorkspaceSocket } from '@/components/workspace/wor
 // tool permissions yet (auto-allowed).
 export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
   const { status: socketStatus, start, close, send, subscribe } = useWorkspaceSocket();
+  // Prompt-control gating (STORY-34): in turn-based mode only the control holder
+  // may prompt; serialised mode lets anyone (their prompt queues).
+  const { canPrompt } = useWorkspaceControl();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [errored, setErrored] = useState(false);
@@ -201,16 +206,23 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
         </p>
       )}
 
+      <PromptQueue />
+
       <form onSubmit={sendPrompt} className="flex items-center gap-2">
         <Avatar name={currentUser.name} image={currentUser.image} />
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={`Message as ${currentUser.name}…`}
-          disabled={status !== 'connected'}
+          placeholder={
+            canPrompt ? `Message as ${currentUser.name}…` : 'Another user has control of the agent'
+          }
+          disabled={status !== 'connected' || !canPrompt}
           className="min-w-0 flex-1 rounded-md border px-3 py-2 text-sm"
         />
-        <Button type="submit" disabled={status !== 'connected' || input.trim().length === 0}>
+        <Button
+          type="submit"
+          disabled={status !== 'connected' || !canPrompt || input.trim().length === 0}
+        >
           Send
         </Button>
       </form>

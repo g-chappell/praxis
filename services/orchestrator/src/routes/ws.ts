@@ -15,6 +15,17 @@ import { db } from '@praxis/db/client';
 import type { FileEvent } from '@praxis/sandbox';
 
 import { loadChatHistory, persistChatEvent } from '../chat-history';
+import {
+  controlStateFrame,
+  declineControl,
+  grantControl,
+  passControl,
+  releaseControl,
+  releaseControlOnLeave,
+  requestControl,
+  setMode,
+  type QueuedPrompt,
+} from '../control';
 
 import { handleFileList, handleFileRead, handleFileSave } from '../file-ops';
 import {
@@ -148,13 +159,16 @@ wsRoute.get(
         }
         ensureWatcher(claim.sessionId);
         logger.info({ wsConnId: id, sessionId: claim.sessionId }, 'ws.open');
-        send(ws, { type: 'ready', sessionId: claim.sessionId, connId: id });
+        send(ws, { type: 'ready', sessionId: claim.sessionId, connId: id, userId: claim.userId });
         broadcastPresence(room);
         // Replay the project's full chat transcript to this socket (STORY-37) so a
         // late joiner / re-opener sees the whole conversation, not just new messages.
         void loadChatHistory(room.projectId).then((messages) =>
           send(ws, { type: 'chat_history', messages }),
         );
+        // Send the current prompt-control state (mode/holder/queue, STORY-34) so the
+        // joiner's control bar + input gating render correctly.
+        send(ws, controlStateFrame(room));
       },
 
       onMessage: async (evt, ws) => {
@@ -202,6 +216,24 @@ wsRoute.get(
           handlePresence(ws, state, type, msg);
           return;
         }
+        if (type === 'set_mode') {
+          handleSetMode(ws, state, (msg as { mode?: unknown }).mode);
+          return;
+        }
+        if (type === 'cancel_queued') {
+          handleCancelQueued(state, (msg as { id?: unknown }).id);
+          return;
+        }
+        if (
+          type === 'request_control' ||
+          type === 'grant_control' ||
+          type === 'decline_control' ||
+          type === 'release_control' ||
+          type === 'pass_control'
+        ) {
+          handleControl(state, type, msg);
+          return;
+        }
 
         send(ws, { type: 'error', reason: 'unknown_type' });
       },
@@ -216,6 +248,12 @@ wsRoute.get(
           room.members.delete(state.id);
           // Free any file the leaving user held that no other tab still has open.
           releaseAbandonedLocks(room, state.userId);
+          // If this user has fully left (no other tab), drop their queued prompts
+          // and release any control they held (STORY-34).
+          const userGone = ![...room.members.values()].some((m) => m.userId === state.userId);
+          if (userGone && releaseControlOnLeave(room, state.userId)) {
+            broadcast(room, controlStateFrame(room));
+          }
           // Last socket gone → defer teardown by the grace window instead of
           // ending immediately, so a refresh/blip can reconnect to the same live
           // agent (STORY-35). The timer only fires if the room is still empty.
@@ -228,6 +266,8 @@ wsRoute.get(
   }),
 );
 
+/** Entry point for a `{type:'prompt'}` message (STORY-34). In turn-based mode only
+ *  the control holder may prompt; in serialised mode prompts queue and run FIFO. */
 async function runPrompt(
   ws: { send: (data: string) => void },
   senderRaw: ServerWebSocket<unknown> | undefined,
@@ -246,13 +286,71 @@ async function runPrompt(
 
   const author = { name: state.userName, image: state.userImage };
 
-  // The room shares ONE persistent agent (ADR-0016/STORY-33): open on first
-  // prompt, reuse across turns + users, re-open if it died. One turn at a time —
-  // a prompt arriving mid-turn is rejected (told only to the prompter), not raced
-  // against the live turn (queue / handoff modes are STORY-34).
+  // Turn-based gate (STORY-34): only the control holder may prompt. A non-holder's
+  // prompt is rejected before it touches the transcript (the client disables their
+  // input, so this is a guard). The handoff messages live in handleControl.
+  if (room.mode === 'turn_based' && room.controlHolder !== state.userId) {
+    send(ws, { type: 'not_in_control', holder: room.controlHolder ?? null });
+    return;
+  }
+
+  const prompt: QueuedPrompt = { id: crypto.randomUUID(), userId: state.userId, author, text };
+
+  // The prompt is accepted into the shared conversation: echo it to peers (the
+  // sender renders it optimistically) and persist it to the transcript (STORY-32/37).
+  if (senderRaw) broadcastExcept(room, senderRaw, { type: 'user_prompt', text, author });
+  await persistChatEvent(room.projectId, room.sessionId, state.userId, 'user_prompt', {
+    author,
+    text,
+  });
+
+  if (room.mode === 'serialised') {
+    // Queue + drain FIFO (STORY-34). If a turn is already draining, enqueue and
+    // let the active drainer pick it up; otherwise start a drain with this prompt.
+    if (room.draining) {
+      room.queue.push(prompt);
+      broadcast(room, controlStateFrame(room));
+    } else {
+      void runDrain(room, prompt);
+    }
+    return;
+  }
+
+  // Turn-based: the holder runs one turn at a time (a double-prompt while busy
+  // gets agent_busy — no queue in this mode).
+  await runAgentTurn(room, prompt, ws);
+}
+
+/** Drain the serialised queue (STORY-34): run `first`, then each queued prompt in
+ *  FIFO order, one turn at a time. Guarded by room.draining so only one drainer
+ *  runs; prompts enqueued mid-drain are picked up before the loop exits. */
+async function runDrain(room: SessionRoom, first: QueuedPrompt): Promise<void> {
+  room.draining = true;
+  let next: QueuedPrompt | undefined = first;
+  try {
+    while (next) {
+      await runAgentTurn(room, next);
+      next = room.queue.shift();
+      if (next) broadcast(room, controlStateFrame(room)); // queue shrank
+    }
+  } finally {
+    room.draining = false;
+  }
+}
+
+/** Run one agent turn for an accepted prompt: open/reuse the shared agent, stream
+ *  its events to the room (attributed to the prompter), and persist the assembled
+ *  agent messages (STORY-33/37). The user prompt was already echoed + persisted by
+ *  the caller. Optional `ws` receives agent_busy if the agent is mid-turn. */
+async function runAgentTurn(
+  room: SessionRoom,
+  prompt: QueuedPrompt,
+  ws?: { send: (data: string) => void },
+): Promise<void> {
+  const { userId, author, text } = prompt;
   const turn = await acquireRoomTurn(room, getAcpHost(), getSandbox());
   if (turn.status === 'error') {
-    logger.error({ sessionId: state.sessionId }, 'ws.agent_open_failed');
+    logger.error({ sessionId: room.sessionId }, 'ws.agent_open_failed');
     broadcast(room, {
       type: 'agent_event',
       event: { type: 'error', message: 'Agent error' },
@@ -261,37 +359,17 @@ async function runPrompt(
     return;
   }
   if (turn.status === 'busy') {
-    send(ws, { type: 'agent_busy' });
+    if (ws) send(ws, { type: 'agent_busy' });
     return;
   }
   const agent = turn.agent!;
-  // A fresh agent was opened → persist its ACP session id so a later session
-  // resumes this conversation via session/load (ADR-0017/STORY-36).
   if (turn.opened) persistAgentSession(room);
-  // A resume was attempted (prior session id existed) but the agent started
-  // fresh → tell the room its earlier chat context couldn't be restored. Reuses
-  // the agent_restarted frame the client already renders (files intact, memory
-  // reset). A successful resume (incl. seamless recovery after a crash) is silent.
   if (turn.resumeFailed) broadcast(room, { type: 'agent_restarted' });
 
-  // Shared chat (STORY-32): echo the prompt to peers (the sender renders it
-  // optimistically), then fan the agent's stream out to the whole room, each
-  // frame stamped with the prompting user so clients attribute it.
-  if (senderRaw) {
-    broadcastExcept(room, senderRaw, { type: 'user_prompt', text, author });
-  }
-  // Persist the prompt to the project transcript (STORY-37). Assemble the agent's
-  // reply into messages as it streams — text-chunks coalesce into one agent_text
-  // per contiguous run (mirroring the chat panel) and are flushed on a boundary
-  // event or turn-complete — so the persisted transcript matches what was shown.
-  await persistChatEvent(room.projectId, room.sessionId, state.userId, 'user_prompt', {
-    author,
-    text,
-  });
   let pendingText = '';
   const flushText = async (): Promise<void> => {
     if (!pendingText) return;
-    await persistChatEvent(room.projectId, room.sessionId, state.userId, 'agent_text', {
+    await persistChatEvent(room.projectId, room.sessionId, userId, 'agent_text', {
       author,
       text: pendingText,
     });
@@ -307,14 +385,14 @@ async function runPrompt(
           break;
         case 'tool-call':
           await flushText();
-          await persistChatEvent(room.projectId, room.sessionId, state.userId, 'tool_call', {
+          await persistChatEvent(room.projectId, room.sessionId, userId, 'tool_call', {
             author,
             title: event.title,
           });
           break;
         case 'file-change':
           await flushText();
-          await persistChatEvent(room.projectId, room.sessionId, state.userId, 'file_change', {
+          await persistChatEvent(room.projectId, room.sessionId, userId, 'file_change', {
             author,
             change: event.change,
             path: event.path,
@@ -322,7 +400,7 @@ async function runPrompt(
           break;
         case 'error':
           await flushText();
-          await persistChatEvent(room.projectId, room.sessionId, state.userId, 'agent_error', {
+          await persistChatEvent(room.projectId, room.sessionId, userId, 'agent_error', {
             author,
             text: event.message,
           });
@@ -334,24 +412,21 @@ async function runPrompt(
       }
     }
   } catch (err) {
-    // A turn raced the busy guard (rare): tell the prompter, don't poison the room.
     if (err instanceof AgentBusyError) {
-      send(ws, { type: 'agent_busy' });
+      if (ws) send(ws, { type: 'agent_busy' });
       return;
     }
     logger.error(
-      { sessionId: state.sessionId, err: err instanceof Error ? err.message : String(err) },
+      { sessionId: room.sessionId, err: err instanceof Error ? err.message : String(err) },
       'ws.prompt_failed',
     );
     await flushText();
-    // Surface the failure in everyone's transcript (it's the shared turn) without
-    // disabling any peer's input — an agent error is a message, not a dead session.
     broadcast(room, {
       type: 'agent_event',
       event: { type: 'error', message: 'Agent error' },
       author,
     });
-    await persistChatEvent(room.projectId, room.sessionId, state.userId, 'agent_error', {
+    await persistChatEvent(room.projectId, room.sessionId, userId, 'agent_error', {
       author,
       text: 'Agent error',
     });
@@ -373,6 +448,97 @@ function persistAgentSession(room: SessionRoom): void {
         'agent_session.persist_failed',
       ),
     );
+}
+
+/** Owner-only prompt-control mode switch (STORY-34). Rejects non-owners; on a real
+ *  change persists the new mode and broadcasts the updated control_state (plus a
+ *  notice when switching to turn-based discarded queued prompts). */
+function handleSetMode(
+  ws: { send: (data: string) => void },
+  state: ConnectionState,
+  mode: unknown,
+): void {
+  const room = getRoom(state.sessionId);
+  if (!room) {
+    send(ws, { type: 'error', reason: 'no_session' });
+    return;
+  }
+  const result = setMode(room, state.userId, mode);
+  if (!result.ok) {
+    send(ws, { type: 'error', reason: 'not_owner' });
+    return;
+  }
+  if (!result.changed) return;
+  persistControlMode(room);
+  if (result.queueCleared) {
+    broadcast(room, {
+      type: 'system_notice',
+      text: 'Switched to turn-based — queued prompts were cleared.',
+    });
+  }
+  broadcast(room, controlStateFrame(room));
+}
+
+/** Persist the room's control mode to the project (STORY-34). Fire-and-forget. */
+function persistControlMode(room: SessionRoom): void {
+  void db
+    .update(projects)
+    .set({ controlMode: room.mode })
+    .where(eq(projects.id, room.projectId))
+    .catch((err: unknown) =>
+      logger.warn(
+        { projectId: room.projectId, err: err instanceof Error ? err.message : String(err) },
+        'control_mode.persist_failed',
+      ),
+    );
+}
+
+/** Cancel a queued prompt the requester authored (STORY-34); broadcasts the new
+ *  control_state so the queue updates for everyone. Non-authors can't cancel. */
+function handleCancelQueued(state: ConnectionState, id: unknown): void {
+  const room = getRoom(state.sessionId);
+  if (!room || typeof id !== 'string') return;
+  const before = room.queue.length;
+  room.queue = room.queue.filter((q) => !(q.id === id && q.userId === state.userId));
+  if (room.queue.length !== before) broadcast(room, controlStateFrame(room));
+}
+
+/** Turn-based control handoff messages (STORY-34): request / grant / decline /
+ *  release / pass. Each delegates to the control state machine and broadcasts the
+ *  new control_state when it changes; the `requests` it carries drive the holder's
+ *  approve/decline UI, so no separate notify is needed. */
+function handleControl(
+  state: ConnectionState,
+  type:
+    | 'request_control'
+    | 'grant_control'
+    | 'decline_control'
+    | 'release_control'
+    | 'pass_control',
+  msg: unknown,
+): void {
+  const room = getRoom(state.sessionId);
+  if (!room) return;
+  const target = (msg as { userId?: unknown }).userId;
+  let changed = false;
+  switch (type) {
+    case 'request_control':
+      changed = requestControl(room, state.userId).changed;
+      break;
+    case 'grant_control':
+      changed = grantControl(room, state.userId, target).changed;
+      break;
+    case 'decline_control':
+      changed = declineControl(room, state.userId, target).changed;
+      break;
+    case 'release_control':
+      changed = releaseControl(room, state.userId).changed;
+      break;
+    case 'pass_control':
+      changed = passControl(room, state.userId, target).changed;
+      break;
+  }
+  if (changed) broadcast(room, controlStateFrame(room));
 }
 
 /** Presence/cursor messages (STORY-11/TASK-033). `file_open` records which file a

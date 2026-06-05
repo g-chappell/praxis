@@ -174,6 +174,10 @@ export const projects = pgTable('projects', {
   // a fresh agent opens; passed back as resumeSessionId on the next open so the
   // agent resumes the prior conversation via session/load. Null until first run.
   agentSessionId: text('agent_session_id'),
+  // Prompt-control mode for the shared agent (STORY-34): 'serialised' (default —
+  // prompts queue + run FIFO) or 'turn_based' (one holder at a time). Owner-only
+  // to change; persists per project across sessions.
+  controlMode: text('control_mode').notNull().default('serialised'),
   createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });

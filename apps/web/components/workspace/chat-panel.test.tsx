@@ -26,6 +26,28 @@ vi.mock('@/components/workspace/workspace-socket', () => ({
   }),
 }));
 
+// Default control state for the chat panel: serialised, anyone may prompt, no queue.
+vi.mock('@/components/workspace/workspace-control', () => ({
+  useWorkspaceControl: () => ({
+    mode: 'serialised',
+    ownerUserId: null,
+    controlHolder: null,
+    requests: [],
+    queue: [],
+    myUserId: null,
+    isOwner: false,
+    isHolder: false,
+    canPrompt: true,
+    setMode: () => {},
+    requestControl: () => {},
+    grantControl: () => {},
+    declineControl: () => {},
+    releaseControl: () => {},
+    passControl: () => {},
+    cancelQueued: () => {},
+  }),
+}));
+
 import { ChatPanel } from './chat-panel';
 
 afterEach(() => {

@@ -22,6 +22,28 @@ vi.mock('@/components/workspace/workspace-socket', () => ({
   }),
 }));
 
+// ChatPanel reads control state (STORY-34); default to serialised + can-prompt.
+vi.mock('@/components/workspace/workspace-control', () => ({
+  useWorkspaceControl: () => ({
+    mode: 'serialised',
+    ownerUserId: null,
+    controlHolder: null,
+    requests: [],
+    queue: [],
+    myUserId: null,
+    isOwner: false,
+    isHolder: false,
+    canPrompt: true,
+    setMode: () => {},
+    requestControl: () => {},
+    grantControl: () => {},
+    declineControl: () => {},
+    releaseControl: () => {},
+    passControl: () => {},
+    cancelQueued: () => {},
+  }),
+}));
+
 import { ChatPanel } from './chat-panel';
 import { WorkspaceFilesProvider, useWorkspaceFiles } from './workspace-files';
 

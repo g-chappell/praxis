@@ -6,6 +6,8 @@
 // orchestrator would move these to Redis/Postgres (future).
 
 import { ClaudeAcpHost, type AcpHost, type AgentSession } from '@praxis/acp-host';
+
+import type { ControlMode, QueuedPrompt } from './control';
 import {
   DockerSandbox,
   MinioObjectStore,
@@ -89,6 +91,17 @@ export interface SessionRoom {
   // cleared when a socket rejoins within the grace window. Lets a page refresh
   // reconnect to the same live room + agent instead of losing the session.
   teardownTimer?: ReturnType<typeof setTimeout>;
+  // Prompt-control state (STORY-34). `mode` + `ownerUserId` are seeded from the
+  // project at room creation; `controlHolder` (turn_based), `controlRequests`, and
+  // `queue` (serialised) are live, ephemeral session state. See control.ts.
+  mode: ControlMode;
+  ownerUserId: string | null;
+  controlHolder?: string;
+  controlRequests: Set<string>;
+  queue: QueuedPrompt[];
+  // True while the serialised-mode queue is being drained (one turn at a time);
+  // prevents concurrent drainers so prompts run strictly FIFO (STORY-34).
+  draining?: boolean;
 }
 
 const rooms = new Map<string, SessionRoom>();
@@ -109,6 +122,12 @@ export function createRoom(
     sockets: new Set(),
     members: new Map(),
     locks: new Map(),
+    // Control defaults (STORY-34); createProjectRoom seeds mode + ownerUserId from
+    // the project. Default serialised so a room is always in a valid mode.
+    mode: 'serialised',
+    ownerUserId: null,
+    controlRequests: new Set(),
+    queue: [],
   };
   rooms.set(sessionId, room);
   return room;
