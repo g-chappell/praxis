@@ -53,6 +53,18 @@ function broadcast(room: SessionRoom | undefined, payload: unknown): void {
   for (const sock of room.sockets) send(sock, payload);
 }
 
+/** Fan out to every socket in the room except one (STORY-32) — used to echo a
+ *  user's prompt to their peers without double-rendering it for the sender, who
+ *  already shows it optimistically. */
+function broadcastExcept(
+  room: SessionRoom | undefined,
+  except: ServerWebSocket<unknown>,
+  payload: unknown,
+): void {
+  if (!room) return;
+  for (const sock of room.sockets) if (sock !== except) send(sock, payload);
+}
+
 /** Broadcast the room's full presence roster (STORY-11). Sent on join/leave and
  *  whenever a member's open file changes, so every client has the live member
  *  list (avatar + name) and who's viewing what. */
@@ -149,7 +161,7 @@ wsRoute.get(
           return;
         }
         if (type === 'prompt') {
-          await runPrompt(ws, state, (msg as { text?: unknown }).text);
+          await runPrompt(ws, raw, state, (msg as { text?: unknown }).text);
           return;
         }
         if (type === 'file_list' || type === 'file_read' || type === 'file_save') {
@@ -195,6 +207,7 @@ wsRoute.get(
 
 async function runPrompt(
   ws: { send: (data: string) => void },
+  senderRaw: ServerWebSocket<unknown> | undefined,
   state: ConnectionState,
   text: unknown,
 ): Promise<void> {
@@ -208,6 +221,15 @@ async function runPrompt(
     return;
   }
 
+  // Shared chat (STORY-32): the prompting user + the agent's stream are part of
+  // the room's conversation, so both cross to every peer. The prompt echoes to
+  // peers only (the sender renders it optimistically); agent events fan out to
+  // the whole room, each stamped with the prompting user so clients attribute it.
+  const author = { name: state.userName, image: state.userImage };
+  if (senderRaw) {
+    broadcastExcept(room, senderRaw, { type: 'user_prompt', text, author });
+  }
+
   try {
     for await (const event of getAcpHost().spawnAndPrompt(
       getSandbox(),
@@ -216,14 +238,20 @@ async function runPrompt(
       text,
       { onPermission: async () => 'allow' },
     )) {
-      send(ws, { type: 'agent_event', event });
+      broadcast(room, { type: 'agent_event', event, author });
     }
   } catch (err) {
     logger.error(
       { sessionId: state.sessionId, err: err instanceof Error ? err.message : String(err) },
       'ws.prompt_failed',
     );
-    send(ws, { type: 'error', reason: 'agent_error' });
+    // Surface the failure in everyone's transcript (it's the shared turn) without
+    // disabling any peer's input — an agent error is a message, not a dead session.
+    broadcast(room, {
+      type: 'agent_event',
+      event: { type: 'error', message: 'Agent error' },
+      author,
+    });
   }
 }
 

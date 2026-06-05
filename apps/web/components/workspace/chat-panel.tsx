@@ -26,8 +26,9 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
   const idRef = useRef(0);
   const nextId = useCallback(() => `m${(idRef.current += 1)}`, []);
 
-  // The prompting user for agent attribution. Single-client today, so it's always
-  // the current user; the orchestrator would tag events per-user for multiplayer.
+  // Fallback author for agent attribution. The orchestrator now tags each
+  // agent_event / user_prompt frame with the prompting user (STORY-32), so this
+  // is only used if a frame ever arrives without one (older server).
   const authorRef = useRef(currentUser);
   authorRef.current = currentUser;
 
@@ -40,14 +41,14 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
   }, []);
 
   const appendAgentText = useCallback(
-    (chunk: string) => {
+    (chunk: string, author: ChatAuthor) => {
       setMessages((prev) => {
         const last = prev[prev.length - 1];
         if (streamingRef.current && last && last.kind === 'text') {
           return [...prev.slice(0, -1), { ...last, text: last.text + chunk }];
         }
         streamingRef.current = true;
-        return [...prev, { id: nextId(), kind: 'text', author: authorRef.current, text: chunk }];
+        return [...prev, { id: nextId(), kind: 'text', author, text: chunk }];
       });
     },
     [nextId],
@@ -57,10 +58,12 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
     return subscribe((frame: ServerFrame) => {
       if (frame.type === 'agent_event') {
         const event = frame.event as Record<string, unknown> | undefined;
-        const author = authorRef.current;
+        // The orchestrator stamps each frame with the prompting user (STORY-32),
+        // so an agent stream a peer triggered is attributed to them, not to me.
+        const author = (frame.author as ChatAuthor | undefined) ?? authorRef.current;
         switch (event?.type) {
           case 'text-chunk':
-            appendAgentText(typeof event.text === 'string' ? event.text : '');
+            appendAgentText(typeof event.text === 'string' ? event.text : '', author);
             return;
           case 'tool-call':
             streamingRef.current = false;
@@ -94,6 +97,16 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
             streamingRef.current = false;
             return;
         }
+      } else if (frame.type === 'user_prompt') {
+        // A peer's prompt (STORY-32). The orchestrator echoes it to everyone but
+        // the sender, who already renders it optimistically in sendPrompt.
+        streamingRef.current = false;
+        pushMessage({
+          id: nextId(),
+          kind: 'user',
+          author: (frame.author as ChatAuthor | undefined) ?? authorRef.current,
+          text: typeof frame.text === 'string' ? frame.text : '',
+        });
       } else if (frame.type === 'error' && frame.path === undefined) {
         // Only session-scoped errors (no `path`) touch the chat. File read/save
         // errors carry a `path` and are surfaced in the editor instead, so a
