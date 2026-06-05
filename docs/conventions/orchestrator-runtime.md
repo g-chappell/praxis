@@ -54,9 +54,33 @@ The orchestrator **is** the preview router (ADR-0015): one static Caddy
 wildcard (`*.preview.<domain>`) reverse-proxies to `:4001`, and the
 orchestrator maps `<slug>.preview.<domain>` → the sandbox container IP via
 an in-memory registry, gated by on-demand-TLS `/caddy/ask`. We do **not**
-mutate the shared multi-tenant Caddy dynamically. Known follow-up: the
-preview serves over plain HTTP, so Vite's **HMR WebSocket is not proxied** —
-the preview renders and updates on a manual refresh, but does not live-reload.
+mutate the shared multi-tenant Caddy dynamically.
+
+### Preview HMR WebSocket (STORY-30)
+
+The HTTP preview proxy (`preview.ts`) can't carry a WebSocket upgrade (it strips
+`upgrade`), so Vite's HMR socket is tunnelled separately. `index.ts` intercepts a
+**preview-host WS upgrade** before the Hono app and accepts it with a raw Bun
+`server.upgrade` (so it can echo the `vite-hmr` subprotocol), then `preview-ws.ts`
+opens a client `WebSocket` to the sandbox dev server and relays frames both ways.
+One Bun `websocket` handler dispatches preview tunnels vs the Hono session socket
+by `ws.data.kind`. Caddy passes the upgrade through unchanged.
+
+Templates must point Vite's HMR client at the proxy, not the dev server's own
+port — the preview is `https://<slug>.preview.<domain>` (Caddy TLS on 443):
+
+```ts
+// vite.config.ts
+server: {
+  host: '0.0.0.0', port: 5173, strictPort: true,
+  allowedHosts: true,                       // dynamic per-project preview host
+  hmr: { clientPort: 443, protocol: 'wss' },// connect back over the proxy, not :5173
+}
+```
+
+`allowedHosts: true` is safe — the dev server is only reachable via the
+authenticated proxy on `praxis-net`, never published publicly. Only the
+`react-threejs-scene` template is verified; the mechanism generalises.
 
 ## Agent memory store location (STORY-36 / ADR-0017)
 
