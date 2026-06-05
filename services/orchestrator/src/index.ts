@@ -32,13 +32,16 @@ const sessionWs = websocket as unknown as {
 // (STORY-30) to their relay and everything else to the Hono session socket.
 const combinedWebsocket = {
   open(ws: ServerWebSocket<unknown>) {
-    isPreviewSocket(ws) ? previewWebsocket.open(ws) : sessionWs.open?.(ws);
+    if (isPreviewSocket(ws)) previewWebsocket.open(ws);
+    else sessionWs.open?.(ws);
   },
   message(ws: ServerWebSocket<unknown>, msg: string | Uint8Array) {
-    isPreviewSocket(ws) ? previewWebsocket.message(ws, msg) : sessionWs.message?.(ws, msg);
+    if (isPreviewSocket(ws)) previewWebsocket.message(ws, msg);
+    else sessionWs.message?.(ws, msg);
   },
   close(ws: ServerWebSocket<unknown>, code: number, reason: string) {
-    isPreviewSocket(ws) ? previewWebsocket.close(ws) : sessionWs.close?.(ws, code, reason);
+    if (isPreviewSocket(ws)) previewWebsocket.close(ws);
+    else sessionWs.close?.(ws, code, reason);
   },
   drain(ws: ServerWebSocket<unknown>) {
     if (!isPreviewSocket(ws)) sessionWs.drain?.(ws);
