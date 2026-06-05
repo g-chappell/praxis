@@ -1008,7 +1008,7 @@ epics:
         tasks:
           - id: TASK-079
             title: "Orchestrator: tunnel the preview WebSocket upgrade to the sandbox dev server"
-            status: ready
+            status: done
             priority: med
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -1020,11 +1020,12 @@ epics:
               requests untouched.
             depends_on: [TASK-038]
             attempt_count: 0
+            completed: '2026-06-05T18:30:00Z'
             task_acceptance:
               - "A WebSocket upgrade to a live preview host is proxied to the sandbox dev server and frames pass both ways; a non-upgrade request still serves over the HTTP path."
           - id: TASK-080
             title: "Verify preview hot-reload live + document Vite HMR config"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["services/orchestrator", "templates/react-threejs-scene"]
@@ -1036,6 +1037,7 @@ epics:
               docs/conventions/orchestrator-runtime.md.
             depends_on: [TASK-079]
             attempt_count: 0
+            completed: '2026-06-05T18:30:00Z'
             is_terminal: true
             task_acceptance:
               - "Live on the VPS: editing a file in a running 3js project reloads the preview pane with no manual refresh."

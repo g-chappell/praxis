@@ -4,9 +4,11 @@ import {
   caddyAsk,
   getPreview,
   previewUrlFor,
+  previewWsSlug,
   registerPreview,
   removePreview,
   slugForHost,
+  upstreamWsUrl,
 } from '../src/preview';
 
 const OLD_DOMAIN = process.env.PREVIEW_DOMAIN;
@@ -48,5 +50,25 @@ describe('registry + caddyAsk', () => {
   it('ask is false for a non-preview host even with a live registry', () => {
     registerPreview('p1', { ip: '172.20.0.5', port: 5173 });
     expect(caddyAsk('api.praxis.example.dev')).toBe(false);
+  });
+});
+
+describe('preview HMR WebSocket tunnel (STORY-30)', () => {
+  it('previewWsSlug returns the slug only for a preview-host WS upgrade', () => {
+    expect(previewWsSlug('p1.preview.example.dev', 'websocket')).toBe('p1');
+    expect(previewWsSlug('p1.preview.example.dev', 'WebSocket')).toBe('p1'); // case-insensitive
+    expect(previewWsSlug('p1.preview.example.dev', null)).toBeNull(); // not an upgrade
+    expect(previewWsSlug('p1.preview.example.dev', 'h2c')).toBeNull(); // other upgrade
+    expect(previewWsSlug('api.praxis.example.dev', 'websocket')).toBeNull(); // not a preview host
+  });
+
+  it('upstreamWsUrl targets the sandbox dev server, preserving path + query', () => {
+    const target = { ip: '172.20.0.5', port: 5173 };
+    expect(upstreamWsUrl(target, new Request('https://p1.preview.example.dev/'))).toBe(
+      'ws://172.20.0.5:5173/',
+    );
+    expect(
+      upstreamWsUrl(target, new Request('https://p1.preview.example.dev/@vite/client?token=x')),
+    ).toBe('ws://172.20.0.5:5173/@vite/client?token=x');
   });
 });

@@ -45,8 +45,10 @@ also on `praxis-net`, so it can reach a sandbox container's IP:port directly.
 - No runtime mutation of the shared Caddy — one static block, safe for other
   tenants. The dynamic part is all in the orchestrator (testable without the VPS).
 - All preview HTTP flows through the orchestrator (a POC-acceptable bottleneck).
-- **WebSocket (Vite HMR) is not proxied yet** — the app renders over plain HTTP;
-  only hot-reload needs WS. Follow-up.
+- **WebSocket (Vite HMR) is now tunnelled** (STORY-30): a preview-host WS upgrade
+  is intercepted in `index.ts` and relayed to the sandbox dev server by
+  `preview-ws.ts`, so the preview live-reloads. See
+  `docs/conventions/orchestrator-runtime.md` → Preview HMR WebSocket.
 - The registry is in-memory (single-instance POC); a multi-instance orchestrator
   would move it to Redis/Postgres alongside rooms/tickets.
 - **Operator follow-ups:** wildcard DNS `*.preview.praxis.blacksail.dev`; merge the
