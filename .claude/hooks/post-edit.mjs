@@ -2,12 +2,17 @@
 // post-edit.mjs — single PostToolUse hook dispatcher
 //
 // Replaces the 4+ inline Node one-liners seen in earlier projects. Reads the
-// tool-use payload from stdin, decides which typecheck/test commands to run
-// based on the edited file's extension and its workspace, then runs them.
+// tool-use payload from stdin, decides which typecheck command to run based on
+// the edited file's extension and its workspace, then runs it.
 //
 // Wired into .claude/settings.json as:
 //   { "matcher": "Write|Edit", "hooks": [{ "type": "command",
 //     "command": "node .claude/hooks/post-edit.mjs" }] }
+//
+// Typecheck only — NOT the test suite. Per-edit typecheck is fast (~5-10s) and
+// stays under the harness hook timeout; running the full suite on every edit
+// pushed web edits past the 30s ceiling and surfaced spurious "hook error"s.
+// Tests are covered by the manual story gate and CI. See PR for rationale.
 //
 // Never aborts on error — prints diagnostics, exits 0 so subsequent tools fire.
 
@@ -97,10 +102,8 @@ async function main() {
   const defaults = DEFAULT_COMMANDS[lang] || {};
 
   const typecheck = wsCmds.typecheck ?? projCmds.typecheck ?? defaults.typecheck;
-  const test = wsCmds.test ?? projCmds.test ?? defaults.test;
 
   run('typecheck', typecheck, cwd);
-  run('test', test, cwd);
 }
 
 main().catch((err) => {

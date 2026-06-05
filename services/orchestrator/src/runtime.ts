@@ -61,6 +61,10 @@ export interface SessionRoom {
   // call — the orchestrator (Bun) deliberately does NOT load libsodium, which
   // doesn't run under Bun. Held in memory only; never logged.
   apiKey: string;
+  // The project's preview URL at room creation (null if registration failed),
+  // returned to every user who joins so re-joiners share the creator's preview
+  // without re-registering (STORY-32).
+  previewUrl: string | null;
   sockets: Set<ServerWebSocket<unknown>>;
   // Live presence: connId → member identity (STORY-11/TASK-033). Mutated on WS
   // open/close; broadcast to the room as `presence`.
@@ -81,20 +85,34 @@ export function createRoom(
   projectId: string,
   handle: SandboxHandle,
   apiKey: string,
-): void {
-  rooms.set(sessionId, {
+  previewUrl: string | null = null,
+): SessionRoom {
+  const room: SessionRoom = {
     sessionId,
     projectId,
     handle,
     apiKey,
+    previewUrl,
     sockets: new Set(),
     members: new Map(),
     locks: new Map(),
-  });
+  };
+  rooms.set(sessionId, room);
+  return room;
 }
 
 export function getRoom(sessionId: string): SessionRoom | undefined {
   return rooms.get(sessionId);
+}
+
+/** The live room for a project, if any (STORY-32). Per-project room reuse keeps
+ *  at most one live room per project, so a second user joining attaches here
+ *  instead of booting a parallel session — the first match is *the* room. */
+export function getRoomByProject(projectId: string): SessionRoom | undefined {
+  for (const room of rooms.values()) {
+    if (room.projectId === projectId) return room;
+  }
+  return undefined;
 }
 
 export function deleteRoom(sessionId: string): void {

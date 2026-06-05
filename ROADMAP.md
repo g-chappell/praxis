@@ -8,9 +8,9 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 18 / 30 (60%)
-- **Total tasks:** 83
-- **Done:** 58 (70%)
+- **Features verified:** 18 / 31 (58%)
+- **Total tasks:** 85
+- **Done:** 60 (71%)
 - **Ready:** 25
 - **In progress:** 0
 - **Blocked:** 0
@@ -737,6 +737,62 @@ URLs surfaced through a wildcard Caddy domain.
     - Integration test: acceptInvite adds the second user to the team and the accept route resolves to the shared project.
     - A used/expired link yields the error path with no membership change.
     - Manual VPS check recorded: both users appear in the project's presence list after the invite is accepted.
+
+- **STORY-32** — Shared project room: cross-user presence and chat
+  > Two users in the same project must join ONE live session room, not
+  > separate ones. Today POST /sessions unconditionally inserts a new
+  > sessions row and createRoom(sessionId) per connection, while the
+  > sandbox container is per-project (praxis-sandbox-<projectId>) and
+  > reused — so two users share files but sit in separate rooms, seeing
+  > only themselves in presence and never each other's chat/cursors/locks.
+  > Additionally, agent output (runPrompt) is sent only to the prompting
+  > socket and the user's own prompt is rendered client-side only, so chat
+  > never crosses users even within one room. This Story makes the room
+  > shared-per-project and makes chat shared + attributed. It is the
+  > regression behind STORY-11's AC ("two browser sessions display each
+  > other") which was only ever verified with mocked single-room sockets.
+  > Bug-fix Story, separate from STORY-31. Session-reuse model approved by
+  > the operator: the second joiner attaches to the existing session (no
+  > new sessions row); a session stays = one sandbox boot
+  > (containerId/previewUrl/endedAt); per-user attribution lives in git +
+  > the presence roster.
+  **Acceptance criteria:**
+  - Two browser sessions (different users) opening the same project join the SAME room: each appears in the other's presence roster with avatar + name (STORY-11 AC, now true for real users, not mocked sockets).
+  - A second user joining an already-live project does NOT boot a second sandbox or insert a second sessions row — they attach to the existing session and share its preview URL.
+  - When user A prompts the agent, user B sees A's prompt (attributed to A) and the agent's streamed response in their own chat transcript, and vice versa.
+  - When the last user leaves, the room and sandbox tear down exactly as before (no idle-shutdown change).
+  **User flow:**
+  1. User A opens project X — session + room created, sandbox boots.
+  2. User B opens project X (via invite link) — POST /sessions finds the live room, attaches B to it, returns a ticket onto the existing sessionId.
+  3. Both see each other in the presence bar.
+  4. User A types a prompt — both A and B see 'A: <prompt>' then the agent's reply stream.
+  **Out of scope:**
+  - A single PERSISTENT shared agent (one long-lived claude-agent-acp process + ACP session both users contribute to) — today spawnAndPrompt spawns and kills an agent per prompt; making it persistent changes the sacred AcpHost interface shape and needs an ADR + both-contributor sign-off. Separate Story.
+  - Agent prompt-control modes (serialised queue / turn-based handoff) — depends on the persistent shared agent. Separate follow-up Story.
+  - Character-level co-editing via Yjs (post-POC).
+  - :white_check_mark: **TASK-085** — Orchestrator: reuse the live project room on POST /sessions  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-033_
+    > Add getRoomByProject(projectId) to runtime.ts. In POST /sessions,
+    > if a live room already exists for the project, skip sandbox start /
+    > preview registration / sessions-row insert and mint a ticket onto
+    > the existing sessionId stamped with the joiner's identity; return
+    > the existing previewUrl. Guard first-joiner races with a
+    > per-project async create-lock so two simultaneous opens don't both
+    > boot a sandbox. Teardown is unchanged (room + sandbox end when the
+    > last socket leaves).
+    _Task AC:_
+    - Integration test: two POST /sessions for the same project return the same sessionId and only one sandbox start / one sessions row.
+  - :white_check_mark: **TASK-086** :checkered_flag: — Share + attribute chat across the room  `high` `medium` _(services/orchestrator, apps/web)_  
+    _depends on: TASK-085, TASK-032_
+    > Orchestrator: broadcast agent_event frames to the whole room (not
+    > just the prompting socket) and echo each prompt to the room stamped
+    > with the sender's identity. Web: the chat panel renders peer
+    > prompts and attributes streamed agent events to the prompting user
+    > carried on the frame, replacing the single-client authorRef
+    > assumption (chat-panel.tsx:29-30).
+    _Task AC:_
+    - Two connected clients both receive the same agent_event stream and the prompt is attributed to its sender in both transcripts.
+    - STORY-32 acceptance_criteria satisfied.
 
 ## EPIC-04 — Template, git, polish
 
