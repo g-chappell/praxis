@@ -15,6 +15,7 @@ import { db } from '@praxis/db/client';
 import type { FileEvent } from '@praxis/sandbox';
 
 import { loadChatHistory, persistChatEvent } from '../chat-history';
+import { controlStateFrame, setMode } from '../control';
 
 import { handleFileList, handleFileRead, handleFileSave } from '../file-ops';
 import {
@@ -155,6 +156,9 @@ wsRoute.get(
         void loadChatHistory(room.projectId).then((messages) =>
           send(ws, { type: 'chat_history', messages }),
         );
+        // Send the current prompt-control state (mode/holder/queue, STORY-34) so the
+        // joiner's control bar + input gating render correctly.
+        send(ws, controlStateFrame(room));
       },
 
       onMessage: async (evt, ws) => {
@@ -200,6 +204,10 @@ wsRoute.get(
         }
         if (type === 'file_open' || type === 'cursor') {
           handlePresence(ws, state, type, msg);
+          return;
+        }
+        if (type === 'set_mode') {
+          handleSetMode(ws, state, (msg as { mode?: unknown }).mode);
           return;
         }
 
@@ -371,6 +379,49 @@ function persistAgentSession(room: SessionRoom): void {
       logger.warn(
         { projectId: room.projectId, err: err instanceof Error ? err.message : String(err) },
         'agent_session.persist_failed',
+      ),
+    );
+}
+
+/** Owner-only prompt-control mode switch (STORY-34). Rejects non-owners; on a real
+ *  change persists the new mode and broadcasts the updated control_state (plus a
+ *  notice when switching to turn-based discarded queued prompts). */
+function handleSetMode(
+  ws: { send: (data: string) => void },
+  state: ConnectionState,
+  mode: unknown,
+): void {
+  const room = getRoom(state.sessionId);
+  if (!room) {
+    send(ws, { type: 'error', reason: 'no_session' });
+    return;
+  }
+  const result = setMode(room, state.userId, mode);
+  if (!result.ok) {
+    send(ws, { type: 'error', reason: 'not_owner' });
+    return;
+  }
+  if (!result.changed) return;
+  persistControlMode(room);
+  if (result.queueCleared) {
+    broadcast(room, {
+      type: 'system_notice',
+      text: 'Switched to turn-based — queued prompts were cleared.',
+    });
+  }
+  broadcast(room, controlStateFrame(room));
+}
+
+/** Persist the room's control mode to the project (STORY-34). Fire-and-forget. */
+function persistControlMode(room: SessionRoom): void {
+  void db
+    .update(projects)
+    .set({ controlMode: room.mode })
+    .where(eq(projects.id, room.projectId))
+    .catch((err: unknown) =>
+      logger.warn(
+        { projectId: room.projectId, err: err instanceof Error ? err.message : String(err) },
+        'control_mode.persist_failed',
       ),
     );
 }

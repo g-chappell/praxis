@@ -31,17 +31,24 @@ async function ensureRoom(
   projectId: string,
   templateId: string,
   apiKey: string,
-  agentSessionId: string | null,
+  seed: RoomSeed,
 ): Promise<SessionRoom> {
   const live = getRoomByProject(projectId);
   if (live) return live;
   const inflight = creating.get(projectId);
   if (inflight) return inflight;
-  const create = createProjectRoom(projectId, templateId, apiKey, agentSessionId).finally(() =>
+  const create = createProjectRoom(projectId, templateId, apiKey, seed).finally(() =>
     creating.delete(projectId),
   );
   creating.set(projectId, create);
   return create;
+}
+
+/** Per-project state seeded onto a new room from the DB (STORY-36/STORY-34). */
+interface RoomSeed {
+  agentSessionId: string | null;
+  controlMode: string;
+  ownerUserId: string | null;
 }
 
 /** Boot the sandbox, register the preview, start the dev server, insert the
@@ -50,7 +57,7 @@ async function createProjectRoom(
   projectId: string,
   templateId: string,
   apiKey: string,
-  agentSessionId: string | null,
+  seed: RoomSeed,
 ): Promise<SessionRoom> {
   // start() restores from MinIO if the volume is empty (ADR-0008).
   const handle = await getSandbox().start(projectId, templateId);
@@ -97,7 +104,12 @@ async function createProjectRoom(
   // Seed the resume id so the first prompt's openAgent loads the prior
   // conversation via session/load (ADR-0017/STORY-36). Null on a project's first
   // ever session.
-  room.agentSessionId = agentSessionId ?? undefined;
+  room.agentSessionId = seed.agentSessionId ?? undefined;
+  // Seed the prompt-control mode + owner (STORY-34); turn_based starts with the
+  // owner holding control.
+  room.mode = seed.controlMode === 'turn_based' ? 'turn_based' : 'serialised';
+  room.ownerUserId = seed.ownerUserId;
+  if (room.mode === 'turn_based') room.controlHolder = seed.ownerUserId ?? undefined;
   logger.info({ sessionId, projectId }, 'session.created');
   return room;
 }
@@ -127,7 +139,12 @@ sessionsRoute.post('/', async (c) => {
   }
 
   const [project] = await db
-    .select({ templateId: projects.templateId, agentSessionId: projects.agentSessionId })
+    .select({
+      templateId: projects.templateId,
+      agentSessionId: projects.agentSessionId,
+      controlMode: projects.controlMode,
+      ownerUserId: projects.createdBy,
+    })
     .from(projects)
     .where(eq(projects.id, projectId))
     .limit(1);
@@ -138,8 +155,12 @@ sessionsRoute.post('/', async (c) => {
   // Attach to the project's live room, or create it once (STORY-32). A second
   // user joining an active project reuses the same session/sandbox/preview — only
   // their WS ticket is per-user, stamped with their identity for presence + chat.
-  // The stored agent session id seeds cross-session resume (STORY-36).
-  const room = await ensureRoom(projectId, project.templateId, apiKey, project.agentSessionId);
+  // The seed carries cross-session resume (STORY-36) + control mode/owner (STORY-34).
+  const room = await ensureRoom(projectId, project.templateId, apiKey, {
+    agentSessionId: project.agentSessionId,
+    controlMode: project.controlMode,
+    ownerUserId: project.ownerUserId,
+  });
   const ticket = mintTicket({ sessionId: room.sessionId, userId, userName, userImage });
   logger.info({ sessionId: room.sessionId, projectId, userId }, 'session.joined');
 
