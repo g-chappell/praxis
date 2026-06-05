@@ -3,7 +3,7 @@ import type { Agent, RequestPermissionOutcome } from '@agentclientprotocol/sdk';
 import type { ProcessHandle, Sandbox, SandboxHandle } from '@praxis/sandbox';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ClaudeAcpHost } from './acp-host.js';
+import { AgentBusyError, ClaudeAcpHost } from './acp-host.js';
 import type { AcpEvent, PermissionRequest } from './events.js';
 
 const HANDLE: SandboxHandle = { projectId: 'p1', containerId: 'c1' };
@@ -86,25 +86,27 @@ async function collect(events: AsyncIterable<AcpEvent>): Promise<AcpEvent[]> {
   return out;
 }
 
+async function waitFor(pred: () => boolean, ms = 1000): Promise<void> {
+  const start = Date.now();
+  while (!pred()) {
+    if (Date.now() - start > ms) throw new Error('waitFor timeout');
+    await new Promise((r) => setTimeout(r, 5));
+  }
+}
+
 const allow = async (): Promise<'allow'> => 'allow';
 
-describe('ClaudeAcpHost.spawnAndPrompt', () => {
+describe('ClaudeAcpHost — persistent AgentSession (ADR-0016)', () => {
   it('streams text chunks and completes the turn (happy path)', async () => {
     const { sandbox, spawn } = harness(
       makeAgent((conn) => async ({ sessionId }) => {
         await conn.sessionUpdate({
           sessionId,
-          update: {
-            sessionUpdate: 'agent_message_chunk',
-            content: { type: 'text', text: 'hello ' },
-          },
+          update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'hello ' } },
         });
         await conn.sessionUpdate({
           sessionId,
-          update: {
-            sessionUpdate: 'agent_message_chunk',
-            content: { type: 'text', text: 'world' },
-          },
+          update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'world' } },
         });
         return {
           stopReason: 'end_turn',
@@ -114,24 +116,89 @@ describe('ClaudeAcpHost.spawnAndPrompt', () => {
     );
 
     const host = new ClaudeAcpHost();
-    const events = await collect(
-      host.spawnAndPrompt(sandbox, HANDLE, 'sk-ant-test', 'hi', { onPermission: allow }),
-    );
+    const session = await host.openAgent(sandbox, HANDLE, 'sk-ant-test');
+    const events = await collect(session.prompt('hi', { onPermission: allow }));
 
     expect(events).toEqual([
       { type: 'text-chunk', text: 'hello ' },
       { type: 'text-chunk', text: 'world' },
-      {
-        type: 'turn-complete',
-        stopReason: 'end_turn',
-        usage: { inputTokens: 12, outputTokens: 5 },
-      },
+      { type: 'turn-complete', stopReason: 'end_turn', usage: { inputTokens: 12, outputTokens: 5 } },
     ]);
 
     // Authenticates with the platform API key and nothing else (ADR-0009).
     const [, command, opts] = spawn.mock.calls[0]!;
     expect(command).toBe('claude-agent-acp');
     expect(opts?.env).toEqual({ ANTHROPIC_API_KEY: 'sk-ant-test' });
+    await session.close();
+  });
+
+  it('reuses one process + ACP session across turns, with continuity', async () => {
+    let turns = 0;
+    const { sandbox, spawn, kill } = harness(
+      makeAgent((conn) => async ({ sessionId }) => {
+        turns += 1;
+        await conn.sessionUpdate({
+          sessionId,
+          update: {
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: `turn ${turns}` },
+          },
+        });
+        return { stopReason: 'end_turn' };
+      }),
+    );
+
+    const host = new ClaudeAcpHost();
+    const session = await host.openAgent(sandbox, HANDLE, 'sk-ant-test');
+    const first = await collect(session.prompt('one', { onPermission: allow }));
+    const second = await collect(session.prompt('two', { onPermission: allow }));
+
+    // One process drove both turns; the per-turn counter advancing proves the
+    // same long-lived agent session handled the second prompt (continuity).
+    expect(spawn).toHaveBeenCalledOnce();
+    expect(first).toContainEqual({ type: 'text-chunk', text: 'turn 1' });
+    expect(second).toContainEqual({ type: 'text-chunk', text: 'turn 2' });
+    // Stays alive between turns; only close() kills it.
+    expect(kill).not.toHaveBeenCalled();
+    expect(session.alive).toBe(true);
+
+    await session.close();
+    expect(kill).toHaveBeenCalledOnce();
+    expect(session.alive).toBe(false);
+  });
+
+  it('serialises turns — a prompt while one is in flight is rejected as busy', async () => {
+    let release = (): void => {};
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const { sandbox } = harness(
+      makeAgent((conn) => async ({ sessionId }) => {
+        await conn.sessionUpdate({
+          sessionId,
+          update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'working' } },
+        });
+        await gate; // hold the turn open
+        return { stopReason: 'end_turn' };
+      }),
+    );
+
+    const host = new ClaudeAcpHost();
+    const session = await host.openAgent(sandbox, HANDLE, 'sk-ant-test');
+
+    // Start the first turn and let it begin (busy=true) without finishing.
+    const first = collect(session.prompt('one', { onPermission: allow }));
+    await waitFor(() => session.busy);
+
+    // A second prompt while busy is rejected, not raced.
+    await expect(collect(session.prompt('two', { onPermission: allow }))).rejects.toBeInstanceOf(
+      AgentBusyError,
+    );
+
+    release();
+    await first;
+    expect(session.busy).toBe(false);
+    await session.close();
   });
 
   it('surfaces a tool-permission request and proceeds when allowed', async () => {
@@ -173,8 +240,9 @@ describe('ClaudeAcpHost.spawnAndPrompt', () => {
 
     const seen: PermissionRequest[] = [];
     const host = new ClaudeAcpHost();
+    const session = await host.openAgent(sandbox, HANDLE, 'sk-ant-test');
     const events = await collect(
-      host.spawnAndPrompt(sandbox, HANDLE, 'sk-ant-test', 'write a.txt', {
+      session.prompt('write a.txt', {
         onPermission: async (request) => {
           seen.push(request);
           return 'allow';
@@ -189,6 +257,7 @@ describe('ClaudeAcpHost.spawnAndPrompt', () => {
       { type: 'tool-result', toolCallId: 'tool-1', isError: false, output: { ok: true } },
       { type: 'turn-complete', stopReason: 'end_turn', usage: null },
     ]);
+    await session.close();
   });
 
   it('rejects the tool and completes cleanly when denied', async () => {
@@ -209,25 +278,26 @@ describe('ClaudeAcpHost.spawnAndPrompt', () => {
     );
 
     const host = new ClaudeAcpHost();
+    const session = await host.openAgent(sandbox, HANDLE, 'sk-ant-test');
     const events = await collect(
-      host.spawnAndPrompt(sandbox, HANDLE, 'sk-ant-test', 'delete everything', {
-        onPermission: async () => 'deny',
-      }),
+      session.prompt('delete everything', { onPermission: async () => 'deny' }),
     );
 
     expect(outcome).toEqual({ outcome: 'selected', optionId: 'd' });
     expect(events.some((e) => e.type === 'tool-result')).toBe(false);
     expect(events).toContainEqual({ type: 'turn-complete', stopReason: 'end_turn', usage: null });
+    await session.close();
   });
 
-  it('shuts the agent process down after the turn drains', async () => {
+  it('close() is idempotent and marks the session not alive', async () => {
     const { sandbox, kill } = harness(makeAgent(() => async () => ({ stopReason: 'end_turn' })));
-
     const host = new ClaudeAcpHost();
-    await collect(
-      host.spawnAndPrompt(sandbox, HANDLE, 'sk-ant-test', 'noop', { onPermission: allow }),
-    );
+    const session = await host.openAgent(sandbox, HANDLE, 'sk-ant-test');
+    await collect(session.prompt('noop', { onPermission: allow }));
 
-    expect(kill).toHaveBeenCalledOnce();
+    await session.close();
+    await session.close();
+    expect(session.alive).toBe(false);
+    expect(kill).toHaveBeenCalled();
   });
 });

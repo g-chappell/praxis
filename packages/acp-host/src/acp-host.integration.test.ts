@@ -44,24 +44,33 @@ describeLive('ClaudeAcpHost round-trip (real sandbox + agent)', () => {
   }, TURN_TIMEOUT);
 
   it(
-    'streams a text response and completes the turn',
+    'streams a text response and completes the turn, then continues on the same session',
     async () => {
-      const events: AcpEvent[] = [];
-      for await (const event of host.spawnAndPrompt(
-        sandbox,
-        handle,
-        API_KEY!,
-        'Reply with exactly the word: pong',
-        { onPermission: async () => 'allow' },
-      )) {
-        events.push(event);
-      }
+      const session = await host.openAgent(sandbox, handle, API_KEY!);
+      try {
+        const turn = async (text: string): Promise<AcpEvent[]> => {
+          const events: AcpEvent[] = [];
+          for await (const event of session.prompt(text, { onPermission: async () => 'allow' })) {
+            events.push(event);
+          }
+          return events;
+        };
 
-      const errors = events.filter((e) => e.type === 'error');
-      expect(errors, JSON.stringify(errors)).toHaveLength(0);
-      expect(events.some((e) => e.type === 'text-chunk' && e.text.length > 0)).toBe(true);
-      expect(events.at(-1)?.type).toBe('turn-complete');
+        const first = await turn('Remember the word "pong". Reply with exactly: pong');
+        const firstErrors = first.filter((e) => e.type === 'error');
+        expect(firstErrors, JSON.stringify(firstErrors)).toHaveLength(0);
+        expect(first.some((e) => e.type === 'text-chunk' && e.text.length > 0)).toBe(true);
+        expect(first.at(-1)?.type).toBe('turn-complete');
+
+        // Same persistent session — the agent should recall the prior turn.
+        const second = await turn('What word did I ask you to remember? Reply with just that word.');
+        expect(second.filter((e) => e.type === 'error')).toHaveLength(0);
+        expect(second.some((e) => e.type === 'text-chunk' && /pong/i.test(e.text))).toBe(true);
+        expect(second.at(-1)?.type).toBe('turn-complete');
+      } finally {
+        await session.close();
+      }
     },
-    TURN_TIMEOUT,
+    TURN_TIMEOUT * 2,
   );
 });

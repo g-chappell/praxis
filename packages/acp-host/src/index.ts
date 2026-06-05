@@ -1,8 +1,9 @@
-// @praxis/acp-host — the ACP host layer (ADR-0009). Spawns an ACP-speaking agent
-// inside a Sandbox and streams typed events for a prompt turn.
+// @praxis/acp-host — the ACP host layer (ADR-0009, ADR-0016). Spawns a persistent
+// ACP-speaking agent inside a Sandbox and streams typed events across many prompt
+// turns over one shared session.
 
-export { ClaudeAcpHost, ACP_AGENT_COMMAND } from './acp-host.js';
-export type { AcpHost, SpawnAndPromptOptions } from './acp-host.js';
+export { ClaudeAcpHost, ACP_AGENT_COMMAND, AgentBusyError } from './acp-host.js';
+export type { AcpHost, AgentSession, PromptOptions } from './acp-host.js';
 export type {
   AcpEvent,
   TextChunkEvent,
