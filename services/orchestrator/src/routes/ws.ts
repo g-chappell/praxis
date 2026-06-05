@@ -232,7 +232,11 @@ async function runPrompt(
   const turn = await acquireRoomTurn(room, getAcpHost(), getSandbox());
   if (turn.status === 'error') {
     logger.error({ sessionId: state.sessionId }, 'ws.agent_open_failed');
-    broadcast(room, { type: 'agent_event', event: { type: 'error', message: 'Agent error' }, author });
+    broadcast(room, {
+      type: 'agent_event',
+      event: { type: 'error', message: 'Agent error' },
+      author,
+    });
     return;
   }
   if (turn.status === 'busy') {

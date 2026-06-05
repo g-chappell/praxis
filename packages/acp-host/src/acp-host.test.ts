@@ -102,11 +102,17 @@ describe('ClaudeAcpHost — persistent AgentSession (ADR-0016)', () => {
       makeAgent((conn) => async ({ sessionId }) => {
         await conn.sessionUpdate({
           sessionId,
-          update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'hello ' } },
+          update: {
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: 'hello ' },
+          },
         });
         await conn.sessionUpdate({
           sessionId,
-          update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'world' } },
+          update: {
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: 'world' },
+          },
         });
         return {
           stopReason: 'end_turn',
@@ -122,7 +128,11 @@ describe('ClaudeAcpHost — persistent AgentSession (ADR-0016)', () => {
     expect(events).toEqual([
       { type: 'text-chunk', text: 'hello ' },
       { type: 'text-chunk', text: 'world' },
-      { type: 'turn-complete', stopReason: 'end_turn', usage: { inputTokens: 12, outputTokens: 5 } },
+      {
+        type: 'turn-complete',
+        stopReason: 'end_turn',
+        usage: { inputTokens: 12, outputTokens: 5 },
+      },
     ]);
 
     // Authenticates with the platform API key and nothing else (ADR-0009).
@@ -176,7 +186,10 @@ describe('ClaudeAcpHost — persistent AgentSession (ADR-0016)', () => {
       makeAgent((conn) => async ({ sessionId }) => {
         await conn.sessionUpdate({
           sessionId,
-          update: { sessionUpdate: 'agent_message_chunk', content: { type: 'text', text: 'working' } },
+          update: {
+            sessionUpdate: 'agent_message_chunk',
+            content: { type: 'text', text: 'working' },
+          },
         });
         await gate; // hold the turn open
         return { stopReason: 'end_turn' };

@@ -114,12 +114,16 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
       } else if (frame.type === 'agent_busy') {
         // The shared agent is mid-turn, so this prompt wasn't run (STORY-33).
         // Surface a transient notice; the input stays live so they can retry.
-        setNotice('The agent is finishing another turn — your message wasn’t sent. Try again in a moment.');
+        setNotice(
+          'The agent is finishing another turn — your message wasn’t sent. Try again in a moment.',
+        );
       } else if (frame.type === 'agent_restarted') {
         // The agent process was re-opened after dying — files persist, but the
         // earlier conversation context is gone (STORY-33).
         streamingRef.current = false;
-        setNotice('The agent restarted — your files are intact, but earlier chat context was reset.');
+        setNotice(
+          'The agent restarted — your files are intact, but earlier chat context was reset.',
+        );
       } else if (frame.type === 'error' && frame.path === undefined) {
         // Only session-scoped errors (no `path`) touch the chat. File read/save
         // errors carry a `path` and are surfaced in the editor instead, so a

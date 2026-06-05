@@ -63,7 +63,9 @@ describeLive('ClaudeAcpHost round-trip (real sandbox + agent)', () => {
         expect(first.at(-1)?.type).toBe('turn-complete');
 
         // Same persistent session — the agent should recall the prior turn.
-        const second = await turn('What word did I ask you to remember? Reply with just that word.');
+        const second = await turn(
+          'What word did I ask you to remember? Reply with just that word.',
+        );
         expect(second.filter((e) => e.type === 'error')).toHaveLength(0);
         expect(second.some((e) => e.type === 'text-chunk' && /pong/i.test(e.text))).toBe(true);
         expect(second.at(-1)?.type).toBe('turn-complete');
