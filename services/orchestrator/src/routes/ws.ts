@@ -9,6 +9,7 @@ import { Hono } from 'hono';
 import { createBunWebSocket } from 'hono/bun';
 import type { ServerWebSocket } from 'bun';
 
+import { AgentBusyError } from '@praxis/acp-host';
 import { sessions } from '@praxis/db';
 import { db } from '@praxis/db/client';
 import type { FileEvent } from '@praxis/sandbox';
@@ -24,6 +25,7 @@ import {
 import { logger } from '../logger';
 import { removePreview } from '../preview';
 import {
+  acquireRoomTurn,
   consumeTicket,
   deleteRoom,
   getAcpHost,
@@ -221,26 +223,43 @@ async function runPrompt(
     return;
   }
 
-  // Shared chat (STORY-32): the prompting user + the agent's stream are part of
-  // the room's conversation, so both cross to every peer. The prompt echoes to
-  // peers only (the sender renders it optimistically); agent events fan out to
-  // the whole room, each stamped with the prompting user so clients attribute it.
   const author = { name: state.userName, image: state.userImage };
+
+  // The room shares ONE persistent agent (ADR-0016/STORY-33): open on first
+  // prompt, reuse across turns + users, re-open if it died. One turn at a time —
+  // a prompt arriving mid-turn is rejected (told only to the prompter), not raced
+  // against the live turn (queue / handoff modes are STORY-34).
+  const turn = await acquireRoomTurn(room, getAcpHost(), getSandbox());
+  if (turn.status === 'error') {
+    logger.error({ sessionId: state.sessionId }, 'ws.agent_open_failed');
+    broadcast(room, { type: 'agent_event', event: { type: 'error', message: 'Agent error' }, author });
+    return;
+  }
+  if (turn.status === 'busy') {
+    send(ws, { type: 'agent_busy' });
+    return;
+  }
+  const agent = turn.agent!;
+  // The dead agent was re-opened (files persist; conversation memory resets).
+  if (turn.restarted) broadcast(room, { type: 'agent_restarted' });
+
+  // Shared chat (STORY-32): echo the prompt to peers (the sender renders it
+  // optimistically), then fan the agent's stream out to the whole room, each
+  // frame stamped with the prompting user so clients attribute it.
   if (senderRaw) {
     broadcastExcept(room, senderRaw, { type: 'user_prompt', text, author });
   }
 
   try {
-    for await (const event of getAcpHost().spawnAndPrompt(
-      getSandbox(),
-      room.handle,
-      room.apiKey,
-      text,
-      { onPermission: async () => 'allow' },
-    )) {
+    for await (const event of agent.prompt(text, { onPermission: async () => 'allow' })) {
       broadcast(room, { type: 'agent_event', event, author });
     }
   } catch (err) {
+    // A turn raced the busy guard (rare): tell the prompter, don't poison the room.
+    if (err instanceof AgentBusyError) {
+      send(ws, { type: 'agent_busy' });
+      return;
+    }
     logger.error(
       { sessionId: state.sessionId, err: err instanceof Error ? err.message : String(err) },
       'ws.prompt_failed',
@@ -297,6 +316,9 @@ function endSession(sessionId: string): void {
   deleteRoom(sessionId);
   void (async () => {
     try {
+      // Close the shared agent first so its process dies with the room (ADR-0016),
+      // then stop the sandbox. No-op if no prompt ever opened an agent.
+      await room.agent?.close();
       await getSandbox().stop(room.handle);
       await db.update(sessions).set({ endedAt: new Date() }).where(eq(sessions.id, sessionId));
       logger.info({ sessionId }, 'session.ended');
