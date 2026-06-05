@@ -5,10 +5,11 @@
 // Single-instance POC: rooms + tickets live in memory. A multi-instance
 // orchestrator would move these to Redis/Postgres (future).
 
-import { ClaudeAcpHost } from '@praxis/acp-host';
+import { ClaudeAcpHost, type AcpHost, type AgentSession } from '@praxis/acp-host';
 import {
   DockerSandbox,
   MinioObjectStore,
+  type Sandbox,
   type SandboxHandle,
   type Unsubscribe,
 } from '@praxis/sandbox';
@@ -65,6 +66,10 @@ export interface SessionRoom {
   // returned to every user who joins so re-joiners share the creator's preview
   // without re-registering (STORY-32).
   previewUrl: string | null;
+  // The single persistent agent shared by everyone in the room (ADR-0016/STORY-33).
+  // Opened lazily on the first prompt, reused across turns and users, re-opened if
+  // it dies, and closed on teardown. Undefined until the first prompt.
+  agent?: AgentSession;
   sockets: Set<ServerWebSocket<unknown>>;
   // Live presence: connId → member identity (STORY-11/TASK-033). Mutated on WS
   // open/close; broadcast to the room as `presence`.
@@ -113,6 +118,39 @@ export function getRoomByProject(projectId: string): SessionRoom | undefined {
     if (room.projectId === projectId) return room;
   }
   return undefined;
+}
+
+/** The outcome of trying to claim the room's shared agent for a new turn. */
+export interface TurnAcquire {
+  /** ready → use `agent`; busy → a turn is in flight; error → the agent failed to open. */
+  status: 'ready' | 'busy' | 'error';
+  agent?: AgentSession;
+  /** True when a dead agent was just re-opened (the room should be told). */
+  restarted: boolean;
+}
+
+/** Claim the room's single persistent agent for a turn (ADR-0016/STORY-33). Opens
+ *  it lazily on the first prompt, re-opens it if it died (flagging `restarted`),
+ *  and reports `busy` when a turn is already in flight so the caller can reject
+ *  rather than race a second turn. The opened agent is stored on the room. */
+export async function acquireRoomTurn(
+  room: SessionRoom,
+  host: AcpHost,
+  sandbox: Sandbox,
+): Promise<TurnAcquire> {
+  let agent = room.agent;
+  let restarted = false;
+  if (!agent || !agent.alive) {
+    restarted = agent !== undefined; // had one before → it died → re-open
+    try {
+      agent = await host.openAgent(sandbox, room.handle, room.apiKey);
+    } catch {
+      return { status: 'error', restarted: false };
+    }
+    room.agent = agent;
+  }
+  if (agent.busy) return { status: 'busy', restarted: false };
+  return { status: 'ready', agent, restarted };
 }
 
 export function deleteRoom(sessionId: string): void {

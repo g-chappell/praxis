@@ -1,9 +1,14 @@
 // The AcpHost interface + its Claude implementation — one of the two load-bearing
 // abstractions in Praxis (the other is Sandbox). Consumers depend ONLY on the
-// `AcpHost` interface, never on the ACP client library or the agent adapter
-// directly, so the transport (the claude-agent-acp adapter today; a native-ACP
-// agent later) is swappable without touching them. Changing this interface's
-// shape requires an ADR — see ADR-0009.
+// `AcpHost` / `AgentSession` interfaces, never on the ACP client library or the
+// agent adapter directly, so the transport (the claude-agent-acp adapter today; a
+// native-ACP agent later) is swappable without touching them. Changing this
+// interface's shape requires an ADR — see ADR-0009 and ADR-0016.
+//
+// ADR-0016: the agent is a persistent, room-scoped session — `openAgent` spawns
+// one long-lived agent process + ACP session, and `AgentSession.prompt` drives
+// many turns over it (conversation continuity; one shared agent two users drive)
+// until `close`. This replaces the earlier turn-scoped spawn+kill-per-prompt.
 
 import { ClientSideConnection, ndJsonStream, PROTOCOL_VERSION } from '@agentclientprotocol/sdk';
 import type {
@@ -17,31 +22,58 @@ import type {
 import type { ProcessHandle, Sandbox, SandboxHandle } from '@praxis/sandbox';
 import type { AcpEvent, PermissionDecision, PermissionRequest, TokenUsage } from './events.js';
 
-export interface SpawnAndPromptOptions {
+export interface PromptOptions {
   /** Called when the agent requests permission to use a tool. Resolving with
    *  'deny' rejects the call and cancels the turn cleanly. */
   onPermission(request: PermissionRequest): Promise<PermissionDecision>;
-  /** Abort the turn: cancels the prompt and ends the iterator. */
+  /** Abort this turn: cancels the prompt and ends the iterator. Does NOT end the
+   *  session — the agent stays alive for the next prompt. */
   signal?: AbortSignal;
 }
 
-/** Spawns the agent inside a sandbox, drives one prompt turn over ACP, and
- *  streams typed events. See ADR-0009 for the transport (claude-agent-acp on a
- *  platform-owned Anthropic API key). */
+/**
+ * A live agent session: one agent process + one ACP session, shared across many
+ * prompt turns and (in the orchestrator) across the users in a project room.
+ * Turns are serialised — one active turn at a time; `prompt` while `busy` throws
+ * `AgentBusyError`. See ADR-0016.
+ */
+export interface AgentSession {
+  /** Drive one turn over the persistent session; stream typed events until it
+   *  completes. Throws `AgentBusyError` if a turn is already in flight, or if the
+   *  session is no longer `alive`. */
+  prompt(text: string, options: PromptOptions): AsyncIterable<AcpEvent>;
+  /** Cancel the in-flight turn (ACP cancel) without ending the session. No-op if
+   *  no turn is active. */
+  cancel(): void;
+  /** End the ACP session and kill the agent process. Idempotent. */
+  close(): Promise<void>;
+  /** False once `close` has run or the agent process died — the consumer should
+   *  open a fresh session before prompting again. */
+  readonly alive: boolean;
+  /** True while a turn is in flight (one active turn per session). */
+  readonly busy: boolean;
+}
+
+/** Thrown by `AgentSession.prompt` when a turn is already in flight. The
+ *  orchestrator maps this to an `agent_busy` signal rather than racing a second
+ *  turn (how that's surfaced — queue vs handoff — is STORY-34). */
+export class AgentBusyError extends Error {
+  constructor() {
+    super('agent session already has a turn in flight');
+    this.name = 'AgentBusyError';
+  }
+}
+
+/** Spawns an ACP-speaking agent in a sandbox and hands back a persistent
+ *  `AgentSession`. See ADR-0009 (transport + platform key) and ADR-0016 (session
+ *  lifecycle). */
 export interface AcpHost {
   /**
-   * Spawn the agent in `handle`, send `prompt`, and stream events until the
-   * turn completes. `apiKey` is the Anthropic API key the agent authenticates
-   * with — the project owner's billing identity (ADR-0009); a single key per
-   * call is the owner-pays model.
+   * Spawn the agent in `handle` and open one ACP session. `apiKey` is the
+   * Anthropic API key the agent authenticates with — the project owner's billing
+   * identity (ADR-0009), bound once for the whole shared session.
    */
-  spawnAndPrompt(
-    sandbox: Sandbox,
-    handle: SandboxHandle,
-    apiKey: string,
-    prompt: string,
-    options: SpawnAndPromptOptions,
-  ): AsyncIterable<AcpEvent>;
+  openAgent(sandbox: Sandbox, handle: SandboxHandle, apiKey: string): Promise<AgentSession>;
 }
 
 /** The ACP agent binary inside the sandbox (the `claude-agent-acp` adapter,
@@ -53,17 +85,42 @@ export const ACP_AGENT_COMMAND = 'claude-agent-acp';
 const WORKSPACE_DIR = '/workspace';
 
 /**
- * `AcpHost` backed by the `claude-agent-acp` adapter (ADR-0009). Talks ACP to
- * an agent process spawned inside the sandbox via the `Sandbox` interface.
+ * `AcpHost` backed by the `claude-agent-acp` adapter (ADR-0009). Talks ACP to a
+ * persistent agent process spawned inside the sandbox via the `Sandbox`
+ * interface.
  */
 export class ClaudeAcpHost implements AcpHost {
-  async *spawnAndPrompt(
+  openAgent(sandbox: Sandbox, handle: SandboxHandle, apiKey: string): Promise<AgentSession> {
+    return ClaudeAgentSession.open(sandbox, handle, apiKey);
+  }
+}
+
+/** One persistent ACP session over a long-lived agent process. */
+class ClaudeAgentSession implements AgentSession {
+  private connection!: ClientSideConnection;
+  private acpSessionId!: string;
+  // The active turn's event sink + permission handler, set for the duration of a
+  // prompt() turn and cleared when it drains. `sessionUpdate`/`requestPermission`
+  // callbacks (which fire only during a turn) read these.
+  private currentQueue?: EventQueue<AcpEvent>;
+  private currentOnPermission?: (request: PermissionRequest) => Promise<PermissionDecision>;
+  private _alive = true;
+
+  private constructor(private readonly proc: ProcessHandle) {}
+
+  get alive(): boolean {
+    return this._alive;
+  }
+
+  get busy(): boolean {
+    return this.currentQueue !== undefined;
+  }
+
+  static async open(
     sandbox: Sandbox,
     handle: SandboxHandle,
     apiKey: string,
-    prompt: string,
-    options: SpawnAndPromptOptions,
-  ): AsyncIterable<AcpEvent> {
+  ): Promise<ClaudeAgentSession> {
     const proc = await sandbox.spawn(handle, ACP_AGENT_COMMAND, {
       cwd: WORKSPACE_DIR,
       // The agent authenticates with the platform API key. We deliberately pass
@@ -72,7 +129,58 @@ export class ClaudeAcpHost implements AcpHost {
       env: { ANTHROPIC_API_KEY: apiKey },
     });
 
+    const session = new ClaudeAgentSession(proc);
+    const stream = ndJsonStream(toWritable(proc), toReadable(proc.stdout));
+    session.connection = new ClientSideConnection(() => session.clientImpl, stream);
+
+    // If the agent process dies, mark the session dead and fail any active turn;
+    // the consumer opens a fresh session on its next prompt (ADR-0016).
+    void session.connection.closed.then(() => session.handleClosed());
+
+    await session.connection.initialize({
+      protocolVersion: PROTOCOL_VERSION,
+      // Minimal client: the agent runs in the sandbox with direct filesystem
+      // access, so we advertise no client-side fs/terminal capabilities.
+      clientCapabilities: {},
+    });
+    const acp = await session.connection.newSession({ cwd: WORKSPACE_DIR, mcpServers: [] });
+    session.acpSessionId = acp.sessionId;
+    return session;
+  }
+
+  // Stable client handler; the ACP connection invokes these during a turn. Reads
+  // the active turn's queue/permission handler via `this`.
+  private readonly clientImpl: Client = {
+    sessionUpdate: async ({ update }) => {
+      const queue = this.currentQueue;
+      if (!queue) return;
+      for (const event of mapSessionUpdate(update)) queue.push(event);
+    },
+    requestPermission: async (
+      params: RequestPermissionRequest,
+    ): Promise<RequestPermissionResponse> => {
+      const handler = this.currentOnPermission;
+      const decision = handler ? await handler(toPermissionRequest(params)) : 'deny';
+      const optionId = pickOption(params.options, decision);
+      if (optionId !== undefined) {
+        return { outcome: { outcome: 'selected', optionId } };
+      }
+      // No matching option offered (rare). Cancel the turn cleanly rather than
+      // leave the agent waiting.
+      await this.connection.cancel({ sessionId: this.acpSessionId }).catch(() => {});
+      return { outcome: { outcome: 'cancelled' } };
+    },
+  };
+
+  async *prompt(text: string, options: PromptOptions): AsyncIterable<AcpEvent> {
+    // The caller is expected to check `alive` and re-open first; this is a guard.
+    if (!this._alive) throw new Error('agent session is closed');
+    if (this.busy) throw new AgentBusyError();
+
     const queue = new EventQueue<AcpEvent>();
+    this.currentQueue = queue;
+    this.currentOnPermission = options.onPermission;
+
     let settled = false;
     const finish = (event?: AcpEvent): void => {
       if (settled) return;
@@ -81,62 +189,17 @@ export class ClaudeAcpHost implements AcpHost {
       queue.close();
     };
 
-    // `sessionId` is set before any agent→client request can fire
-    // (requestPermission only arrives during prompt(), after newSession resolves).
-    let sessionId: string | undefined;
-
-    const client: Client = {
-      async sessionUpdate({ update }) {
-        for (const event of mapSessionUpdate(update)) queue.push(event);
-      },
-      async requestPermission(
-        params: RequestPermissionRequest,
-      ): Promise<RequestPermissionResponse> {
-        const decision = await options.onPermission(toPermissionRequest(params));
-        const optionId = pickOption(params.options, decision);
-        if (optionId !== undefined) {
-          return { outcome: { outcome: 'selected', optionId } };
-        }
-        // No matching option offered (rare). Cancel the turn cleanly rather than
-        // leave the agent waiting.
-        if (sessionId !== undefined) {
-          await connection.cancel({ sessionId }).catch(() => {});
-        }
-        return { outcome: { outcome: 'cancelled' } };
-      },
-    };
-
-    const stream = ndJsonStream(toWritable(proc), toReadable(proc.stdout));
-    const connection = new ClientSideConnection(() => client, stream);
-
+    const onAbort = (): void => this.cancel();
     if (options.signal) {
-      const onAbort = (): void => {
-        if (sessionId !== undefined) {
-          connection.cancel({ sessionId }).catch(() => {});
-        }
-      };
       if (options.signal.aborted) onAbort();
       else options.signal.addEventListener('abort', onAbort, { once: true });
     }
 
-    // If the agent process dies before the turn settles, surface it as an error.
-    void connection.closed.then(() => {
-      finish({ type: 'error', message: 'agent connection closed before the turn completed' });
-    });
-
     void (async () => {
       try {
-        await connection.initialize({
-          protocolVersion: PROTOCOL_VERSION,
-          // Minimal client: the agent runs in the sandbox with direct filesystem
-          // access, so we advertise no client-side fs/terminal capabilities.
-          clientCapabilities: {},
-        });
-        const session = await connection.newSession({ cwd: WORKSPACE_DIR, mcpServers: [] });
-        sessionId = session.sessionId;
-        const response = await connection.prompt({
-          sessionId,
-          prompt: [{ type: 'text', text: prompt }],
+        const response = await this.connection.prompt({
+          sessionId: this.acpSessionId,
+          prompt: [{ type: 'text', text }],
         });
         finish({
           type: 'turn-complete',
@@ -151,7 +214,39 @@ export class ClaudeAcpHost implements AcpHost {
     try {
       yield* queue;
     } finally {
-      await proc.kill().catch(() => {});
+      this.currentQueue = undefined;
+      this.currentOnPermission = undefined;
+      if (options.signal) options.signal.removeEventListener('abort', onAbort);
+    }
+  }
+
+  cancel(): void {
+    if (this._alive && this.currentQueue) {
+      this.connection.cancel({ sessionId: this.acpSessionId }).catch(() => {});
+    }
+  }
+
+  async close(): Promise<void> {
+    if (!this._alive && !this.currentQueue) {
+      await this.proc.kill().catch(() => {});
+      return;
+    }
+    this._alive = false;
+    // Cancel an in-flight turn before killing, so the agent isn't torn down
+    // mid-tool-call without a chance to settle.
+    if (this.currentQueue) {
+      await this.connection.cancel({ sessionId: this.acpSessionId }).catch(() => {});
+    }
+    await this.proc.kill().catch(() => {});
+  }
+
+  /** The agent process closed (crash or kill): mark dead and fail any live turn. */
+  private handleClosed(): void {
+    this._alive = false;
+    const queue = this.currentQueue;
+    if (queue) {
+      queue.push({ type: 'error', message: 'agent connection closed before the turn completed' });
+      queue.close();
     }
   }
 }

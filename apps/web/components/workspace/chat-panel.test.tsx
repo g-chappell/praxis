@@ -68,4 +68,23 @@ describe('ChatPanel shared-chat attribution (STORY-32)', () => {
 
     expect(screen.getByText('Hello world')).toBeTruthy();
   });
+
+  it('shows a transient notice on agent_busy without disabling the input (STORY-33)', () => {
+    render(<ChatPanel currentUser={{ name: 'Me', image: null }} />);
+    emit({ type: 'agent_busy' });
+
+    expect(screen.getByText(/finishing another turn/i)).toBeTruthy();
+    // Input stays live so the user can retry.
+    const input = screen.getByPlaceholderText('Message as Me…') as HTMLInputElement;
+    expect(input.disabled).toBe(false);
+  });
+
+  it('shows the restarted notice on agent_restarted (STORY-33)', () => {
+    render(<ChatPanel currentUser={{ name: 'Me', image: null }} />);
+    emit({ type: 'agent_restarted' });
+
+    expect(screen.getByText(/agent restarted/i)).toBeTruthy();
+    const input = screen.getByPlaceholderText('Message as Me…') as HTMLInputElement;
+    expect(input.disabled).toBe(false);
+  });
 });
