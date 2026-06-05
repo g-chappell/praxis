@@ -1896,12 +1896,18 @@ epics:
             status: ready
             priority: high
             complexity: medium
-            workspaces: ["templates/react-threejs-scene", "packages/sandbox"]
+            workspaces:
+              ["templates/react-threejs-scene", "packages/sandbox", "services/orchestrator"]
             description: |
-              DockerSandbox reads mcp-servers.json from the template and
-              co-spawns each MCP server as a sidecar inside the sandbox,
-              configuring Claude Code's MCP config to point at it.
-            depends_on: [TASK-042, TASK-040, TASK-022]
+              Per ADR-0018 (Path A — confirmed by spike): at project creation the
+              orchestrator seeds /workspace/.mcp.json (server command, no secrets) +
+              /workspace/.claude/settings.json (enableAllProjectMcpServers) so Claude
+              Code auto-connects the stdio server — acp-host untouched. Bundle +
+              bake the image-gen server into sandbox-base. Deliver the OpenAI key
+              (from TASK-106, platform-owned) + the usage URL/token to the server
+              via an ephemeral config file outside /workspace (never git/MinIO).
+              Operator: paste the OpenAI key in /admin + rebuild sandbox-base.
+            depends_on: [TASK-042, TASK-040, TASK-022, TASK-106]
             attempt_count: 0
             is_terminal: true
             task_acceptance:
@@ -2392,6 +2398,78 @@ epics:
             task_acceptance:
               - "Settings UI no longer implies OAuth powers sessions; docs note the reserved role."
               - "STORY-24 acceptance_criteria satisfied."
+      - id: STORY-38
+        title: "Multi-provider platform keys (OpenAI alongside Anthropic)"
+        description: |
+          Makes platform_api_keys multi-provider so external-API keys are managed
+          exactly like the platform Anthropic key (admin UI, encrypted at rest,
+          rotatable, role-gated). Driven by STORY-15: the image-gen MCP server
+          needs the OpenAI key delivered the platform way, not a VPS env-file
+          (operator decision 2026-06-05 + ADR-0018). Reuses the STORY-20/21 admin +
+          crypto posture, adding a provider dimension. TASK-044 (STORY-15) depends
+          on this.
+        acceptance_criteria:
+          - "platform_api_keys is keyed by provider ('anthropic' | 'openai') with at most one ACTIVE key per provider; the migration backfills existing rows to 'anthropic'."
+          - "The admin platform-keys page manages the OpenAI key alongside Anthropic — paste / rotate / deactivate, value shown masked, role-gated server-side; getActivePlatformKey('openai') returns the decrypted key."
+          - "POST /sessions decrypts the active OpenAI key when one is set and passes it to the orchestrator alongside the Anthropic key; with no OpenAI key set, sessions still work (image-gen simply unavailable) — no hard failure."
+        user_flow:
+          - "Admin opens /admin platform keys; sees Anthropic (existing) and OpenAI sections."
+          - "Admin pastes the OpenAI key; it stores encrypted, shows masked, marked active."
+          - "A new project session now has the OpenAI key available to the image-gen MCP server."
+        out_of_scope:
+          - "Per-user or per-project external keys (platform-owned only, POC)."
+          - "Providers beyond Anthropic + OpenAI."
+        feature_complete: null
+        tasks:
+          - id: TASK-104
+            title: "DB + key service: platform_api_keys provider column + per-provider active + accessor"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["packages/db", "apps/web"]
+            description: |
+              Add a `provider` column to platform_api_keys (default 'anthropic';
+              backfill existing rows), replace the single one-active index with a
+              one-active-per-provider partial unique index, + migration. Parametrise
+              the key service (set / rotate / deactivate / getActivePlatformKey) by
+              provider; existing Anthropic callers default to 'anthropic'.
+            depends_on: []
+            attempt_count: 0
+            task_acceptance:
+              - "Migration adds provider, backfills 'anthropic', enforces one active per provider; getActivePlatformKey('anthropic') unchanged; getActivePlatformKey('openai') returns the active OpenAI key or null."
+          - id: TASK-105
+            title: "Admin UI: manage the OpenAI platform key (paste / rotate, masked, role-gated)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Extend the STORY-21 admin platform-keys surface to a second provider:
+              an OpenAI section to paste / rotate / deactivate, value shown masked,
+              role-gated server-side (mirrors the Anthropic section). No secret in
+              client bundles or logs.
+            depends_on: [TASK-104]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "An admin can set + rotate the OpenAI key from /admin; a non-admin is refused server-side; the value is never returned in plaintext."
+          - id: TASK-106
+            title: "POST /sessions: decrypt + pass the active OpenAI key to the orchestrator"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web", "services/orchestrator"]
+            description: |
+              In the web /api/sessions handler, also decrypt the active OpenAI
+              platform key (Node/libsodium, like the Anthropic key) and pass it to
+              the orchestrator over POST /sessions. The orchestrator holds it on the
+              room for the image-gen MCP wiring (STORY-15 TASK-044). Absent key →
+              omit, no error.
+            depends_on: [TASK-104]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "When an OpenAI key is active, POST /sessions includes it (never logged); the orchestrator receives it. With none set, the session is created normally."
   - id: EPIC-06
     title: "Project lifecycle & workspace reliability"
     description: |
