@@ -99,3 +99,34 @@ the file list, the file-watcher broadcast, and the sandbox `.gitignore`** so it
 never leaks into the user's tree, `file_changed` stream, or commits. Project
 delete purges it with the volume. (Aside: claude-code also writes a cwd-relative
 `/workspace/backups/` dir on its own — pre-existing, unrelated.)
+
+## MCP servers in the sandbox (STORY-15 / ADR-0018)
+
+How to give the in-sandbox agent an MCP tool **without touching `packages/acp-host`**
+(the sacred ACP layer). Verified by spike against the real `sandbox-base` image
+(Claude Code 2.1.160, `claude-agent-acp@0.39.0`):
+
+- The adapter runs the Claude Agent SDK with `settingSources: ["user","project","local"]`,
+  so Claude Code reads a **project `.mcp.json`** from the cwd (`/workspace`). `acp-host`
+  keeps `mcpServers: []` — don't change it.
+- A `.mcp.json` alone is **⏸ Pending approval** (headless can't approve). It connects
+  only with `/workspace/.claude/settings.json` = `{"enableAllProjectMcpServers": true}`
+  (or `{"enabledMcpjsonServers":["<name>"]}`). Seed **both** at project creation.
+  Claude Code spawns the server itself as a stdio child — no orchestrator sidecar.
+- Confirm with `claude mcp list` inside a `sandbox-base` container (`✓ Connected`).
+- The server binary is **baked into `sandbox-base`** (bundled), not seeded into
+  `/workspace` — platform infra stays out of the user's git.
+
+### Sandbox secret-handling (don't leak platform secrets into user space)
+
+- **No platform creds in the sandbox env or `/workspace`.** A `.mcp.json` is committed
+  to the user's git and snapshotted to MinIO, so it must carry **no secrets** (use it
+  only for the command/args). The `.praxis-agent` dir is git-excluded but *is* in the
+  `/workspace` MinIO snapshot — also not safe for secrets.
+- Deliver per-session secrets (e.g. the platform OpenAI key) via an **ephemeral file
+  outside `/workspace`** (not git, not snapshotted), written with `sandbox.spawn`, that
+  the server reads on startup.
+- **No DB creds in the sandbox.** For sandbox→platform operations (usage capping), the
+  in-sandbox process calls a **token-gated orchestrator endpoint** (`POST /internal/mcp/usage`)
+  with a per-room capability token (`runtime.ts`) that resolves to exactly one project —
+  the orchestrator owns the DB. Fail **closed** on a paid-API guard.
