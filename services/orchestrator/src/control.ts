@@ -74,6 +74,73 @@ export function setMode(room: SessionRoom, userId: string, mode: unknown): SetMo
   return { ok: true, changed: true, queueCleared };
 }
 
+// ─── turn-based handoff (STORY-34) ────────────────────────────────────
+// All no-op unless mode is turn_based. Each returns whether the control state
+// changed so the caller broadcasts a fresh control_state.
+
+/** A non-holder asks for control. If control is vacant (e.g. the holder
+ *  disconnected) the request is granted immediately (a claim); otherwise it's
+ *  queued for the holder to approve/decline. */
+export function requestControl(room: SessionRoom, userId: string): { changed: boolean } {
+  if (room.mode !== 'turn_based' || room.controlHolder === userId) return { changed: false };
+  if (room.controlHolder === undefined) {
+    room.controlHolder = userId; // vacant → claim
+    room.controlRequests.clear();
+    return { changed: true };
+  }
+  if (room.controlRequests.has(userId)) return { changed: false };
+  room.controlRequests.add(userId);
+  return { changed: true };
+}
+
+/** The holder approves a pending request → control transfers to that user. */
+export function grantControl(
+  room: SessionRoom,
+  holderUserId: string,
+  targetUserId: unknown,
+): { changed: boolean } {
+  if (room.mode !== 'turn_based' || room.controlHolder !== holderUserId) return { changed: false };
+  if (typeof targetUserId !== 'string' || !room.controlRequests.has(targetUserId)) {
+    return { changed: false };
+  }
+  room.controlHolder = targetUserId;
+  room.controlRequests.clear();
+  return { changed: true };
+}
+
+/** The holder declines a pending request → drop it. */
+export function declineControl(
+  room: SessionRoom,
+  holderUserId: string,
+  targetUserId: unknown,
+): { changed: boolean } {
+  if (room.mode !== 'turn_based' || room.controlHolder !== holderUserId) return { changed: false };
+  if (typeof targetUserId !== 'string' || !room.controlRequests.delete(targetUserId)) {
+    return { changed: false };
+  }
+  return { changed: true };
+}
+
+/** The holder releases control → it returns to the project owner. */
+export function releaseControl(room: SessionRoom, userId: string): { changed: boolean } {
+  if (room.mode !== 'turn_based' || room.controlHolder !== userId) return { changed: false };
+  room.controlHolder = room.ownerUserId ?? undefined;
+  return { changed: true };
+}
+
+/** The holder passes control directly to a named user. */
+export function passControl(
+  room: SessionRoom,
+  holderUserId: string,
+  targetUserId: unknown,
+): { changed: boolean } {
+  if (room.mode !== 'turn_based' || room.controlHolder !== holderUserId) return { changed: false };
+  if (typeof targetUserId !== 'string' || targetUserId === holderUserId) return { changed: false };
+  room.controlHolder = targetUserId;
+  room.controlRequests.delete(targetUserId);
+  return { changed: true };
+}
+
 /** A user fully left the room (STORY-34): drop their queued prompts, drop any
  *  pending control request, and — if they held control in turn-based mode — vacate
  *  it so a remaining user can claim it. Returns true if anything changed (the

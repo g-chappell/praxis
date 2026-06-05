@@ -17,7 +17,12 @@ import type { FileEvent } from '@praxis/sandbox';
 import { loadChatHistory, persistChatEvent } from '../chat-history';
 import {
   controlStateFrame,
+  declineControl,
+  grantControl,
+  passControl,
+  releaseControl,
   releaseControlOnLeave,
+  requestControl,
   setMode,
   type QueuedPrompt,
 } from '../control';
@@ -217,6 +222,16 @@ wsRoute.get(
         }
         if (type === 'cancel_queued') {
           handleCancelQueued(state, (msg as { id?: unknown }).id);
+          return;
+        }
+        if (
+          type === 'request_control' ||
+          type === 'grant_control' ||
+          type === 'decline_control' ||
+          type === 'release_control' ||
+          type === 'pass_control'
+        ) {
+          handleControl(state, type, msg);
           return;
         }
 
@@ -478,6 +493,44 @@ function handleCancelQueued(state: ConnectionState, id: unknown): void {
   const before = room.queue.length;
   room.queue = room.queue.filter((q) => !(q.id === id && q.userId === state.userId));
   if (room.queue.length !== before) broadcast(room, controlStateFrame(room));
+}
+
+/** Turn-based control handoff messages (STORY-34): request / grant / decline /
+ *  release / pass. Each delegates to the control state machine and broadcasts the
+ *  new control_state when it changes; the `requests` it carries drive the holder's
+ *  approve/decline UI, so no separate notify is needed. */
+function handleControl(
+  state: ConnectionState,
+  type:
+    | 'request_control'
+    | 'grant_control'
+    | 'decline_control'
+    | 'release_control'
+    | 'pass_control',
+  msg: unknown,
+): void {
+  const room = getRoom(state.sessionId);
+  if (!room) return;
+  const target = (msg as { userId?: unknown }).userId;
+  let changed = false;
+  switch (type) {
+    case 'request_control':
+      changed = requestControl(room, state.userId).changed;
+      break;
+    case 'grant_control':
+      changed = grantControl(room, state.userId, target).changed;
+      break;
+    case 'decline_control':
+      changed = declineControl(room, state.userId, target).changed;
+      break;
+    case 'release_control':
+      changed = releaseControl(room, state.userId).changed;
+      break;
+    case 'pass_control':
+      changed = passControl(room, state.userId, target).changed;
+      break;
+  }
+  if (changed) broadcast(room, controlStateFrame(room));
 }
 
 /** Presence/cursor messages (STORY-11/TASK-033). `file_open` records which file a

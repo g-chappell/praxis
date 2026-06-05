@@ -4,7 +4,17 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { controlStateFrame, isOwner, releaseControlOnLeave, setMode } from '../src/control';
+import {
+  controlStateFrame,
+  declineControl,
+  grantControl,
+  isOwner,
+  passControl,
+  releaseControl,
+  releaseControlOnLeave,
+  requestControl,
+  setMode,
+} from '../src/control';
 import { createRoom, deleteRoom } from '../src/runtime';
 
 const handle = { projectId: 'p-ctl', containerId: 'c1' };
@@ -78,6 +88,61 @@ describe('setMode (STORY-34)', () => {
     expect(r.mode).toBe('serialised');
     expect(r.controlHolder).toBeUndefined();
     expect(r.controlRequests.size).toBe(0);
+  });
+});
+
+describe('turn-based handoff (STORY-34)', () => {
+  function turnBased(sessionId: string) {
+    const r = room(sessionId);
+    setMode(r, OWNER, 'turn_based'); // owner holds control
+    return r;
+  }
+
+  it('request → holder grants → control transfers', () => {
+    const r = turnBased('c1');
+    expect(requestControl(r, OTHER).changed).toBe(true);
+    expect([...r.controlRequests]).toEqual([OTHER]);
+    expect(r.controlHolder).toBe(OWNER); // not yet transferred
+    expect(grantControl(r, OWNER, OTHER).changed).toBe(true);
+    expect(r.controlHolder).toBe(OTHER);
+    expect(r.controlRequests.size).toBe(0);
+  });
+
+  it('a non-holder cannot grant', () => {
+    const r = turnBased('c2');
+    requestControl(r, OTHER);
+    expect(grantControl(r, OTHER, OTHER).changed).toBe(false); // OTHER isn't the holder
+    expect(r.controlHolder).toBe(OWNER);
+  });
+
+  it('holder declines a request → request dropped, holder unchanged', () => {
+    const r = turnBased('c3');
+    requestControl(r, OTHER);
+    expect(declineControl(r, OWNER, OTHER).changed).toBe(true);
+    expect(r.controlRequests.has(OTHER)).toBe(false);
+    expect(r.controlHolder).toBe(OWNER);
+  });
+
+  it('requesting when control is vacant claims it immediately', () => {
+    const r = turnBased('c4');
+    releaseControl(r, OWNER); // owner is the holder → returns to owner (still OWNER)
+    r.controlHolder = undefined; // simulate a fully-vacant hold (holder left)
+    expect(requestControl(r, OTHER).changed).toBe(true);
+    expect(r.controlHolder).toBe(OTHER); // claimed
+  });
+
+  it('release returns control to the owner; pass transfers directly', () => {
+    const r = turnBased('c5');
+    passControl(r, OWNER, OTHER); // owner passes to OTHER
+    expect(r.controlHolder).toBe(OTHER);
+    expect(releaseControl(r, OTHER).changed).toBe(true); // OTHER releases
+    expect(r.controlHolder).toBe(OWNER); // returns to owner
+  });
+
+  it('handoff ops are no-ops in serialised mode', () => {
+    const r = room('c6'); // serialised
+    expect(requestControl(r, OTHER).changed).toBe(false);
+    expect(releaseControl(r, OWNER).changed).toBe(false);
   });
 });
 
