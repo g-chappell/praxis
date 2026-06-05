@@ -10,7 +10,12 @@ const control = {
   ownerUserId: 'owner',
   controlHolder: null as string | null,
   requests: [] as string[],
-  queue: [] as Array<{ id: string; userId: string; author: { name: string; image: null }; text: string }>,
+  queue: [] as Array<{
+    id: string;
+    userId: string;
+    author: { name: string; image: null };
+    text: string;
+  }>,
   myUserId: 'owner',
   isOwner: true,
   isHolder: false,
@@ -24,7 +29,13 @@ const control = {
   cancelQueued: vi.fn(),
 };
 
-let members: Array<{ connId: string; userId: string; userName: string; userImage: null; filePath: null }> = [];
+let members: Array<{
+  connId: string;
+  userId: string;
+  userName: string;
+  userImage: null;
+  filePath: null;
+}> = [];
 
 vi.mock('@/components/workspace/workspace-control', () => ({
   useWorkspaceControl: () => control,
@@ -64,7 +75,9 @@ afterEach(cleanup);
 describe('ControlBar (STORY-34)', () => {
   it('owner sees an editable mode toggle; clicking switches mode', () => {
     reset({ isOwner: true });
-    members = [{ connId: 'c', userId: 'owner', userName: 'Owner', userImage: null, filePath: null }];
+    members = [
+      { connId: 'c', userId: 'owner', userName: 'Owner', userImage: null, filePath: null },
+    ];
     render(<ControlBar />);
     fireEvent.click(screen.getByText('Turn-based'));
     expect(control.setMode).toHaveBeenCalledWith('turn_based');
@@ -121,7 +134,10 @@ describe('PromptQueue (STORY-34)', () => {
   });
 
   it('renders nothing in turn-based mode', () => {
-    reset({ mode: 'turn_based', queue: [{ id: 'q', userId: 'me', author: { name: 'M', image: null }, text: 'x' }] });
+    reset({
+      mode: 'turn_based',
+      queue: [{ id: 'q', userId: 'me', author: { name: 'M', image: null }, text: 'x' }],
+    });
     const { container } = render(<PromptQueue />);
     expect(container.firstChild).toBeNull();
   });

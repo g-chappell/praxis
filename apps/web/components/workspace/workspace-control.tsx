@@ -87,18 +87,25 @@ export function WorkspaceControlProvider({ children }: { children: ReactNode }) 
   }, [subscribe]);
 
   const isOwner = myUserId !== null && myUserId === state.ownerUserId;
-  const isHolder = state.mode === 'turn_based' && myUserId !== null && myUserId === state.controlHolder;
+  const isHolder =
+    state.mode === 'turn_based' && myUserId !== null && myUserId === state.controlHolder;
   const canPrompt = state.mode === 'serialised' || isHolder;
 
   const setMode = useCallback((mode: ControlMode) => send({ type: 'set_mode', mode }), [send]);
   const requestControl = useCallback(() => send({ type: 'request_control' }), [send]);
-  const grantControl = useCallback((userId: string) => send({ type: 'grant_control', userId }), [send]);
+  const grantControl = useCallback(
+    (userId: string) => send({ type: 'grant_control', userId }),
+    [send],
+  );
   const declineControl = useCallback(
     (userId: string) => send({ type: 'decline_control', userId }),
     [send],
   );
   const releaseControl = useCallback(() => send({ type: 'release_control' }), [send]);
-  const passControl = useCallback((userId: string) => send({ type: 'pass_control', userId }), [send]);
+  const passControl = useCallback(
+    (userId: string) => send({ type: 'pass_control', userId }),
+    [send],
+  );
   const cancelQueued = useCallback((id: string) => send({ type: 'cancel_queued', id }), [send]);
 
   return (

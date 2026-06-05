@@ -351,7 +351,11 @@ async function runAgentTurn(
   const turn = await acquireRoomTurn(room, getAcpHost(), getSandbox());
   if (turn.status === 'error') {
     logger.error({ sessionId: room.sessionId }, 'ws.agent_open_failed');
-    broadcast(room, { type: 'agent_event', event: { type: 'error', message: 'Agent error' }, author });
+    broadcast(room, {
+      type: 'agent_event',
+      event: { type: 'error', message: 'Agent error' },
+      author,
+    });
     return;
   }
   if (turn.status === 'busy') {
@@ -417,7 +421,11 @@ async function runAgentTurn(
       'ws.prompt_failed',
     );
     await flushText();
-    broadcast(room, { type: 'agent_event', event: { type: 'error', message: 'Agent error' }, author });
+    broadcast(room, {
+      type: 'agent_event',
+      event: { type: 'error', message: 'Agent error' },
+      author,
+    });
     await persistChatEvent(room.projectId, room.sessionId, userId, 'agent_error', {
       author,
       text: 'Agent error',
