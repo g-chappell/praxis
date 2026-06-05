@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 18 / 31 (58%)
 - **Total tasks:** 85
-- **Done:** 58 (68%)
-- **Ready:** 27
+- **Done:** 60 (71%)
+- **Ready:** 25
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -770,7 +770,7 @@ URLs surfaced through a wildcard Caddy domain.
   - A single PERSISTENT shared agent (one long-lived claude-agent-acp process + ACP session both users contribute to) — today spawnAndPrompt spawns and kills an agent per prompt; making it persistent changes the sacred AcpHost interface shape and needs an ADR + both-contributor sign-off. Separate Story.
   - Agent prompt-control modes (serialised queue / turn-based handoff) — depends on the persistent shared agent. Separate follow-up Story.
   - Character-level co-editing via Yjs (post-POC).
-  - :black_circle: **TASK-085** — Orchestrator: reuse the live project room on POST /sessions  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-085** — Orchestrator: reuse the live project room on POST /sessions  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-033_
     > Add getRoomByProject(projectId) to runtime.ts. In POST /sessions,
     > if a live room already exists for the project, skip sandbox start /
@@ -782,7 +782,7 @@ URLs surfaced through a wildcard Caddy domain.
     > last socket leaves).
     _Task AC:_
     - Integration test: two POST /sessions for the same project return the same sessionId and only one sandbox start / one sessions row.
-  - :black_circle: **TASK-086** :checkered_flag: — Share + attribute chat across the room  `high` `medium` _(services/orchestrator, apps/web)_  
+  - :white_check_mark: **TASK-086** :checkered_flag: — Share + attribute chat across the room  `high` `medium` _(services/orchestrator, apps/web)_  
     _depends on: TASK-085, TASK-032_
     > Orchestrator: broadcast agent_event frames to the whole room (not
     > just the prompting socket) and echo each prompt to the room stamped

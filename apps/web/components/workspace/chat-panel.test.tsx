@@ -1,0 +1,71 @@
+// @vitest-environment jsdom
+// Shared-chat attribution (STORY-32 / TASK-086). Drives ChatPanel with emitted
+// server frames and asserts that a peer's prompt and the agent stream they
+// triggered are attributed to *them*, not to the current user — the multiplayer
+// behaviour that replaces the old single-client "always currentUser" assumption.
+// The orchestrator's broadcast/echo side is unit-tested in services/orchestrator.
+import { act, cleanup, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const subscribers = new Set<(f: Record<string, unknown>) => void>();
+function emit(frame: Record<string, unknown>) {
+  act(() => {
+    for (const s of subscribers) s(frame);
+  });
+}
+vi.mock('@/components/workspace/workspace-socket', () => ({
+  useWorkspaceSocket: () => ({
+    status: 'connected',
+    start: () => {},
+    close: () => {},
+    send: () => true,
+    subscribe: (fn: (f: Record<string, unknown>) => void) => {
+      subscribers.add(fn);
+      return () => subscribers.delete(fn);
+    },
+  }),
+}));
+
+import { ChatPanel } from './chat-panel';
+
+afterEach(() => {
+  cleanup();
+  subscribers.clear();
+});
+
+describe('ChatPanel shared-chat attribution (STORY-32)', () => {
+  it("renders a peer's prompt attributed to the peer, not the current user", () => {
+    render(<ChatPanel currentUser={{ name: 'Me', image: null }} />);
+    emit({
+      type: 'user_prompt',
+      text: 'add a spinning cube',
+      author: { name: 'Ada', image: null },
+    });
+
+    expect(screen.getByText('add a spinning cube')).toBeTruthy();
+    expect(screen.getByText('Ada')).toBeTruthy();
+  });
+
+  it('attributes the agent stream to the prompting user carried on the frame', () => {
+    render(<ChatPanel currentUser={{ name: 'Me', image: null }} />);
+    emit({
+      type: 'agent_event',
+      event: { type: 'text-chunk', text: 'On it — adding the cube.' },
+      author: { name: 'Ada', image: null },
+    });
+
+    expect(screen.getByText('On it — adding the cube.')).toBeTruthy();
+    // Attributed to Ada (the prompter), with the agent tag.
+    expect(screen.getByText('Ada')).toBeTruthy();
+    expect(screen.getByText('Agent')).toBeTruthy();
+  });
+
+  it('concatenates streamed text chunks into one agent message', () => {
+    render(<ChatPanel currentUser={{ name: 'Me', image: null }} />);
+    const author = { name: 'Ada', image: null };
+    emit({ type: 'agent_event', event: { type: 'text-chunk', text: 'Hello ' }, author });
+    emit({ type: 'agent_event', event: { type: 'text-chunk', text: 'world' }, author });
+
+    expect(screen.getByText('Hello world')).toBeTruthy();
+  });
+});

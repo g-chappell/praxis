@@ -1211,7 +1211,7 @@ epics:
         tasks:
           - id: TASK-085
             title: "Orchestrator: reuse the live project room on POST /sessions"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -1226,11 +1226,12 @@ epics:
               last socket leaves).
             depends_on: [TASK-033]
             attempt_count: 0
+            completed: '2026-06-05T08:39:00Z'
             task_acceptance:
               - "Integration test: two POST /sessions for the same project return the same sessionId and only one sandbox start / one sessions row."
           - id: TASK-086
             title: "Share + attribute chat across the room"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator", "apps/web"]
@@ -1243,6 +1244,7 @@ epics:
               assumption (chat-panel.tsx:29-30).
             depends_on: [TASK-085, TASK-032]
             attempt_count: 0
+            completed: '2026-06-05T08:39:00Z'
             is_terminal: true
             task_acceptance:
               - "Two connected clients both receive the same agent_event stream and the prompt is attributed to its sender in both transcripts."
