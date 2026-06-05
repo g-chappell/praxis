@@ -284,11 +284,17 @@ async function runPrompt(
   // reply into messages as it streams — text-chunks coalesce into one agent_text
   // per contiguous run (mirroring the chat panel) and are flushed on a boundary
   // event or turn-complete — so the persisted transcript matches what was shown.
-  await persistChatEvent(room.projectId, room.sessionId, state.userId, 'user_prompt', { author, text });
+  await persistChatEvent(room.projectId, room.sessionId, state.userId, 'user_prompt', {
+    author,
+    text,
+  });
   let pendingText = '';
   const flushText = async (): Promise<void> => {
     if (!pendingText) return;
-    await persistChatEvent(room.projectId, room.sessionId, state.userId, 'agent_text', { author, text: pendingText });
+    await persistChatEvent(room.projectId, room.sessionId, state.userId, 'agent_text', {
+      author,
+      text: pendingText,
+    });
     pendingText = '';
   };
 
@@ -301,7 +307,10 @@ async function runPrompt(
           break;
         case 'tool-call':
           await flushText();
-          await persistChatEvent(room.projectId, room.sessionId, state.userId, 'tool_call', { author, title: event.title });
+          await persistChatEvent(room.projectId, room.sessionId, state.userId, 'tool_call', {
+            author,
+            title: event.title,
+          });
           break;
         case 'file-change':
           await flushText();
@@ -342,7 +351,10 @@ async function runPrompt(
       event: { type: 'error', message: 'Agent error' },
       author,
     });
-    await persistChatEvent(room.projectId, room.sessionId, state.userId, 'agent_error', { author, text: 'Agent error' });
+    await persistChatEvent(room.projectId, room.sessionId, state.userId, 'agent_error', {
+      author,
+      text: 'Agent error',
+    });
   }
 }
 

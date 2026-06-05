@@ -12,7 +12,12 @@ import { logger } from './logger';
 
 /** Persisted chat-message kinds (events.event_type). Mirror the chat panel's
  *  ChatMessage kinds so replayed history renders identically to live messages. */
-export type ChatEventType = 'user_prompt' | 'agent_text' | 'tool_call' | 'file_change' | 'agent_error';
+export type ChatEventType =
+  | 'user_prompt'
+  | 'agent_text'
+  | 'tool_call'
+  | 'file_change'
+  | 'agent_error';
 
 /** event_type → the chat panel's ChatMessage `kind`. */
 const CHAT_KIND: Record<ChatEventType, string> = {
