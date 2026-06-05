@@ -277,3 +277,33 @@ follow-ups" section so they aren't missed.
 The runbook at `docs/runbooks/deploy-<service>.md` records these
 **once they're done** as "Setup history (one-time)" so a future
 VPS rebuild is reproducible.
+
+## Disk hygiene (image buildup + orphan sandboxes)
+
+Each deploy builds + pushes a fresh `praxis-orchestrator`/`praxis-web` image,
+leaving the prior one dangling; many deploys can fill `/` to 100%, at which point
+the orchestrator's systemd restart fails and the API goes 503 (CI/merge stay
+green — it's a host-disk issue, not code). Project **sandboxes** don't add to
+this (all share the one `praxis-sandbox-base` image, one reused container +
+volume per project), but a `praxis-project-<id>` volume / `praxis-sandbox-<id>`
+container is **orphaned** if its project was deleted without a clean
+`DockerSandbox.destroy`.
+
+`infrastructure/deploy/praxis-hygiene.sh` (run daily by `praxis-hygiene.timer`)
+handles both, idempotently and safely:
+
+- `docker image prune -f` (dangling) + `docker builder prune --keep-storage 10g`
+  + remove all but the newest `KEEP_SHA` (3) `sha-*` tags per platform repo —
+  `:latest` and the shared sandbox base are never touched.
+- Reap `praxis-sandbox-<id>` containers + `praxis-project-<id>` volumes whose
+  `<id>` is **not** a current row in `projects`. The valid-id list comes from the
+  DB; **if that query fails the reap is skipped** (never delete sandboxes on a
+  transient DB error). `DRY_RUN=1` previews without removing.
+
+Recover a full disk by hand with the same script (or `docker builder prune -af`
++ `docker image prune -f`), then `sudo systemctl restart praxis-orchestrator`.
+
+**Operator follow-up:** copy `praxis-hygiene.{service,timer}` to
+`/etc/systemd/system/`, ensure the script is executable at
+`/opt/praxis/infrastructure/deploy/praxis-hygiene.sh`, `daemon-reload`, then
+`systemctl enable --now praxis-hygiene.timer`.
