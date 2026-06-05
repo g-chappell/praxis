@@ -26,13 +26,21 @@ import { logger } from '../logger';
 import { removePreview } from '../preview';
 import {
   acquireRoomTurn,
+  cancelRoomTeardown,
   consumeTicket,
   deleteRoom,
   getAcpHost,
   getRoom,
   getSandbox,
+  scheduleRoomTeardown,
   type SessionRoom,
 } from '../runtime';
+
+// How long the room (and its shared agent + sandbox) survives after the last
+// socket leaves before tearing down (STORY-35). A page refresh / brief network
+// blip reconnects within this window and keeps the live session. Well under the
+// 30-min idle sweep, which remains the backstop.
+const RECONNECT_GRACE_MS = 90_000;
 
 interface ConnectionState {
   id: string;
@@ -115,6 +123,9 @@ wsRoute.get(
           ws.close(4404, 'no_session');
           return;
         }
+        // A (re)connecting socket cancels any pending grace-window teardown, so a
+        // refresh / blip keeps the same live room + agent (STORY-35).
+        cancelRoomTeardown(room);
         const id = crypto.randomUUID();
         if (ws.raw) {
           conns.set(ws.raw, {
@@ -198,7 +209,10 @@ wsRoute.get(
           room.members.delete(state.id);
           // Free any file the leaving user held that no other tab still has open.
           releaseAbandonedLocks(room, state.userId);
-          if (room.sockets.size === 0) endSession(state.sessionId);
+          // Last socket gone → defer teardown by the grace window instead of
+          // ending immediately, so a refresh/blip can reconnect to the same live
+          // agent (STORY-35). The timer only fires if the room is still empty.
+          if (room.sockets.size === 0) scheduleRoomTeardown(room, RECONNECT_GRACE_MS, endSession);
           else broadcastPresence(room);
         }
         logger.info({ wsConnId: state.id, sessionId: state.sessionId }, 'ws.close');

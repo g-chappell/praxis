@@ -9,12 +9,14 @@ import type { Sandbox } from '@praxis/sandbox';
 
 import {
   acquireRoomTurn,
+  cancelRoomTeardown,
   consumeTicket,
   createRoom,
   deleteRoom,
   getRoom,
   getRoomByProject,
   mintTicket,
+  scheduleRoomTeardown,
 } from '../src/runtime';
 
 afterEach(() => {
@@ -161,6 +163,70 @@ describe('acquireRoomTurn (STORY-33)', () => {
       expect(room.agent).toBeUndefined();
     } finally {
       deleteRoom('sess-turn-4');
+    }
+  });
+});
+
+describe('reconnect grace teardown (STORY-35)', () => {
+  const handle = { projectId: 'p-grace', containerId: 'c1' };
+
+  it('fires teardown after the grace window when the room stays empty', () => {
+    vi.useFakeTimers();
+    const room = createRoom('sess-g1', 'p-g1', handle, 'k');
+    const onElapse = vi.fn();
+    try {
+      scheduleRoomTeardown(room, 90_000, onElapse);
+      vi.advanceTimersByTime(89_000);
+      expect(onElapse).not.toHaveBeenCalled();
+      vi.advanceTimersByTime(2_000);
+      expect(onElapse).toHaveBeenCalledWith('sess-g1');
+    } finally {
+      deleteRoom('sess-g1');
+    }
+  });
+
+  it('a reconnect cancelling within the window prevents teardown', () => {
+    vi.useFakeTimers();
+    const room = createRoom('sess-g2', 'p-g2', handle, 'k');
+    const onElapse = vi.fn();
+    try {
+      scheduleRoomTeardown(room, 90_000, onElapse);
+      vi.advanceTimersByTime(1_000);
+      cancelRoomTeardown(room);
+      vi.advanceTimersByTime(120_000);
+      expect(onElapse).not.toHaveBeenCalled();
+    } finally {
+      deleteRoom('sess-g2');
+    }
+  });
+
+  it('does not tear down if a socket is present when the timer fires', () => {
+    vi.useFakeTimers();
+    const room = createRoom('sess-g3', 'p-g3', handle, 'k');
+    const onElapse = vi.fn();
+    try {
+      scheduleRoomTeardown(room, 90_000, onElapse);
+      room.sockets.add({} as never); // a socket rejoined without cancelling
+      vi.advanceTimersByTime(120_000);
+      expect(onElapse).not.toHaveBeenCalled();
+    } finally {
+      deleteRoom('sess-g3');
+    }
+  });
+
+  it('is a no-op while a teardown is already pending', () => {
+    vi.useFakeTimers();
+    const room = createRoom('sess-g4', 'p-g4', handle, 'k');
+    const onElapse = vi.fn();
+    try {
+      scheduleRoomTeardown(room, 90_000, onElapse);
+      scheduleRoomTeardown(room, 1_000, onElapse); // ignored — the first timer stands
+      vi.advanceTimersByTime(2_000);
+      expect(onElapse).not.toHaveBeenCalled(); // would have fired at 1s if the 2nd took effect
+      vi.advanceTimersByTime(90_000);
+      expect(onElapse).toHaveBeenCalledTimes(1);
+    } finally {
+      deleteRoom('sess-g4');
     }
   });
 });
