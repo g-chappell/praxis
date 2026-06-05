@@ -4,7 +4,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { controlStateFrame, isOwner, setMode } from '../src/control';
+import { controlStateFrame, isOwner, releaseControlOnLeave, setMode } from '../src/control';
 import { createRoom, deleteRoom } from '../src/runtime';
 
 const handle = { projectId: 'p-ctl', containerId: 'c1' };
@@ -78,6 +78,34 @@ describe('setMode (STORY-34)', () => {
     expect(r.mode).toBe('serialised');
     expect(r.controlHolder).toBeUndefined();
     expect(r.controlRequests.size).toBe(0);
+  });
+});
+
+describe('releaseControlOnLeave (STORY-34)', () => {
+  it('drops the departed user’s queued prompts but keeps others', () => {
+    const r = room('c1');
+    r.queue.push({ id: 'a', userId: OTHER, author: { name: 'O', image: null }, text: '1' });
+    r.queue.push({ id: 'b', userId: OWNER, author: { name: 'W', image: null }, text: '2' });
+    expect(releaseControlOnLeave(r, OTHER)).toBe(true);
+    expect(r.queue.map((q) => q.id)).toEqual(['b']);
+  });
+
+  it('vacates control + drops a pending request when the holder leaves', () => {
+    const r = room('c2');
+    setMode(r, OWNER, 'turn_based'); // owner holds control
+    r.controlRequests.add(OTHER);
+    expect(releaseControlOnLeave(r, OWNER)).toBe(true);
+    expect(r.controlHolder).toBeUndefined();
+    const r2 = room('c3');
+    setMode(r2, OWNER, 'turn_based');
+    r2.controlRequests.add(OTHER);
+    expect(releaseControlOnLeave(r2, OTHER)).toBe(true); // dropped the request
+    expect(r2.controlRequests.has(OTHER)).toBe(false);
+    expect(r2.controlHolder).toBe(OWNER); // owner still holds
+  });
+
+  it('returns false when the departed user had nothing pending', () => {
+    expect(releaseControlOnLeave(room('c4'), OTHER)).toBe(false);
   });
 });
 

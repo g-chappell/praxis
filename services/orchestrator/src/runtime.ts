@@ -99,6 +99,9 @@ export interface SessionRoom {
   controlHolder?: string;
   controlRequests: Set<string>;
   queue: QueuedPrompt[];
+  // True while the serialised-mode queue is being drained (one turn at a time);
+  // prevents concurrent drainers so prompts run strictly FIFO (STORY-34).
+  draining?: boolean;
 }
 
 const rooms = new Map<string, SessionRoom>();

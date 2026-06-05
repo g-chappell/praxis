@@ -73,3 +73,20 @@ export function setMode(room: SessionRoom, userId: string, mode: unknown): SetMo
   }
   return { ok: true, changed: true, queueCleared };
 }
+
+/** A user fully left the room (STORY-34): drop their queued prompts, drop any
+ *  pending control request, and — if they held control in turn-based mode — vacate
+ *  it so a remaining user can claim it. Returns true if anything changed (the
+ *  caller broadcasts the new control_state). */
+export function releaseControlOnLeave(room: SessionRoom, userId: string): boolean {
+  let changed = false;
+  const before = room.queue.length;
+  room.queue = room.queue.filter((q) => q.userId !== userId);
+  if (room.queue.length !== before) changed = true;
+  if (room.controlRequests.delete(userId)) changed = true;
+  if (room.controlHolder === userId) {
+    room.controlHolder = undefined; // vacant — a remaining user can claim it
+    changed = true;
+  }
+  return changed;
+}
