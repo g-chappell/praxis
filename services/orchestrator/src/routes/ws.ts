@@ -14,6 +14,8 @@ import { projects, sessions } from '@praxis/db';
 import { db } from '@praxis/db/client';
 import type { FileEvent } from '@praxis/sandbox';
 
+import { loadChatHistory, persistChatEvent } from '../chat-history';
+
 import { handleFileList, handleFileRead, handleFileSave } from '../file-ops';
 import {
   acquireLock,
@@ -148,6 +150,11 @@ wsRoute.get(
         logger.info({ wsConnId: id, sessionId: claim.sessionId }, 'ws.open');
         send(ws, { type: 'ready', sessionId: claim.sessionId, connId: id });
         broadcastPresence(room);
+        // Replay the project's full chat transcript to this socket (STORY-37) so a
+        // late joiner / re-opener sees the whole conversation, not just new messages.
+        void loadChatHistory(room.projectId).then((messages) =>
+          send(ws, { type: 'chat_history', messages }),
+        );
       },
 
       onMessage: async (evt, ws) => {
@@ -273,10 +280,49 @@ async function runPrompt(
   if (senderRaw) {
     broadcastExcept(room, senderRaw, { type: 'user_prompt', text, author });
   }
+  // Persist the prompt to the project transcript (STORY-37). Assemble the agent's
+  // reply into messages as it streams — text-chunks coalesce into one agent_text
+  // per contiguous run (mirroring the chat panel) and are flushed on a boundary
+  // event or turn-complete — so the persisted transcript matches what was shown.
+  await persistChatEvent(room.projectId, room.sessionId, state.userId, 'user_prompt', { author, text });
+  let pendingText = '';
+  const flushText = async (): Promise<void> => {
+    if (!pendingText) return;
+    await persistChatEvent(room.projectId, room.sessionId, state.userId, 'agent_text', { author, text: pendingText });
+    pendingText = '';
+  };
 
   try {
     for await (const event of agent.prompt(text, { onPermission: async () => 'allow' })) {
       broadcast(room, { type: 'agent_event', event, author });
+      switch (event.type) {
+        case 'text-chunk':
+          pendingText += event.text;
+          break;
+        case 'tool-call':
+          await flushText();
+          await persistChatEvent(room.projectId, room.sessionId, state.userId, 'tool_call', { author, title: event.title });
+          break;
+        case 'file-change':
+          await flushText();
+          await persistChatEvent(room.projectId, room.sessionId, state.userId, 'file_change', {
+            author,
+            change: event.change,
+            path: event.path,
+          });
+          break;
+        case 'error':
+          await flushText();
+          await persistChatEvent(room.projectId, room.sessionId, state.userId, 'agent_error', {
+            author,
+            text: event.message,
+          });
+          break;
+        case 'turn-complete':
+          await flushText();
+          break;
+        // tool-result isn't rendered in chat — nothing to persist.
+      }
     }
   } catch (err) {
     // A turn raced the busy guard (rare): tell the prompter, don't poison the room.
@@ -288,6 +334,7 @@ async function runPrompt(
       { sessionId: state.sessionId, err: err instanceof Error ? err.message : String(err) },
       'ws.prompt_failed',
     );
+    await flushText();
     // Surface the failure in everyone's transcript (it's the shared turn) without
     // disabling any peer's input — an agent error is a message, not a dead session.
     broadcast(room, {
@@ -295,6 +342,7 @@ async function runPrompt(
       event: { type: 'error', message: 'Agent error' },
       author,
     });
+    await persistChatEvent(room.projectId, room.sessionId, state.userId, 'agent_error', { author, text: 'Agent error' });
   }
 }
 
