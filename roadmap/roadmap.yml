@@ -1518,6 +1518,8 @@ epics:
           unchanged; this is disconnect grace, not idle); no ADR. Cross-session
           memory after a true teardown (workspace CLAUDE.md auto-load / ACP
           session-load) is a separate, later investigation — out of scope here.
+        verified_at: '2026-06-05T14:52:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "When the last socket leaves a room, teardown is deferred by a grace window (default ~90s) rather than firing immediately."
           - "If any socket rejoins the room before the window elapses, the deferred teardown is cancelled and the same live room + agent + sandbox are reused (conversation intact) — verified by a page refresh keeping the agent's in-session memory."
@@ -1571,6 +1573,8 @@ epics:
           (with a newSession fallback) instead of always newSession. Builds on
           ADR-0016 (persistent shared agent) + STORY-35 (refresh grace window).
           ACP change — see ADR-0017.
+        verified_at: '2026-06-05T14:52:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "After a full teardown and a fresh session in the same project, the agent resumes the prior conversation (a fact stated before teardown is recalled after) — verified live with a real agent."
           - "The agent's session/config store persists across teardown (it no longer lives only on the ephemeral container layer); the persisted store is hidden from the user's file tree, file watcher, and git."
@@ -1674,6 +1678,8 @@ epics:
           time-indexed, so history spans ALL sessions of a project (survives
           teardowns). Complements STORY-36 (which restores the agent's memory;
           this restores the displayed transcript). No migration.
+        verified_at: '2026-06-05T14:52:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Every chat message — a user's prompt, the agent's text reply (assembled per turn), tool calls, file-change notices, and errors — is persisted to the events table keyed by project, with its author and kind."
           - "When a user opens or rejoins a project, the chat panel shows the FULL prior transcript across all of that project's sessions, correctly attributed, before any new live messages."
