@@ -87,4 +87,32 @@ describe('ChatPanel shared-chat attribution (STORY-32)', () => {
     const input = screen.getByPlaceholderText('Message as Me…') as HTMLInputElement;
     expect(input.disabled).toBe(false);
   });
+
+  it('renders the chat_history backfill on join, attributed, before live messages (STORY-37)', () => {
+    render(<ChatPanel currentUser={{ name: 'Me', image: null }} />);
+    emit({
+      type: 'chat_history',
+      messages: [
+        { id: 'h1', kind: 'user', author: { name: 'Ada', image: null }, text: 'earlier prompt' },
+        { id: 'h2', kind: 'text', author: { name: 'Ada', image: null }, text: 'earlier reply' },
+      ],
+    });
+    expect(screen.getByText('earlier prompt')).toBeTruthy();
+    expect(screen.getByText('earlier reply')).toBeTruthy();
+
+    // A live frame after history appends to the transcript.
+    emit({ type: 'user_prompt', text: 'new prompt', author: { name: 'Bo', image: null } });
+    expect(screen.getByText('new prompt')).toBeTruthy();
+  });
+
+  it('applies chat_history only once (idempotent on reconnect)', () => {
+    render(<ChatPanel currentUser={{ name: 'Me', image: null }} />);
+    const hist = {
+      type: 'chat_history',
+      messages: [{ id: 'h1', kind: 'user', author: { name: 'Ada', image: null }, text: 'once' }],
+    };
+    emit(hist);
+    emit(hist);
+    expect(screen.getAllByText('once')).toHaveLength(1);
+  });
 });
