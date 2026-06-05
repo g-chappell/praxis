@@ -1377,7 +1377,7 @@ epics:
         tasks:
           - id: TASK-090
             title: "DB: projects.controlMode column + migration"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -1388,12 +1388,13 @@ epics:
               on room create and persists owner mode-switches to it.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-05T15:28:00Z'
             task_acceptance:
               - "Migration adds projects.controlMode defaulting to 'serialised'; existing rows backfill to 'serialised'."
               - "Drizzle codegen drift check passes."
           - id: TASK-091
             title: "Orchestrator: control-state foundation + owner-gated set_mode"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -1408,12 +1409,13 @@ epics:
               can gate owner-only actions server-side.
             depends_on: [TASK-090]
             attempt_count: 0
+            completed: '2026-06-05T15:28:00Z'
             task_acceptance:
               - "set_mode from a non-owner is rejected; from the owner it updates room state, persists to projects.controlMode, and broadcasts control_state."
               - "control_state is broadcast to all sockets on mode/holder/queue change."
           - id: TASK-092
             title: "Orchestrator: serialised queue (enqueue / drain / cancel)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -1426,11 +1428,12 @@ epics:
               queue (notice). Queue changes broadcast via control_state.
             depends_on: [TASK-091]
             attempt_count: 0
+            completed: '2026-06-05T15:28:00Z'
             task_acceptance:
               - "Integration test: with a turn active, a second prompt enqueues; on completion it drains and runs; the author can cancel a queued entry; a leaver's entries are dropped."
           - id: TASK-093
             title: "Orchestrator: turn-based control + handoff"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -1443,11 +1446,12 @@ epics:
               All transitions broadcast control_state.
             depends_on: [TASK-091]
             attempt_count: 0
+            completed: '2026-06-05T15:28:00Z'
             task_acceptance:
               - "Integration test: non-holder prompt is rejected; request→grant transfers control; release vacates; holder disconnect auto-releases and a remaining user can claim."
           - id: TASK-094
             title: "Web: control bar — mode toggle + turn-based control UI"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -1463,11 +1467,12 @@ epics:
               vanishing toast.
             depends_on: [TASK-093]
             attempt_count: 0
+            completed: '2026-06-05T15:28:00Z'
             task_acceptance:
               - "Owner sees an editable mode toggle; non-owner sees it read-only. In turn-based, a non-holder's input is disabled with '<holder> has control' and Request/Approve/Release controls drive handoff off control_state."
           - id: TASK-095
             title: "Web: serialised queue UI"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -1478,11 +1483,12 @@ epics:
               chat panel; the agent_busy notice is replaced by the queued state.
             depends_on: [TASK-092]
             attempt_count: 0
+            completed: '2026-06-05T15:28:00Z'
             task_acceptance:
               - "A queued prompt shows in the list with its author; the author sees a cancel control that removes it; non-authors cannot cancel it."
           - id: TASK-096
             title: "E2E/integration: both modes end to end"
-            status: ready
+            status: done
             priority: med
             complexity: medium
             workspaces: ["apps/web"]
@@ -1494,6 +1500,7 @@ epics:
               VPS post-deploy per the deploy-layer-live convention.
             depends_on: [TASK-094, TASK-095]
             attempt_count: 0
+            completed: '2026-06-05T15:28:00Z'
             is_terminal: true
             task_acceptance:
               - "Serialised: a second prompt during a turn enqueues, the author can cancel it, and it drains on completion."

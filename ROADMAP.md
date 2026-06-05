@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 23 / 36 (64%)
 - **Total tasks:** 102
-- **Done:** 70 (69%)
-- **Ready:** 32
+- **Done:** 77 (75%)
+- **Ready:** 25
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -884,7 +884,7 @@ URLs surfaced through a wildcard Caddy domain.
   **Out of scope:**
   - Routing interactive tool-permission approvals to the controller (auto-allow retained — separate later story).
   - Per-user prompt threads (one shared transcript), >2-user delegation chains, Yjs co-editing.
-  - :black_circle: **TASK-090** — DB: projects.controlMode column + migration  `high` `small` _(packages/db)_
+  - :white_check_mark: **TASK-090** — DB: projects.controlMode column + migration  `high` `small` _(packages/db)_
     > Add a controlMode column to the projects table (text, values
     > 'serialised' | 'turn_based', default 'serialised') via Drizzle schema +
     > a generated migration. Codegen types updated. The orchestrator reads it
@@ -892,7 +892,7 @@ URLs surfaced through a wildcard Caddy domain.
     _Task AC:_
     - Migration adds projects.controlMode defaulting to 'serialised'; existing rows backfill to 'serialised'.
     - Drizzle codegen drift check passes.
-  - :black_circle: **TASK-091** — Orchestrator: control-state foundation + owner-gated set_mode  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-091** — Orchestrator: control-state foundation + owner-gated set_mode  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-090_
     > SessionRoom gains the live control state: mode (loaded from
     > projects.controlMode on room create), controlHolder (userId | null),
@@ -905,7 +905,7 @@ URLs surfaced through a wildcard Caddy domain.
     _Task AC:_
     - set_mode from a non-owner is rejected; from the owner it updates room state, persists to projects.controlMode, and broadcasts control_state.
     - control_state is broadcast to all sockets on mode/holder/queue change.
-  - :black_circle: **TASK-092** — Orchestrator: serialised queue (enqueue / drain / cancel)  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-092** — Orchestrator: serialised queue (enqueue / drain / cancel)  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-091_
     > In serialised mode, a prompt arriving while a turn is in flight is
     > ENQUEUED (FIFO) instead of returning agent_busy; on turn-complete the
@@ -915,7 +915,7 @@ URLs surfaced through a wildcard Caddy domain.
     > queue (notice). Queue changes broadcast via control_state.
     _Task AC:_
     - Integration test: with a turn active, a second prompt enqueues; on completion it drains and runs; the author can cancel a queued entry; a leaver's entries are dropped.
-  - :black_circle: **TASK-093** — Orchestrator: turn-based control + handoff  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-093** — Orchestrator: turn-based control + handoff  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-091_
     > In turn-based mode, only controlHolder may prompt (a non-holder prompt
     > is rejected not_in_control); the owner is the initial holder. WS messages:
@@ -925,7 +925,7 @@ URLs surfaced through a wildcard Caddy domain.
     > All transitions broadcast control_state.
     _Task AC:_
     - Integration test: non-holder prompt is rejected; request→grant transfers control; release vacates; holder disconnect auto-releases and a remaining user can claim.
-  - :black_circle: **TASK-094** — Web: control bar — mode toggle + turn-based control UI  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-094** — Web: control bar — mode toggle + turn-based control UI  `high` `medium` _(apps/web)_  
     _depends on: TASK-093_
     > A ControlBar in the workspace header (next to PresenceBar) consuming the
     > control_state frame: shows the active mode with an owner-only toggle
@@ -938,7 +938,7 @@ URLs surfaced through a wildcard Caddy domain.
     > vanishing toast.
     _Task AC:_
     - Owner sees an editable mode toggle; non-owner sees it read-only. In turn-based, a non-holder's input is disabled with '<holder> has control' and Request/Approve/Release controls drive handoff off control_state.
-  - :black_circle: **TASK-095** — Web: serialised queue UI  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-095** — Web: serialised queue UI  `high` `small` _(apps/web)_  
     _depends on: TASK-092_
     > In serialised mode, render the pending queue from control_state (each
     > entry: author avatar+name + prompt text) with a cancel control on the
@@ -946,7 +946,7 @@ URLs surfaced through a wildcard Caddy domain.
     > chat panel; the agent_busy notice is replaced by the queued state.
     _Task AC:_
     - A queued prompt shows in the list with its author; the author sees a cancel control that removes it; non-authors cannot cancel it.
-  - :black_circle: **TASK-096** :checkered_flag: — E2E/integration: both modes end to end  `med` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-096** :checkered_flag: — E2E/integration: both modes end to end  `med` `medium` _(apps/web)_  
     _depends on: TASK-094, TASK-095_
     > Two-client coverage: serialised (enqueue + cancel-own + FIFO drain) and
     > turn-based (owner initial control → invited user requests → owner approves
