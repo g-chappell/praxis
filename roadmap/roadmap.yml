@@ -1194,6 +1194,8 @@ epics:
           new sessions row); a session stays = one sandbox boot
           (containerId/previewUrl/endedAt); per-user attribution lives in git +
           the presence roster.
+        verified_at: '2026-06-05T14:18:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Two browser sessions (different users) opening the same project join the SAME room: each appears in the other's presence roster with avatar + name (STORY-11 AC, now true for real users, not mocked sockets)."
           - "A second user joining an already-live project does NOT boot a second sandbox or insert a second sessions row — they attach to the existing session and share its preview URL."
@@ -1266,6 +1268,8 @@ epics:
           drive, with the agent remembering prior turns. Turns are serialised
           (one active turn per session); how that's surfaced to users (queue vs
           handoff) is STORY-34. ACP change — see ADR-0016 (Accepted).
+        verified_at: '2026-06-05T14:18:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "The AcpHost interface exposes a session lifecycle (open → many prompt turns → close); the per-prompt spawn+kill in spawnAndPrompt is gone (ADR-0016)."
           - "Two successive prompts in one project (same or different users) run against the SAME agent process + ACP session — the second turn has the agent's memory of the first (conversation continuity), with no second process spawn."
