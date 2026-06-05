@@ -1,7 +1,7 @@
 # 0016 — A single persistent shared agent per project room
 
 **Date:** 2026-06-05
-**Status:** Proposed — requires sign-off from both contributors (ACP is load-bearing; AGENTS.md: "Change anything ACP- or MCP-related only with an ADR and confirmation from both contributors").
+**Status:** Accepted (2026-06-05) — signed off by both contributors per AGENTS.md (ACP changes require an ADR + both-contributor confirmation). A single shared live coding session is the platform's core premise; implemented by STORY-33.
 
 ## Context
 

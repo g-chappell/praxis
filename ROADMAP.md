@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 18 / 31 (58%)
-- **Total tasks:** 85
-- **Done:** 60 (71%)
-- **Ready:** 25
+- **Features verified:** 18 / 32 (56%)
+- **Total tasks:** 88
+- **Done:** 60 (68%)
+- **Ready:** 28
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -793,6 +793,69 @@ URLs surfaced through a wildcard Caddy domain.
     _Task AC:_
     - Two connected clients both receive the same agent_event stream and the prompt is attributed to its sender in both transcripts.
     - STORY-32 acceptance_criteria satisfied.
+
+- **STORY-33** — Single persistent shared agent per project room
+  > Implements ADR-0016. Today ClaudeAcpHost.spawnAndPrompt spawns a fresh
+  > claude-agent-acp process + new ACP session per prompt and kills it on
+  > turn end — so there is no conversation continuity even for one user,
+  > and two users in a shared room (STORY-32) each trigger their own
+  > ephemeral agent. This Story reshapes the sacred AcpHost interface from
+  > a turn-scoped generator to a room-scoped session lifecycle
+  > (openAgent → many prompt turns → close): one long-lived agent process
+  > + ACP session per project room, opened lazily on first prompt, shared
+  > by every user in the room, torn down with the room. The result is the
+  > platform's core premise — one shared live coding session both users
+  > drive, with the agent remembering prior turns. Turns are serialised
+  > (one active turn per session); how that's surfaced to users (queue vs
+  > handoff) is STORY-34. ACP change — see ADR-0016 (Accepted).
+  **Acceptance criteria:**
+  - The AcpHost interface exposes a session lifecycle (open → many prompt turns → close); the per-prompt spawn+kill in spawnAndPrompt is gone (ADR-0016).
+  - Two successive prompts in one project (same or different users) run against the SAME agent process + ACP session — the second turn has the agent's memory of the first (conversation continuity), with no second process spawn.
+  - While a turn is in flight, a second prompt does not start a concurrent turn — the host enforces one active turn per session and the user gets a clear 'agent busy' signal (the modes that change this are STORY-34).
+  - If the agent process dies mid-session, the next prompt transparently opens a fresh session (workspace files persist; a notice surfaces) instead of erroring permanently.
+  - The agent session is closed (process killed, ACP session ended) on room teardown / last-socket-leave / idle sweep — no leaked process; the 30-min idle-shutdown rule is unchanged.
+  **User flow:**
+  1. User A prompts — the agent session opens, runs the turn, and stays alive.
+  2. User A or B prompts again — the same agent answers, remembering prior context, with no new process spawn.
+  3. A second prompt mid-turn is rejected as 'agent busy' rather than racing a second agent.
+  4. Everyone leaves the project — the agent session closes with the room.
+  **Out of scope:**
+  - Prompt-control modes (serialised queue vs turn-based handoff, toggleable) — STORY-34, pending a /ux-discovery pass on the handoff flow.
+  - Routing interactive tool permissions to the controlling user — depends on STORY-34; auto-allow retained as today.
+  - Character-level co-editing via Yjs (post-POC).
+  - :black_circle: **TASK-087** — Reshape AcpHost to a persistent session lifecycle  `high` `large` _(packages/acp-host)_  
+    _depends on: TASK-086_
+    > Replace turn-scoped spawnAndPrompt with a session lifecycle:
+    > openAgent(sandbox, handle, apiKey) → AgentSession with
+    > prompt(text, opts): AsyncIterable<AcpEvent>, cancel(), and close().
+    > Keep one long-lived agent process + ACP session (newSession once,
+    > not per turn); enforce one active turn per session; cancel() cancels
+    > the turn without ending the session, close() kills the process.
+    > Surface agent-process death so the consumer can re-open. Update the
+    > acp-host unit + integration tests (recorded-transcript subprocess)
+    > to a multi-turn session. ACP change per ADR-0016.
+    _Task AC:_
+    - Integration test: two prompts over one AgentSession reuse a single process/session and the second turn sees the first turn's context; a concurrent prompt is rejected, not raced.
+  - :black_circle: **TASK-088** — Orchestrator: hold the shared AgentSession on the room  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-087_
+    > Store the AgentSession on SessionRoom (runtime.ts); open it lazily
+    > on the first prompt in ws.ts runPrompt and reuse it thereafter;
+    > broadcast its turn events to the room (STORY-32). Reject a prompt
+    > that arrives while a turn is in flight with an 'agent_busy' signal;
+    > on agent-process death, re-open on the next prompt and broadcast an
+    > 'agent_restarted' notice. Close the session in endSession (room
+    > teardown / last-socket / idle sweep). No idle-shutdown change.
+    _Task AC:_
+    - A second prompt during an active turn yields agent_busy and does not spawn a second agent; closing the room kills the agent process (no leak).
+  - :black_circle: **TASK-089** :checkered_flag: — Web: surface agent busy + restarted; verify continuity  `high` `small` _(apps/web)_  
+    _depends on: TASK-088_
+    > Chat panel handles the 'agent_busy' signal (transient notice, input
+    > not disabled) and the 'agent_restarted' notice. Verify end-to-end
+    > that a follow-up prompt continues the same conversation. The full
+    > two-browser shared-session check is live on the VPS post-deploy.
+    _Task AC:_
+    - Chat panel renders agent_busy without disabling input and shows the restarted notice.
+    - STORY-33 acceptance_criteria satisfied.
 
 ## EPIC-04 — Template, git, polish
 
