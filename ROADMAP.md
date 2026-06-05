@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 20 / 36 (56%)
 - **Total tasks:** 102
-- **Done:** 68 (67%)
-- **Ready:** 34
+- **Done:** 70 (69%)
+- **Ready:** 32
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1095,7 +1095,7 @@ URLs surfaced through a wildcard Caddy domain.
   - Editing or deleting past messages; per-message read receipts.
   - Persisting raw streaming text-chunks (only assembled messages are stored).
   - Retention caps / pagination tuning (revisit if transcripts grow large).
-  - :black_circle: **TASK-102** — Orchestrator: persist + serve project chat history via the events table  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-102** — Orchestrator: persist + serve project chat history via the events table  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-086_
     > As the orchestrator broadcasts chat (STORY-32), also persist each
     > message to events (projectId, userId, eventType, payload{author,…}):
@@ -1107,7 +1107,7 @@ URLs surfaced through a wildcard Caddy domain.
     > projectId so history spans sessions.
     _Task AC:_
     - Unit/integration: prompting persists a user_prompt + an assembled agent_text row; a joining socket receives a chat_history frame with the prior messages in order.
-  - :black_circle: **TASK-103** :checkered_flag: — Web: chat panel renders the history backfill on join  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-103** :checkered_flag: — Web: chat panel renders the history backfill on join  `high` `small` _(apps/web)_  
     _depends on: TASK-102_
     > The chat panel handles the chat_history frame: map persisted events
     > (user_prompt / agent_text / tool_call / file_change / agent_error) to

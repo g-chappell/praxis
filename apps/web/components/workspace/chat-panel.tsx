@@ -29,6 +29,9 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
   const streamingRef = useRef(false);
   const idRef = useRef(0);
   const nextId = useCallback(() => `m${(idRef.current += 1)}`, []);
+  // The project's persisted transcript is replayed once on join (STORY-37); guard
+  // against applying a second chat_history frame (e.g. on reconnect).
+  const historyLoadedRef = useRef(false);
 
   // Fallback author for agent attribution. The orchestrator now tags each
   // agent_event / user_prompt frame with the prompting user (STORY-32), so this
@@ -60,6 +63,16 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
 
   useEffect(() => {
     return subscribe((frame: ServerFrame) => {
+      if (frame.type === 'chat_history') {
+        // The project's full transcript, replayed on join (STORY-37). Apply once;
+        // prepend it so any live frame that arrived first stays after it, in order.
+        if (historyLoadedRef.current) return;
+        historyLoadedRef.current = true;
+        streamingRef.current = false;
+        const history = Array.isArray(frame.messages) ? (frame.messages as ChatMessage[]) : [];
+        if (history.length > 0) setMessages((prev) => [...history, ...prev]);
+        return;
+      }
       if (frame.type === 'agent_event') {
         const event = frame.event as Record<string, unknown> | undefined;
         // The orchestrator stamps each frame with the prompting user (STORY-32),
