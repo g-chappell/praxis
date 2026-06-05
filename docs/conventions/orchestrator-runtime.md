@@ -79,8 +79,22 @@ server: {
 ```
 
 `allowedHosts: true` is safe — the dev server is only reachable via the
-authenticated proxy on `praxis-net`, never published publicly. Only the
-`react-threejs-scene` template is verified; the mechanism generalises.
+authenticated proxy on `praxis-net`, never published publicly. The HMR tunnel is
+generic infra and stays, but see the next section: the POC template opts out of
+live HMR.
+
+### Preview updates are turn-gated, not live-HMR (STORY-30 follow-up)
+
+Live HMR flashed the preview on the agent's **mid-turn file churn** — the agent's
+HOME is `/workspace/.praxis-agent` (ADR-0017), so Vite full-reloaded on every
+store write. Operator preference: the preview should hold steady while the agent
+works and update **once when the turn finishes**. So:
+
+- `react-threejs-scene` `vite.config` sets **`hmr: false`** in the sandbox (no
+  autonomous reload; `PRAXIS_LOCAL=1` keeps localhost HMR for standalone dev).
+- `PreviewPane` reloads the iframe on the **`turn-complete`** `agent_event`, and
+  only if a `file_changed` arrived during the turn (`file_changed` already excludes
+  `.praxis-agent`, STORY-36) — so no reload on a no-op turn, no flash on churn.
 
 ## Agent memory store location (STORY-36 / ADR-0017)
 
