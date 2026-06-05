@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 18 / 33 (55%)
-- **Total tasks:** 95
+- **Features verified:** 18 / 34 (53%)
+- **Total tasks:** 96
 - **Done:** 63 (66%)
-- **Ready:** 32
+- **Ready:** 33
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -957,6 +957,51 @@ URLs surfaced through a wildcard Caddy domain.
     - Serialised: a second prompt during a turn enqueues, the author can cancel it, and it drains on completion.
     - Turn-based: request→approve transfers control, the non-holder's input gates correctly, release returns control.
     - STORY-34 acceptance_criteria satisfied.
+
+- **STORY-35** — Survive brief disconnects: reconnect grace window
+  > Today the orchestrator tears a room down the instant the last socket
+  > leaves (ws.ts onClose → endSession), which kills the shared persistent
+  > agent (STORY-33). So a solo user refreshing the page loses their live
+  > agent + conversation, and a fresh agent starts with no memory — exactly
+  > the "I told it to remember marmalade, refreshed, it forgot" report. This
+  > adds a short reconnect grace window: on last-socket-leave, defer teardown
+  > (~90s) instead of firing immediately; a socket rejoining within the
+  > window (a refresh, a network blip) reattaches to the SAME live room +
+  > agent (STORY-32 room reuse already does this), so the conversation
+  > survives. If nobody returns within the window, teardown proceeds as
+  > before. Orchestrator-only — the web client already re-POSTs /sessions
+  > and reconnects on reload. No idle-shutdown change (the 30-min sweep is
+  > unchanged; this is disconnect grace, not idle); no ADR. Cross-session
+  > memory after a true teardown (workspace CLAUDE.md auto-load / ACP
+  > session-load) is a separate, later investigation — out of scope here.
+  **Acceptance criteria:**
+  - When the last socket leaves a room, teardown is deferred by a grace window (default ~90s) rather than firing immediately.
+  - If any socket rejoins the room before the window elapses, the deferred teardown is cancelled and the same live room + agent + sandbox are reused (conversation intact) — verified by a page refresh keeping the agent's in-session memory.
+  - If no socket rejoins within the window, the room, agent, and sandbox tear down exactly as before.
+  - The 30-minute idle-shutdown backstop is unchanged.
+  **User flow:**
+  1. A solo user is mid-conversation with the agent and refreshes the page.
+  2. Their socket drops; the orchestrator schedules teardown ~90s out instead of ending the session immediately.
+  3. The reloaded page reconnects within a second or two; the orchestrator cancels the teardown and the user is back in the same live session, agent memory intact.
+  4. If instead they close the tab and don't return, the session tears down after the grace window.
+  **Out of scope:**
+  - Cross-session memory after a true teardown (persisting durable facts to workspace CLAUDE.md/AGENTS.md, or ACP session-load to resume a conversation) — separate investigation + story.
+  - Per-user reconnection tokens / resumable WS cursors (the client re-mints a session on reload).
+  - :black_circle: **TASK-097** :checkered_flag: — Orchestrator: defer room teardown with a reconnect grace window  `high` `small` _(services/orchestrator)_  
+    _depends on: TASK-088_
+    > Add a per-room teardown timer to SessionRoom plus
+    > scheduleRoomTeardown(room, graceMs, onElapse) / cancelRoomTeardown(room)
+    > in runtime.ts. In ws.ts onClose, when room.sockets.size === 0, call
+    > scheduleRoomTeardown(room, RECONNECT_GRACE_MS, endSession) instead of
+    > endSession directly; the timer only fires endSession if sockets are
+    > still empty when it elapses. In ws.ts onOpen, cancelRoomTeardown(room)
+    > so a reconnecting socket keeps the live room + agent. Default grace
+    > ~90s. Unit-test the scheduler with fake timers: elapses → onElapse;
+    > rejoin before elapse (cancel) → not called; rejoin without cancel but
+    > sockets non-empty at elapse → not called.
+    _Task AC:_
+    - Unit test (fake timers): teardown fires after the grace window when sockets stay empty; a rejoin within the window cancels it; a non-empty socket set at elapse skips teardown.
+    - STORY-35 acceptance_criteria satisfied.
 
 ## EPIC-04 — Template, git, polish
 
