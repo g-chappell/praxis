@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { AppNav } from '@/components/app-nav';
 import { CreateProjectForm } from '@/components/create-project-form';
 import { DeleteProjectButton } from '@/components/delete-project-button';
+import { EditProjectButton } from '@/components/edit-project-button';
 import { getAuth } from '@/lib/auth';
 import { listUserProjects } from '@/lib/projects';
 
@@ -53,6 +54,11 @@ export default async function DashboardPage() {
               <li key={p.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <Link href={`/projects/${p.id}`} className="min-w-0 flex-1 hover:underline">
                   <span className="block truncate font-medium">{p.name}</span>
+                  {p.description && (
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {p.description}
+                    </span>
+                  )}
                   {p.createdAt && (
                     <span className="text-xs text-muted-foreground">
                       Created {p.createdAt.toISOString().slice(0, 10)}
@@ -66,6 +72,7 @@ export default async function DashboardPage() {
                   >
                     Open
                   </Link>
+                  <EditProjectButton projectId={p.id} name={p.name} description={p.description} />
                   <DeleteProjectButton projectId={p.id} projectName={p.name} />
                 </div>
               </li>
