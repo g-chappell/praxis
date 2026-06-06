@@ -28,6 +28,11 @@ import {
 // Seeded for the platform's contributors; everyone else defaults to 'user'.
 export const userRole = pgEnum('user_role', ['user', 'admin']);
 
+// Provider a platform_api_keys row belongs to (STORY-38). Anthropic powers all
+// agent inference (ADR-0009); OpenAI powers the image-gen MCP server (STORY-15).
+// Platform-owned only — out of scope: per-user keys, providers beyond these two.
+export const keyProvider = pgEnum('key_provider', ['anthropic', 'openai']);
+
 // ─── users ────────────────────────────────────────────────────────────
 // Praxis-canonical identity table. STORY-01's `display_name` stays;
 // STORY-04 adds Better Auth's required columns (`email_verified`,
@@ -103,25 +108,27 @@ export const oauthTokens = pgTable(
 );
 
 // ─── platform_api_keys ────────────────────────────────────────────────
-// The platform-owned Anthropic API key that powers all agent sessions
-// (ADR-0009), admin-managed (STORY-21). Encrypted at rest via @praxis/crypto
-// (same posture as oauth_tokens) — `key_encrypted` is ciphertext, never the raw
-// key. Single active key with rotation: setting a new key marks the prior row
-// inactive (retained for audit). The partial unique index guarantees at most
-// one active key at the DB level.
+// The platform-owned API keys that power agent sessions: Anthropic for all
+// inference (ADR-0009) and OpenAI for the image-gen MCP server (STORY-38),
+// admin-managed (STORY-21). Encrypted at rest via @praxis/crypto (same posture
+// as oauth_tokens) — `key_encrypted` is ciphertext, never the raw key. One
+// active key per provider with rotation: setting a new key marks the prior row
+// for that provider inactive (retained for audit). The partial unique index
+// guarantees at most one active key per provider at the DB level.
 export const platformApiKeys = pgTable(
   'platform_api_keys',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     keyEncrypted: text('key_encrypted').notNull(),
+    provider: keyProvider('provider').notNull().default('anthropic'),
     active: boolean('active').notNull().default(false),
     createdBy: uuid('created_by').references(() => users.id),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
     lastRotatedAt: timestamp('last_rotated_at', { withTimezone: true }),
   },
   (table) => [
-    uniqueIndex('one_active_platform_key')
-      .on(table.active)
+    uniqueIndex('one_active_platform_key_per_provider')
+      .on(table.provider)
       .where(sql`${table.active}`),
   ],
 );
