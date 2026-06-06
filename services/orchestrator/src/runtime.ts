@@ -108,9 +108,16 @@ export interface SessionRoom {
   // True while the serialised-mode queue is being drained (one turn at a time);
   // prevents concurrent drainers so prompts run strictly FIFO (STORY-34).
   draining?: boolean;
+  // Opaque capability token handed to the in-sandbox MCP server (STORY-15). The
+  // server presents it to POST /internal/mcp/usage; the orchestrator maps it back
+  // to this project to cap usage — so no DB creds ever enter the sandbox.
+  mcpToken: string;
 }
 
 const rooms = new Map<string, SessionRoom>();
+// Reverse index: MCP capability token → sessionId, so the usage endpoint resolves
+// a token to its project without scanning every room.
+const mcpTokens = new Map<string, string>();
 
 export function createRoom(
   sessionId: string,
@@ -136,13 +143,21 @@ export function createRoom(
     ownerUserId: null,
     controlRequests: new Set(),
     queue: [],
+    mcpToken: crypto.randomUUID(),
   };
   rooms.set(sessionId, room);
+  mcpTokens.set(room.mcpToken, sessionId);
   return room;
 }
 
 export function getRoom(sessionId: string): SessionRoom | undefined {
   return rooms.get(sessionId);
+}
+
+/** Resolve an MCP capability token to its room (STORY-15), or undefined. */
+export function getRoomByMcpToken(token: string): SessionRoom | undefined {
+  const sessionId = mcpTokens.get(token);
+  return sessionId ? rooms.get(sessionId) : undefined;
 }
 
 /** The live room for a project, if any (STORY-32). Per-project room reuse keeps
@@ -205,6 +220,8 @@ export async function acquireRoomTurn(
 }
 
 export function deleteRoom(sessionId: string): void {
+  const room = rooms.get(sessionId);
+  if (room) mcpTokens.delete(room.mcpToken);
   rooms.delete(sessionId);
 }
 

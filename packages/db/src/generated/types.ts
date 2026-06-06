@@ -20,6 +20,9 @@ export type NewEvent = InferInsertModel<typeof schema.events>;
 export type LearningLink = InferSelectModel<typeof schema.learningLinks>;
 export type NewLearningLink = InferInsertModel<typeof schema.learningLinks>;
 
+export type McpUsage = InferSelectModel<typeof schema.mcpUsage>;
+export type NewMcpUsage = InferInsertModel<typeof schema.mcpUsage>;
+
 export type OauthToken = InferSelectModel<typeof schema.oauthTokens>;
 export type NewOauthToken = InferInsertModel<typeof schema.oauthTokens>;
 
