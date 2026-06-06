@@ -6,17 +6,32 @@
 so the image **must exist on whatever host runs the sandboxes** (the VPS).
 
 Contents: `node:20-bookworm` + git, build-essential, python3, inotify-tools
-(powers `watchFiles`), and the Claude Code CLI (`@anthropic-ai/claude-code`).
+(powers `watchFiles`), the Claude Code CLI (`@anthropic-ai/claude-code`) + the
+ACP adapter, and the **image-gen MCP server** (STORY-15) — an esbuild bundle at
+`/opt/praxis-mcp/image-gen/index.mjs` exposed on PATH as `praxis-mcp-image-gen`
+(the command a seeded project `.mcp.json` invokes; ADR-0018). No secrets are in
+the image — the OpenAI key arrives at runtime via the orchestrator's ephemeral
+cred file (`PRAXIS_MCP_CONFIG`).
 
 ## Build / refresh
 
 ```bash
-docker build -t praxis-sandbox-base:latest infrastructure/docker/sandbox-base
+# Build context is the REPO ROOT (the image bundles infrastructure/mcp-servers/
+# image-gen, which sits outside the Dockerfile's own directory).
+docker build -t praxis-sandbox-base:latest -f infrastructure/docker/sandbox-base/Dockerfile .
 ```
 
-Rebuild when the Dockerfile changes or to pick up a newer Claude Code CLI.
-There is no app state in the image — project files live in per-project Docker
-volumes (`praxis-project-<id>`), not the image.
+> ⚠️ The context changed from `infrastructure/docker/sandbox-base` to the repo
+> root in TASK-044 (so the bundled MCP server source is visible). Old muscle-
+> memory / scripts using the directory-as-context form will fail to find the
+> server source. Both CI workflows (`ci.yml` `integration`, `build-sandbox-base.yml`)
+> were updated to the `-f … .` form.
+
+Rebuild when the Dockerfile changes, when `infrastructure/mcp-servers/image-gen/`
+changes (the bundled server), or to pick up a newer Claude Code CLI. There is no
+app state in the image — project files live in per-project Docker volumes
+(`praxis-project-<id>`), not the image. Smoke-check after building:
+`docker run --rm praxis-sandbox-base:latest which praxis-mcp-image-gen`.
 
 ## Resource limits (per project_plan.md §6)
 
@@ -54,7 +69,15 @@ a volume prune / host rebuild).
 - [ ] Build the image on the VPS (command above) before the orchestrator starts
       creating sandboxes. CI builds it for the integration tests but does not
       push it; for prod, either build on the VPS or add a GHCR push + pull step
-      when the orchestrator's sandbox path lands.
+      when the orchestrator's sandbox path lands. The `build-sandbox-base.yml`
+      workflow rebuilds it on the VPS on pushes to `main` that touch the
+      Dockerfile or `infrastructure/mcp-servers/image-gen/`.
+- [ ] **(STORY-15) Rebuild + redeploy `sandbox-base`** after this lands so the
+      bundled image-gen server is present, then **paste the OpenAI platform key
+      in `/admin`** (if not already). Without both, image generation is disabled
+      (the orchestrator seeds no MCP config — clean degrade). Optional:
+      `PRAXIS_MCP_USAGE_URL` in `/etc/praxis/praxis.env` (defaults to
+      `http://praxis-orchestrator:4001/internal/mcp/usage`).
 - [ ] **Provision MinIO** (container + bucket) and add `MINIO_*` to
       `/etc/praxis/praxis.env` to enable durable snapshots. Until then,
       persistence is volume-only.

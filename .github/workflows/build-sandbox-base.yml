@@ -12,6 +12,9 @@ on:
     branches: [main]
     paths:
       - 'infrastructure/docker/sandbox-base/**'
+      # The image bundles the image-gen MCP server (STORY-15/TASK-044), so a
+      # change to its source must rebuild the image too.
+      - 'infrastructure/mcp-servers/image-gen/**'
       - '.github/workflows/build-sandbox-base.yml'
   workflow_dispatch:
 
@@ -30,7 +33,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Rebuild sandbox base image
-        run: docker build -t praxis-sandbox-base:latest infrastructure/docker/sandbox-base
+        # Build context is the repo root so the bundled image-gen server source
+        # (infrastructure/mcp-servers/image-gen) is visible to the build stage.
+        run: docker build -t praxis-sandbox-base:latest -f infrastructure/docker/sandbox-base/Dockerfile .
 
       - name: Summary
         if: always()

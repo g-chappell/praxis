@@ -5,8 +5,18 @@
 # (packages/sandbox) creates containers from it. The container stays alive on
 # `sleep infinity` so the orchestrator can exec/spawn into it on demand.
 #
-# Build:  docker build -t praxis-sandbox-base:latest infrastructure/docker/sandbox-base
+# Build context is the REPO ROOT (so the bundled MCP server source is visible):
+#   docker build -t praxis-sandbox-base:latest -f infrastructure/docker/sandbox-base/Dockerfile .
 
+# ── Stage 1: bundle the image-gen MCP server (STORY-15/TASK-044) ──────────────
+# esbuild produces a single self-contained index.mjs (deps inlined) so the final
+# image needs no node_modules / install step for the server.
+FROM node:20-bookworm AS mcp-build
+WORKDIR /build
+COPY infrastructure/mcp-servers/image-gen/ ./
+RUN npm install --no-audit --no-fund && npm run build
+
+# ── Stage 2: the sandbox runtime ──────────────────────────────────────────────
 FROM node:20-bookworm
 
 # Tooling per project_plan.md §6: git, common build tools, Python, and
@@ -30,6 +40,16 @@ RUN apt-get update \
 #    platform ANTHROPIC_API_KEY injected at spawn time — never a subscription
 #    OAuth token. Pinned so the protocol surface can't drift under us.
 RUN npm install -g @anthropic-ai/claude-code @agentclientprotocol/claude-agent-acp@0.39.0
+
+# The image-gen MCP server (STORY-15), baked as platform infra OUTSIDE /workspace
+# so it never lands in the user's git history. The orchestrator seeds a project
+# .mcp.json whose `command: praxis-mcp-image-gen` resolves to this wrapper on PATH
+# (ADR-0018). Secrets are NOT here — they arrive via the ephemeral cred file the
+# orchestrator writes at runtime (PRAXIS_MCP_CONFIG).
+COPY --from=mcp-build /build/dist/index.mjs /opt/praxis-mcp/image-gen/index.mjs
+RUN printf '#!/bin/sh\nexec node /opt/praxis-mcp/image-gen/index.mjs "$@"\n' \
+      > /usr/local/bin/praxis-mcp-image-gen \
+  && chmod +x /usr/local/bin/praxis-mcp-image-gen
 
 # Project files live here, mounted from a per-project Docker volume.
 WORKDIR /workspace

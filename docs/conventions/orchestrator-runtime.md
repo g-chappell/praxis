@@ -128,8 +128,15 @@ How to give the in-sandbox agent an MCP tool **without touching `packages/acp-ho
   (or `{"enabledMcpjsonServers":["<name>"]}`). Seed **both** at project creation.
   Claude Code spawns the server itself as a stdio child — no orchestrator sidecar.
 - Confirm with `claude mcp list` inside a `sandbox-base` container (`✓ Connected`).
-- The server binary is **baked into `sandbox-base`** (bundled), not seeded into
-  `/workspace` — platform infra stays out of the user's git.
+- The server binary is **baked into `sandbox-base`** (bundled, an esbuild single
+  file at `/opt/praxis-mcp/image-gen/index.mjs` exposed on PATH as
+  `praxis-mcp-image-gen`), not seeded into `/workspace` — platform infra stays
+  out of the user's git.
+- **As-built (TASK-044):** `services/orchestrator/src/mcp-seed.ts` writes `.mcp.json`
+  + `.claude/settings.json` (read-merged) via `Sandbox.writeFile`, gated on the
+  template's `template.json` `mcp_servers` declaring the server **and** an OpenAI
+  key being configured. `.mcp.json`'s `command` is `praxis-mcp-image-gen`, with a
+  non-secret `env.PRAXIS_MCP_CONFIG` pointing the server at the cred file below.
 
 ### Sandbox secret-handling (don't leak platform secrets into user space)
 
@@ -138,9 +145,15 @@ How to give the in-sandbox agent an MCP tool **without touching `packages/acp-ho
   only for the command/args). The `.praxis-agent` dir is git-excluded but *is* in the
   `/workspace` MinIO snapshot — also not safe for secrets.
 - Deliver per-session secrets (e.g. the platform OpenAI key) via an **ephemeral file
-  outside `/workspace`** (not git, not snapshotted), written with `sandbox.spawn`, that
-  the server reads on startup.
+  outside `/workspace`** (not git, not snapshotted), written with `Sandbox.writeFile`
+  (an absolute path passes through verbatim), that the server reads on startup. As-built:
+  `/run/praxis-mcp/config.json` = `{openaiApiKey, usageUrl, usageToken}`, named to the
+  server via `.mcp.json`'s `env.PRAXIS_MCP_CONFIG`. `/run` is ephemeral — re-seeded each
+  time `createProjectRoom` runs; a bare `docker restart` (not via the orchestrator) would
+  leave it stale.
 - **No DB creds in the sandbox.** For sandbox→platform operations (usage capping), the
   in-sandbox process calls a **token-gated orchestrator endpoint** (`POST /internal/mcp/usage`)
   with a per-room capability token (`runtime.ts`) that resolves to exactly one project —
-  the orchestrator owns the DB. Fail **closed** on a paid-API guard.
+  the orchestrator owns the DB. Fail **closed** on a paid-API guard. The endpoint host is
+  `PRAXIS_MCP_USAGE_URL` (default `http://praxis-orchestrator:4001/internal/mcp/usage` on
+  `praxis-net`).

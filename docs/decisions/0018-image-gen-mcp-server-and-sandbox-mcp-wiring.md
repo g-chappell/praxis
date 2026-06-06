@@ -1,7 +1,12 @@
 # 0018 — Image-gen MCP server + how MCP servers wire into the sandbox
 
 **Date:** 2026-06-05 (updated 2026-06-06)
-**Status:** Proposed — needs both-contributor confirmation (AGENTS.md: MCP-related work + a new external dependency each require an ADR + sign-off). Implements STORY-15. TASK-042 (server) + TASK-043 (usage cap) built; TASK-044 (sandbox wiring) pending the decision below. **Update 2026-06-06:** the multi-provider platform-keys dependency in §Decision 5 has since shipped as **STORY-38** (#309) — `platform_api_keys` now carries a `provider` column with a one-active-per-provider constraint, and `POST /sessions` already decrypts and plumbs the active OpenAI key into the room (`openaiKey`). TASK-044's blocker is therefore cleared.
+**Status:** Accepted (operator-confirmed 2026-06-06). Implements STORY-15: TASK-042 (server) + TASK-043 (usage cap) shipped in #310; TASK-044 (sandbox wiring) implemented per the decisions below. **Update 2026-06-06:** the multi-provider platform-keys dependency in §Decision 5 shipped as **STORY-38** (#309) — `platform_api_keys` carries a `provider` column with a one-active-per-provider constraint, and `POST /sessions` decrypts + plumbs the active OpenAI key into the room (`openaiKey`).
+
+**TASK-044 implementation notes:**
+- Secrets reach the in-sandbox server via an ephemeral cred file at **`/run/praxis-mcp/config.json`** (absolute, outside `/workspace` → never git/MinIO), written by the orchestrator (`services/orchestrator/src/mcp-seed.ts`) via `Sandbox.writeFile`. The server (`infrastructure/mcp-servers/image-gen/src/config.ts`) reads it on startup, env vars as fallback.
+- The project **`.mcp.json`** (seeded into `/workspace`, no secrets) points the server at the cred file via the non-secret `PRAXIS_MCP_CONFIG` env. Its `command: praxis-mcp-image-gen` resolves to a wrapper baked into `sandbox-base` (an esbuild single-file bundle at `/opt/praxis-mcp/image-gen/index.mjs`). The `${OPENAI_API_KEY}`-expansion idea hinted at in the original TASK-042 server comment is **superseded** by this cred-file approach (expansion would have required the secret in the agent's env).
+- Wiring is gated on the template declaring the server (`template.json` `mcp_servers`) **and** an OpenAI key being configured; absent either, nothing is seeded (clean degrade).
 
 ## Context
 

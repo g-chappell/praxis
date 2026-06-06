@@ -1,29 +1,32 @@
 #!/usr/bin/env node
-// image-gen MCP server (STORY-15/TASK-042). Exposes a `generate_image` tool over
-// stdio that Claude Code (in the sandbox) calls to create textures from a prompt.
-// Backed by the OpenAI Images API; the key comes from OPENAI_API_KEY in the env
-// (never committed — see the .mcp.json ${OPENAI_API_KEY} expansion in TASK-044).
+// image-gen MCP server (STORY-15). Exposes a `generate_image` tool over stdio
+// that Claude Code (in the sandbox) calls to create textures from a prompt,
+// backed by the OpenAI Images API. Config (OpenAI key + usage endpoint/token) is
+// resolved by ./config: the orchestrator delivers it via an ephemeral cred file
+// outside /workspace (ADR-0018/TASK-044), with plain env vars as the local-run
+// fallback. No secrets ever live in .mcp.json or the agent's spawn env.
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import OpenAI from 'openai';
 import { z } from 'zod';
 
+import { resolveConfig } from './config.js';
 import { generateImage, type ImagesClient } from './generate.js';
 import { checkUsageAllowed } from './usage.js';
 
-const WORKSPACE_ROOT = process.env.PRAXIS_WORKSPACE_ROOT ?? '/workspace';
-const TEXTURES_DIR = process.env.PRAXIS_TEXTURES_DIR ?? `${WORKSPACE_ROOT}/public/textures`;
-const MODEL = process.env.OPENAI_IMAGE_MODEL ?? 'gpt-image-1';
-// Usage-cap wiring (TASK-043): set by the orchestrator when it spawns the sandbox.
-const USAGE_URL = process.env.PRAXIS_MCP_USAGE_URL;
-const USAGE_TOKEN = process.env.PRAXIS_MCP_TOKEN;
+const cfg = resolveConfig(process.env);
+const WORKSPACE_ROOT = cfg.workspaceRoot;
+const TEXTURES_DIR = cfg.texturesDir;
+const MODEL = cfg.model;
+const USAGE_URL = cfg.usageUrl;
+const USAGE_TOKEN = cfg.usageToken;
 
 async function main(): Promise<void> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = cfg.openaiApiKey;
   if (!apiKey) {
     // stdout is the JSON-RPC channel — diagnostics go to stderr only.
-    console.error('[mcp-image-gen] OPENAI_API_KEY is not set; refusing to start');
+    console.error('[mcp-image-gen] no OpenAI API key configured; refusing to start');
     process.exit(1);
   }
   const client = new OpenAI({ apiKey }) as unknown as ImagesClient;

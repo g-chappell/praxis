@@ -12,6 +12,10 @@ export interface TemplateConfig {
   setup?: string;
   /** Dev-server command, e.g. `npm run dev` (from sandbox.json). */
   dev?: string;
+  /** MCP servers this template opts into (from template.json `mcp_servers`),
+   *  e.g. `["image-gen"]`. The orchestrator only wires a server when the
+   *  template declares it (STORY-15/TASK-044). */
+  mcpServers: string[];
 }
 
 function templatesDir(): string {
@@ -39,5 +43,8 @@ export function readTemplateConfig(templateId: string): TemplateConfig {
     previewPort: port,
     setup: typeof sandbox.setup === 'string' ? sandbox.setup : undefined,
     dev: typeof sandbox.dev === 'string' ? sandbox.dev : undefined,
+    mcpServers: Array.isArray(template.mcp_servers)
+      ? template.mcp_servers.filter((s): s is string => typeof s === 'string')
+      : [],
   };
 }
