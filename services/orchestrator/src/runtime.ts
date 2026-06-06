@@ -64,6 +64,12 @@ export interface SessionRoom {
   // call — the orchestrator (Bun) deliberately does NOT load libsodium, which
   // doesn't run under Bun. Held in memory only; never logged.
   apiKey: string;
+  // The decrypted platform OpenAI key for this session, when one is configured
+  // (STORY-38). Delivered the same way as apiKey (web decrypts, hands it over the
+  // internal POST /sessions call). Held in memory only; never logged. Consumed by
+  // the image-gen MCP wiring (STORY-15/TASK-044); undefined when no OpenAI key is
+  // set — image generation is simply unavailable.
+  openaiKey?: string;
   // The project's preview URL at room creation (null if registration failed),
   // returned to every user who joins so re-joiners share the creator's preview
   // without re-registering (STORY-32).
@@ -112,12 +118,14 @@ export function createRoom(
   handle: SandboxHandle,
   apiKey: string,
   previewUrl: string | null = null,
+  openaiKey?: string,
 ): SessionRoom {
   const room: SessionRoom = {
     sessionId,
     projectId,
     handle,
     apiKey,
+    openaiKey,
     previewUrl,
     sockets: new Set(),
     members: new Map(),

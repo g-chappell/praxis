@@ -59,11 +59,17 @@ import { deleteRoom, getRoomByProject } from '../src/runtime';
 
 const SECRET = 'test-secret';
 
-function post(projectId: string, userId: string, userName: string) {
+function post(projectId: string, userId: string, userName: string, openaiKey?: string) {
   return sessionsRoute.request('/', {
     method: 'POST',
     headers: { 'x-internal-secret': SECRET, 'content-type': 'application/json' },
-    body: JSON.stringify({ projectId, userId, userName, apiKey: 'sk-ant-test' }),
+    body: JSON.stringify({
+      projectId,
+      userId,
+      userName,
+      apiKey: 'sk-ant-test',
+      ...(openaiKey ? { openaiKey } : {}),
+    }),
   });
 }
 
@@ -138,6 +144,47 @@ describe('POST /sessions room reuse (STORY-32)', () => {
       expect(body1.sessionId).toBe(body2.sessionId);
       expect(startSpy).toHaveBeenCalledTimes(1);
       expect(insertSpy).toHaveBeenCalledTimes(1);
+    } finally {
+      const room = getRoomByProject(projectId);
+      if (room) deleteRoom(room.sessionId);
+    }
+  });
+});
+
+describe('POST /sessions OpenAI key (STORY-38)', () => {
+  it('holds the OpenAI key on the room when one is passed', async () => {
+    const projectId = 'openai-set';
+    try {
+      const res = await post(projectId, 'user-a', 'Ada', 'sk-openai-test');
+      expect(res.status).toBe(200);
+      expect(getRoomByProject(projectId)?.openaiKey).toBe('sk-openai-test');
+    } finally {
+      const room = getRoomByProject(projectId);
+      if (room) deleteRoom(room.sessionId);
+    }
+  });
+
+  it('creates the session normally with no OpenAI key (image-gen simply unavailable)', async () => {
+    const projectId = 'openai-absent';
+    try {
+      const res = await post(projectId, 'user-a', 'Ada');
+      expect(res.status).toBe(200);
+      const room = getRoomByProject(projectId);
+      expect(room).toBeDefined();
+      expect(room?.openaiKey).toBeUndefined();
+    } finally {
+      const room = getRoomByProject(projectId);
+      if (room) deleteRoom(room.sessionId);
+    }
+  });
+
+  it('keeps the first creator’s OpenAI key on room reuse', async () => {
+    const projectId = 'openai-reuse';
+    try {
+      await post(projectId, 'user-a', 'Ada', 'sk-openai-first');
+      await post(projectId, 'user-b', 'Babbage', 'sk-openai-second');
+      // Room reuse: the live room keeps the first key (matches apiKey semantics).
+      expect(getRoomByProject(projectId)?.openaiKey).toBe('sk-openai-first');
     } finally {
       const room = getRoomByProject(projectId);
       if (room) deleteRoom(room.sessionId);

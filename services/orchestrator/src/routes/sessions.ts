@@ -31,13 +31,17 @@ async function ensureRoom(
   projectId: string,
   templateId: string,
   apiKey: string,
+  openaiKey: string | undefined,
   seed: RoomSeed,
 ): Promise<SessionRoom> {
   const live = getRoomByProject(projectId);
+  // Room reuse: a second joiner attaches to the live room and its keys — the
+  // first creator's openaiKey (like apiKey) is the one held for the session's
+  // lifetime. A later joiner's key does not replace it.
   if (live) return live;
   const inflight = creating.get(projectId);
   if (inflight) return inflight;
-  const create = createProjectRoom(projectId, templateId, apiKey, seed).finally(() =>
+  const create = createProjectRoom(projectId, templateId, apiKey, openaiKey, seed).finally(() =>
     creating.delete(projectId),
   );
   creating.set(projectId, create);
@@ -57,6 +61,7 @@ async function createProjectRoom(
   projectId: string,
   templateId: string,
   apiKey: string,
+  openaiKey: string | undefined,
   seed: RoomSeed,
 ): Promise<SessionRoom> {
   // start() restores from MinIO if the volume is empty (ADR-0008).
@@ -100,7 +105,7 @@ async function createProjectRoom(
     .returning({ id: sessions.id });
   const sessionId = session!.id;
 
-  const room = createRoom(sessionId, projectId, handle, apiKey, previewUrl);
+  const room = createRoom(sessionId, projectId, handle, apiKey, previewUrl, openaiKey);
   // Seed the resume id so the first prompt's openAgent loads the prior
   // conversation via session/load (ADR-0017/STORY-36). Null on a project's first
   // ever session.
@@ -126,6 +131,7 @@ sessionsRoute.post('/', async (c) => {
     userName?: unknown;
     userImage?: unknown;
     apiKey?: unknown;
+    openaiKey?: unknown;
   } | null;
   const projectId = typeof body?.projectId === 'string' ? body.projectId : '';
   const userId = typeof body?.userId === 'string' ? body.userId : '';
@@ -134,6 +140,9 @@ sessionsRoute.post('/', async (c) => {
   // The web app decrypts the platform key (Node/libsodium) and passes it here —
   // the Bun orchestrator never loads libsodium. See runtime.ts SessionRoom.
   const apiKey = typeof body?.apiKey === 'string' ? body.apiKey : '';
+  // Optional OpenAI platform key for the image-gen MCP server (STORY-38). Absent
+  // when no OpenAI key is configured — sessions still run normally.
+  const openaiKey = typeof body?.openaiKey === 'string' ? body.openaiKey : undefined;
   if (!projectId || !userId || !apiKey) {
     return c.json({ error: 'bad_request' }, 400);
   }
@@ -156,7 +165,7 @@ sessionsRoute.post('/', async (c) => {
   // user joining an active project reuses the same session/sandbox/preview — only
   // their WS ticket is per-user, stamped with their identity for presence + chat.
   // The seed carries cross-session resume (STORY-36) + control mode/owner (STORY-34).
-  const room = await ensureRoom(projectId, project.templateId, apiKey, {
+  const room = await ensureRoom(projectId, project.templateId, apiKey, openaiKey, {
     agentSessionId: project.agentSessionId,
     controlMode: project.controlMode,
     ownerUserId: project.ownerUserId,

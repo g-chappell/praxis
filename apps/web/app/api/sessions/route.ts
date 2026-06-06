@@ -7,7 +7,7 @@
 import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 
-import { NoPlatformKeyError, getActivePlatformKey } from '@praxis/keys';
+import { NoPlatformKeyError, getActivePlatformKey, tryGetActivePlatformKey } from '@praxis/keys';
 
 import { getAuth } from '@/lib/auth';
 import { userOwnsProject } from '@/lib/projects';
@@ -53,6 +53,11 @@ export async function POST(req: NextRequest) {
     throw err;
   }
 
+  // The OpenAI platform key is optional (STORY-38): when set, decrypt it (same
+  // Node/libsodium path) and pass it alongside the Anthropic key for the image-gen
+  // MCP server. Absent → omit; the session still runs (image-gen unavailable).
+  const openaiKey = await tryGetActivePlatformKey('openai');
+
   const res = await fetch(`${orchestratorUrl}/sessions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-internal-secret': internalSecret },
@@ -62,6 +67,7 @@ export async function POST(req: NextRequest) {
       userName: session.user.name || session.user.email,
       userImage: session.user.image ?? null,
       apiKey,
+      ...(openaiKey ? { openaiKey } : {}),
     }),
   }).catch(() => null);
 
