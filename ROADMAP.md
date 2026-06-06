@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 26 / 41 (63%)
 - **Total tasks:** 120
-- **Done:** 91 (76%)
-- **Ready:** 29
+- **Done:** 92 (77%)
+- **Ready:** 28
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1833,7 +1833,7 @@ addition to the Sandbox interface (ADR + sign-off).
   - Full-text search over file contents or descriptions (name only).
   - Server-side pagination (client filter/sort is sufficient at POC scale).
   - Saved filters / per-user default sort persistence.
-  - :black_circle: **TASK-115** — lib + API: sort param on the project list  `med` `small` _(apps/web)_
+  - :white_check_mark: **TASK-115** — lib + API: sort param on the project list  `med` `small` _(apps/web)_
     > listUserProjects(userId, {status, sort}) supporting
     > recent|oldest|name, default recent, composing with status.
     _Task AC:_

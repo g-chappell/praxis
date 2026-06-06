@@ -2925,7 +2925,7 @@ epics:
         tasks:
           - id: TASK-115
             title: "lib + API: sort param on the project list"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -2934,6 +2934,7 @@ epics:
               recent|oldest|name, default recent, composing with status.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-06T12:32:00Z'
             is_terminal: false
             task_acceptance:
               - "Each sort returns the documented order; defaults to recent; covered by a lib test."
