@@ -2838,7 +2838,7 @@ epics:
         tasks:
           - id: TASK-111
             title: "db: add nullable archived_at timestamptz to projects"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -2847,6 +2847,7 @@ epics:
               Drizzle migration + codegen.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-06T12:14:00Z'
             is_terminal: false
             task_acceptance:
               - "Nullable column added; existing rows read null; drift check passes."

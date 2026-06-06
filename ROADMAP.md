@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 26 / 41 (63%)
 - **Total tasks:** 120
-- **Done:** 87 (73%)
-- **Ready:** 33
+- **Done:** 88 (73%)
+- **Ready:** 32
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1787,7 +1787,7 @@ addition to the Sandbox interface (ADR + sign-off).
   - Auto-archiving by inactivity (manual only this pass).
   - Forcibly destroying the sandbox container on archive (idle sweep handles it).
   - Bulk archive / multi-select.
-  - :black_circle: **TASK-111** — db: add nullable archived_at timestamptz to projects  `high` `small` _(packages/db)_
+  - :white_check_mark: **TASK-111** — db: add nullable archived_at timestamptz to projects  `high` `small` _(packages/db)_
     > Add a nullable archived_at timestamptz column; null = active.
     > Drizzle migration + codegen.
     _Task AC:_
