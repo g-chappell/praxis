@@ -3118,7 +3118,7 @@ epics:
               - "Migration creates audit_log + the audit_action enum; codegen regenerates types; existing rows unaffected."
           - id: TASK-123
             title: "lib: recordAudit() helper + wire existing web emissions"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3131,6 +3131,7 @@ epics:
               does not break the action.
             depends_on: [TASK-122]
             attempt_count: 0
+            completed: '2026-06-06T15:39:00Z'
             is_terminal: false
             task_acceptance:
               - "Each wired action persists an audit_log row with the correct action+target+actor; an audit failure does not 500 the action; covered by tests."
