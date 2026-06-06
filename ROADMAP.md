@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 29 / 49 (59%)
+- **Features verified:** 30 / 49 (61%)
 - **Total tasks:** 149
-- **Done:** 103 (69%)
-- **Ready:** 46
+- **Done:** 104 (70%)
+- **Ready:** 45
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1516,7 +1516,7 @@ flags, observability) mount into.
     - Settings UI no longer implies OAuth powers sessions; docs note the reserved role.
     - STORY-24 acceptance_criteria satisfied.
 
-- **STORY-38** — Multi-provider platform keys (OpenAI alongside Anthropic)
+- **STORY-38** — Multi-provider platform keys (OpenAI alongside Anthropic)  [:white_check_mark: verified]
   > Makes platform_api_keys multi-provider so external-API keys are managed
   > exactly like the platform Anthropic key (admin UI, encrypted at rest,
   > rotatable, role-gated). Driven by STORY-15: the image-gen MCP server
@@ -1551,7 +1551,7 @@ flags, observability) mount into.
     > client bundles or logs.
     _Task AC:_
     - An admin can set + rotate the OpenAI key from /admin; a non-admin is refused server-side; the value is never returned in plaintext.
-  - :black_circle: **TASK-106** :checkered_flag: — POST /sessions: decrypt + pass the active OpenAI key to the orchestrator  `high` `small` _(apps/web, services/orchestrator)_  
+  - :white_check_mark: **TASK-106** :checkered_flag: — POST /sessions: decrypt + pass the active OpenAI key to the orchestrator  `high` `small` _(apps/web, services/orchestrator)_  
     _depends on: TASK-104_
     > In the web /api/sessions handler, also decrypt the active OpenAI
     > platform key (Node/libsodium, like the Anthropic key) and pass it to

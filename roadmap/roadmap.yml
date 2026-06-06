@@ -2407,6 +2407,7 @@ epics:
           (operator decision 2026-06-05 + ADR-0018). Reuses the STORY-20/21 admin +
           crypto posture, adding a provider dimension. TASK-044 (STORY-15) depends
           on this.
+        verified_at: '2026-06-06T16:40:00Z'
         acceptance_criteria:
           - "platform_api_keys is keyed by provider ('anthropic' | 'openai') with at most one ACTIVE key per provider; the migration backfills existing rows to 'anthropic'."
           - "The admin platform-keys page manages the OpenAI key alongside Anthropic — paste / rotate / deactivate, value shown masked, role-gated server-side; getActivePlatformKey('openai') returns the decrypted key."
@@ -2418,7 +2419,7 @@ epics:
         out_of_scope:
           - "Per-user or per-project external keys (platform-owned only, POC)."
           - "Providers beyond Anthropic + OpenAI."
-        feature_complete: null
+        feature_complete: verified
         tasks:
           - id: TASK-104
             title: "DB + key service: platform_api_keys provider column + per-provider active + accessor"
@@ -2456,7 +2457,7 @@ epics:
               - "An admin can set + rotate the OpenAI key from /admin; a non-admin is refused server-side; the value is never returned in plaintext."
           - id: TASK-106
             title: "POST /sessions: decrypt + pass the active OpenAI key to the orchestrator"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web", "services/orchestrator"]
@@ -2468,6 +2469,7 @@ epics:
               omit, no error.
             depends_on: [TASK-104]
             attempt_count: 0
+            completed: '2026-06-06T16:40:00Z'
             is_terminal: true
             task_acceptance:
               - "When an OpenAI key is active, POST /sessions includes it (never logged); the orchestrator receives it. With none set, the session is created normally."
