@@ -12,7 +12,9 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  date,
   index,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -285,6 +287,24 @@ export const learningLinks = pgTable('learning_links', {
   source: text('source'),
   addedAt: timestamp('added_at', { withTimezone: true }).defaultNow(),
 });
+
+// ─── mcp_usage ────────────────────────────────────────────────────────
+// Per-project, per-day, per-tool call counter for MCP tools (STORY-15/TASK-043).
+// The orchestrator increments + cap-checks this on behalf of the in-sandbox MCP
+// server (which never touches the DB directly — no creds in the sandbox). PK is
+// (project_id, tool, day) so each day starts fresh.
+export const mcpUsage = pgTable(
+  'mcp_usage',
+  {
+    projectId: uuid('project_id')
+      .references(() => projects.id, { onDelete: 'cascade' })
+      .notNull(),
+    tool: text('tool').notNull(),
+    day: date('day').notNull(),
+    count: integer('count').notNull().default(0),
+  },
+  (table) => [primaryKey({ columns: [table.projectId, table.tool, table.day] })],
+);
 
 // `sql` is imported above so `defaultRandom()` (which emits gen_random_uuid())
 // works on PG13+ without the pgcrypto extension. PG16 ships gen_random_uuid

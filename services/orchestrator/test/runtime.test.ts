@@ -14,6 +14,7 @@ import {
   createRoom,
   deleteRoom,
   getRoom,
+  getRoomByMcpToken,
   getRoomByProject,
   mintTicket,
   scheduleRoomTeardown,
@@ -110,6 +111,21 @@ describe('rooms', () => {
 
     deleteRoom('sess-rb');
     expect(getRoomByProject('proj-rb')).toBeUndefined();
+  });
+
+  it('mints a unique MCP token per room, resolvable to the room until delete (STORY-15)', () => {
+    const handle = { projectId: 'proj-mcp', containerId: 'c1' };
+    const a = createRoom('sess-mcp-a', 'proj-mcp', handle, 'sk');
+    const b = createRoom('sess-mcp-b', 'proj-mcp-2', handle, 'sk');
+    expect(a.mcpToken).toBeTruthy();
+    expect(a.mcpToken).not.toBe(b.mcpToken);
+    expect(getRoomByMcpToken(a.mcpToken)?.projectId).toBe('proj-mcp');
+    expect(getRoomByMcpToken('nope')).toBeUndefined();
+
+    deleteRoom('sess-mcp-a');
+    expect(getRoomByMcpToken(a.mcpToken)).toBeUndefined(); // token revoked on delete
+    expect(getRoomByMcpToken(b.mcpToken)?.projectId).toBe('proj-mcp-2');
+    deleteRoom('sess-mcp-b');
   });
 });
 
