@@ -13,6 +13,7 @@ import type { ChatAuthor } from '@/components/workspace/chat-message';
 import { ChatPanel } from '@/components/workspace/chat-panel';
 import { CodeEditor } from '@/components/workspace/code-editor';
 import { FileTree } from '@/components/workspace/file-tree';
+import { GitPanel } from '@/components/workspace/git-panel';
 import { InviteButton } from '@/components/workspace/invite-button';
 import { ControlBar } from '@/components/workspace/control-bar';
 import { PresenceBar } from '@/components/workspace/presence-bar';
@@ -86,7 +87,7 @@ function ResizablePanels({
         </div>
         <div className="w-1 bg-border" />
         <div className="flex min-w-0 basis-[52%] flex-col">
-          <EditorPane />
+          <EditorPane projectId={projectId} />
         </div>
         <div className="w-1 bg-border" />
         <div className="flex min-w-0 basis-[28%] flex-col">
@@ -110,7 +111,7 @@ function ResizablePanels({
       <ResizeHandle />
 
       <Panel id="editor" defaultSize="52%" minSize="30%" className="flex min-w-0 flex-col">
-        <EditorPane />
+        <EditorPane projectId={projectId} />
       </Panel>
 
       <ResizeHandle />
@@ -138,8 +139,8 @@ function FilesPane({ projectId }: { projectId: string }) {
   );
 }
 
-function EditorPane() {
-  const [tab, setTab] = useState<'editor' | 'preview'>('editor');
+function EditorPane({ projectId }: { projectId: string }) {
+  const [tab, setTab] = useState<'editor' | 'preview' | 'git'>('editor');
   return (
     <>
       <div className="flex items-center gap-1 border-b px-2 py-1">
@@ -149,15 +150,24 @@ function EditorPane() {
         <PaneTab active={tab === 'preview'} onClick={() => setTab('preview')}>
           Preview
         </PaneTab>
+        <PaneTab active={tab === 'git'} onClick={() => setTab('git')}>
+          Git
+        </PaneTab>
       </div>
-      {/* Keep both mounted (hide the inactive one) so the preview's running app
-          isn't reloaded on every tab switch. */}
+      {/* Keep editor + preview mounted (hide the inactive one) so the preview's
+          running app isn't reloaded on every tab switch. The Git panel mounts
+          on demand so it fetches fresh history each time it's opened. */}
       <div className={cn('min-h-0 flex-1', tab !== 'editor' && 'hidden')}>
         <CodeEditor />
       </div>
       <div className={cn('min-h-0 flex-1', tab !== 'preview' && 'hidden')}>
         <PreviewPane />
       </div>
+      {tab === 'git' && (
+        <div className="relative min-h-0 flex-1">
+          <GitPanel projectId={projectId} />
+        </div>
+      )}
     </>
   );
 }
