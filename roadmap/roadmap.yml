@@ -2908,6 +2908,8 @@ epics:
           Make a growing project list navigable: search by name, sort by
           recent/oldest/name, and switch active vs archived. Builds on the
           metadata (STORY-39) and the status filter (STORY-40).
+        verified_at: '2026-06-06T12:36:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "A search box filters the visible list by name (case-insensitive substring); clearing it restores the full list."
           - "A sort control offers Recent (default), Oldest, and Name (A–Z); the order updates immediately."
@@ -2940,7 +2942,7 @@ epics:
               - "Each sort returns the documented order; defaults to recent; covered by a lib test."
           - id: TASK-116
             title: "UI: search box + sort control + Active/Archived tabs"
-            status: ready
+            status: done
             priority: med
             complexity: medium
             workspaces: ["apps/web"]
@@ -2951,6 +2953,7 @@ epics:
               lists.
             depends_on: [TASK-115]
             attempt_count: 0
+            completed: '2026-06-06T12:36:00Z'
             is_terminal: true
             task_acceptance:
               - "Typing narrows the list; sort reorders; no-match state renders; component test covers filter + sort + empty states."
