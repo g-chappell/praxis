@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 26 / 41 (63%)
+- **Features verified:** 27 / 41 (66%)
 - **Total tasks:** 120
-- **Done:** 91 (76%)
-- **Ready:** 29
+- **Done:** 93 (78%)
+- **Ready:** 27
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1815,7 +1815,7 @@ addition to the Sandbox interface (ADR + sign-off).
     - e2e passes the full archive→restore round-trip.
     - STORY-40 acceptance_criteria satisfied.
 
-- **STORY-41** — Dashboard search, sort, and filter
+- **STORY-41** — Dashboard search, sort, and filter  [:white_check_mark: verified]
   > Make a growing project list navigable: search by name, sort by
   > recent/oldest/name, and switch active vs archived. Builds on the
   > metadata (STORY-39) and the status filter (STORY-40).
@@ -1833,12 +1833,12 @@ addition to the Sandbox interface (ADR + sign-off).
   - Full-text search over file contents or descriptions (name only).
   - Server-side pagination (client filter/sort is sufficient at POC scale).
   - Saved filters / per-user default sort persistence.
-  - :black_circle: **TASK-115** — lib + API: sort param on the project list  `med` `small` _(apps/web)_
+  - :white_check_mark: **TASK-115** — lib + API: sort param on the project list  `med` `small` _(apps/web)_
     > listUserProjects(userId, {status, sort}) supporting
     > recent|oldest|name, default recent, composing with status.
     _Task AC:_
     - Each sort returns the documented order; defaults to recent; covered by a lib test.
-  - :black_circle: **TASK-116** :checkered_flag: — UI: search box + sort control + Active/Archived tabs  `med` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-116** :checkered_flag: — UI: search box + sort control + Active/Archived tabs  `med` `medium` _(apps/web)_  
     _depends on: TASK-115_
     > Add the search input, sort dropdown, and wire the tabs from
     > STORY-40; client-side filter/sort over the loaded list; no-match

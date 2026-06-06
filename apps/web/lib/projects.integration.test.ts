@@ -12,6 +12,8 @@ import { describe, expect, it } from 'vitest';
 import { projects, teamMemberships, teams, users } from '@praxis/db';
 import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
 
+import { eq } from 'drizzle-orm';
+
 import { listUserProjects, setProjectArchived, updateProject } from './projects';
 
 const describeDb = dbTestsEnabled() ? describe : describe.skip;
@@ -137,6 +139,38 @@ describeDb('setProjectArchived + listUserProjects status filter (real DB)', () =
       expect(await setProjectArchived(stranger, projectId, true, db)).toBe(false);
       const active = await listUserProjects(owner, { status: 'active' }, db);
       expect(active.map((p) => p.id)).toContain(projectId);
+    });
+  });
+});
+
+describeDb('listUserProjects sort order (real DB)', () => {
+  it('orders by recent (default), oldest, and name', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const { teamId } = await seedTeamWithProject(db, owner);
+      // Drop the seeded 'P' so only our three controlled rows remain.
+      await db.delete(projects).where(eq(projects.teamId, teamId));
+
+      // Insert with explicit, distinct createdAt so ordering is deterministic.
+      const rows = [
+        { name: 'Banana', createdAt: new Date('2026-01-02T00:00:00Z') },
+        { name: 'Apple', createdAt: new Date('2026-01-03T00:00:00Z') },
+        { name: 'Cherry', createdAt: new Date('2026-01-01T00:00:00Z') },
+      ];
+      for (const r of rows) {
+        await db
+          .insert(projects)
+          .values({ teamId, templateId: 'react-threejs-scene', createdBy: owner, ...r });
+      }
+
+      const recent = await listUserProjects(owner, { sort: 'recent' }, db);
+      expect(recent.map((p) => p.name)).toEqual(['Apple', 'Banana', 'Cherry']);
+
+      const oldest = await listUserProjects(owner, { sort: 'oldest' }, db);
+      expect(oldest.map((p) => p.name)).toEqual(['Cherry', 'Banana', 'Apple']);
+
+      const byName = await listUserProjects(owner, { sort: 'name' }, db);
+      expect(byName.map((p) => p.name)).toEqual(['Apple', 'Banana', 'Cherry']);
     });
   });
 });

@@ -3,10 +3,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { AppNav } from '@/components/app-nav';
-import { ArchiveProjectButton } from '@/components/archive-project-button';
 import { CreateProjectForm } from '@/components/create-project-form';
-import { DeleteProjectButton } from '@/components/delete-project-button';
-import { EditProjectButton } from '@/components/edit-project-button';
+import { ProjectList } from '@/components/project-list';
 import { getAuth } from '@/lib/auth';
 import { listUserProjects, parseProjectStatus } from '@/lib/projects';
 
@@ -78,52 +76,7 @@ export default async function DashboardPage({
           })}
         </div>
 
-        {projects.length === 0 ? (
-          <div className="rounded-md border border-dashed px-6 py-12 text-center">
-            <p className="text-sm text-muted-foreground">
-              {status === 'archived'
-                ? 'No archived projects.'
-                : 'No projects yet. Start one to build with the agent.'}
-            </p>
-          </div>
-        ) : (
-          <ul className="divide-y rounded-md border">
-            {projects.map((p) => (
-              <li key={p.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <Link href={`/projects/${p.id}`} className="min-w-0 flex-1 hover:underline">
-                  <span className="block truncate font-medium">{p.name}</span>
-                  {p.description && (
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {p.description}
-                    </span>
-                  )}
-                  {p.createdAt && (
-                    <span className="text-xs text-muted-foreground">
-                      Created {p.createdAt.toISOString().slice(0, 10)}
-                    </span>
-                  )}
-                </Link>
-                <div className="flex shrink-0 items-center gap-2">
-                  <Link
-                    href={`/projects/${p.id}`}
-                    className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent"
-                  >
-                    Open
-                  </Link>
-                  {p.archivedAt === null && (
-                    <EditProjectButton projectId={p.id} name={p.name} description={p.description} />
-                  )}
-                  <ArchiveProjectButton
-                    projectId={p.id}
-                    projectName={p.name}
-                    archived={p.archivedAt !== null}
-                  />
-                  <DeleteProjectButton projectId={p.id} projectName={p.name} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ProjectList projects={projects} status={status} />
       </main>
     </>
   );
