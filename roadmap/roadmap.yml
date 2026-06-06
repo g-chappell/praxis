@@ -3067,3 +3067,619 @@ epics:
             task_acceptance:
               - "e2e passes asserting the copy has the source's files and is independent of the original."
               - "STORY-42 acceptance_criteria satisfied."
+
+  - id: EPIC-08
+    title: "Admin console: accountability & moderation"
+    description: |
+      Extends the EPIC-05 admin shell (STORY-20/21) from a single API-key page
+      into a real admin console. Today admins cannot see other users' projects,
+      administer users, ban abusers, or answer "what happened" (destructive
+      actions only console.info to stdout; the events table is chat-only). This
+      epic adds a queryable audit trail, an all-projects directory with
+      moderation, user administration with roles, bans + an email/domain
+      blocklist, an activity-log viewer, and a health overview. Every
+      /api/admin/* route is role-gated server-side; admin actions never widen the
+      ownership helpers; destructive actions require a reason and are audit-logged.
+    stories:
+      - id: STORY-43
+        title: "Audit log foundation"
+        description: |
+          The accountability backbone — a queryable audit_log every
+          admin/destructive action writes to. Plumbing only; the viewer is a
+          later story (STORY-47).
+        acceptance_criteria:
+          - "A new audit_log row is written for every wired action (project.deleted/archived/restored/updated/duplicated, api_key.rotated), capturing actorUserId, action, targetType, targetId, metadata jsonb, ip, and createdAt."
+          - "Audit rows are queryable by actor, by target (type+id), and by time range via a lib helper."
+          - "Existing console.info stdout logs are preserved (the audit row is added, not a replacement)."
+        user_flow: null
+        out_of_scope:
+          - "The audit viewer UI (STORY-47)."
+          - "Retention / rotation / archival of audit rows."
+          - "Backfilling historical actions that predate this table."
+        tasks:
+          - id: TASK-122
+            title: "db: audit_log table + audit_action enum + migration + codegen"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["packages/db"]
+            description: |
+              Add audit_log (id uuid pk, actor_user_id uuid fk users, action
+              audit_action enum, target_type text, target_id text, metadata
+              jsonb, ip text nullable, created_at timestamptz default now). A
+              pgEnum audit_action covers the wired actions with room to grow.
+              drizzle migration + db:codegen.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Migration creates audit_log + the audit_action enum; codegen regenerates types; existing rows unaffected."
+          - id: TASK-123
+            title: "lib: recordAudit() helper + wire existing web emissions"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              recordAudit(actorUserId, action, {targetType, targetId, metadata,
+              ip}) inserts a row (injectable db for tests). Wire the existing
+              console.info emission sites (project [id] route delete/patch
+              archive+restore+update, duplicate route, admin api-keys rotate) to
+              also call recordAudit. Non-fatal: an audit insert failure logs but
+              does not break the action.
+            depends_on: [TASK-122]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Each wired action persists an audit_log row with the correct action+target+actor; an audit failure does not 500 the action; covered by tests."
+          - id: TASK-124
+            title: "test: real-Postgres integration for recordAudit + query helpers"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              RUN_DB_TESTS=1 integration — recordAudit writes; query-by-actor /
+              target / time returns the expected rows.
+            depends_on: [TASK-123]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Integration test asserts persistence + the three query dimensions."
+              - "STORY-43 acceptance_criteria satisfied."
+      - id: STORY-44
+        title: "Admin projects directory + moderation"
+        description: |
+          An admin sees every project (any owner) and can archive/delete any of
+          them, audit-logged with a reason.
+        acceptance_criteria:
+          - "An admin sees every project regardless of ownership with owner, members, status (active/archived), created, and last activity; the list is searchable by name/owner and sortable."
+          - "An admin can archive or delete ANY project from the admin UI with a required reason; it performs the same cleanup as the owner path (delete destroys the sandbox) and writes an audit_log row."
+          - "All /api/admin/projects* routes return 403 for non-admins and never widen the ownership helpers."
+        user_flow:
+          - "Admin opens /admin -> Projects"
+          - "Sees a searchable/sortable table of all projects (owner, members count, status, last activity)"
+          - "Opens a project -> detail (members, sessions, recent activity)"
+          - "Archives or deletes it with a confirm + reason; the row updates and the action is audited"
+        out_of_scope:
+          - "Editing project content/files as admin."
+          - "Transferring ownership between teams."
+          - "Bulk actions / multi-select."
+        tasks:
+          - id: TASK-125
+            title: "lib + API: GET /api/admin/projects (all projects + owner + members + status)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              adminListProjects() joins projects -> teams (owner via createdBy)
+              -> teamMemberships (members) -> latest activity (sessions/events).
+              GET /api/admin/projects role-gated via isUserAdmin; supports ?q and
+              ?sort.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "200 for admin returns all projects with owner+members+status; 403 for non-admin; covered by tests."
+          - id: TASK-126
+            title: "lib + API: admin archive/delete any project (audit-logged, reason)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              New role-authorized PATCH+DELETE /api/admin/projects/[id] that
+              bypass ownership (admin authz, NOT userOwnsProject) and reuse
+              setProjectArchived/deleteProject internals + the orchestrator
+              destroy; require a reason; recordAudit.
+            depends_on: [TASK-123, TASK-125]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Admin archives/deletes a non-owned project; reason required; audit row written; 403 for non-admin; tests."
+          - id: TASK-127
+            title: "UI: /admin/projects table + project detail"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              /admin/projects searchable/sortable table; /admin/projects/[id]
+              detail (members, sessions, recent activity) with archive/delete
+              actions (confirm + reason).
+            depends_on: [TASK-125]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Table lists all projects, search+sort work; detail shows members+activity; actions call the admin endpoints; component tests."
+          - id: TASK-128
+            title: "e2e: admin lists all projects + archives one"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Admin signs in, opens /admin/projects, sees a project owned by
+              another user, archives it with a reason; asserts it moves to
+              archived + an audit entry exists.
+            depends_on: [TASK-126, TASK-127]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "e2e passes the admin archive-with-reason flow."
+              - "STORY-44 acceptance_criteria satisfied."
+      - id: STORY-45
+        title: "Admin users directory + role management"
+        description: |
+          List/search all users, view a user's detail, and manage admin roles
+          with safety guards.
+        acceptance_criteria:
+          - "An admin lists and searches all users (email, role, created, project count, banned status) and opens a user detail showing their teams/projects, sessions, and recent activity."
+          - "An admin promotes/demotes a user's role; the system blocks self-demotion and blocks removing the last remaining admin; every role change is audit-logged."
+          - "All /api/admin/users* routes are 403 for non-admins."
+        user_flow:
+          - "Admin opens /admin -> Users"
+          - "Searches/sorts the user list"
+          - "Opens a user -> detail (projects, sessions, activity, role, banned status)"
+          - "Promotes or demotes their role (guarded); the change is audited"
+        out_of_scope:
+          - "Creating users / editing profile fields (name, email)."
+          - "Ban/unban (STORY-46)."
+        tasks:
+          - id: TASK-129
+            title: "lib + API: GET /api/admin/users + GET /api/admin/users/[id] detail"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              adminListUsers() (email, role, createdAt, project count, bannedAt)
+              with ?q; adminGetUser(id) detail (teams/projects, sessions, recent
+              audit/activity). Role-gated.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "List returns all users w/ counts; detail returns the user's projects+activity; 403 non-admin; tests."
+          - id: TASK-130
+            title: "lib + API: role promote/demote with guards (audit-logged)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              PATCH /api/admin/users/[id] {role}; reject self-demotion and
+              last-admin removal (count admins); recordAudit.
+            depends_on: [TASK-123, TASK-129]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Promote/demote works; self-demote 4xx; demoting the last admin 4xx; audit row; tests."
+          - id: TASK-131
+            title: "UI: /admin/users list + user detail"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              /admin/users searchable list; /admin/users/[id] detail with role
+              control (guarded) + sections for projects/sessions/activity.
+            depends_on: [TASK-129]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "List searches; detail renders sections; role control calls the endpoint and reflects guards; component tests."
+          - id: TASK-132
+            title: "e2e: list users + promote/demote with guard"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Admin lists users, promotes a user to admin, then is blocked from
+              demoting themselves / the last admin.
+            depends_on: [TASK-130, TASK-131]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "e2e passes promote + guard."
+              - "STORY-45 acceptance_criteria satisfied."
+      - id: STORY-46
+        title: "Ban users + email/domain blocklist"
+        description: |
+          Soft-ban abusive users (revoke sessions + block sign-in) and block
+          emails/domains at the magic-link gate.
+        acceptance_criteria:
+          - "An admin bans a user with a reason; their active sessions are revoked (authSession rows deleted) and any future magic-link sign-in is rejected with a clear message; unban restores access."
+          - "An admin adds an email or domain to a blocklist; a matching address cannot request a magic link or sign up (blocked at the sendMagicLink gate, apps/web/lib/auth.ts), with a friendly message; admins can manage (list/add/remove) entries."
+          - "Admins cannot ban themselves or the last remaining admin; ban/unban and blocklist changes are audit-logged."
+        user_flow:
+          - "Admin opens a user detail -> Ban (reason); the user is signed out everywhere and can't sign back in"
+          - "Admin opens /admin/blocklist -> adds an email or domain"
+          - "A blocklisted person requesting a link sees a friendly 'not permitted' message and no email is sent"
+          - "Admin removes the entry / unbans to restore access"
+        out_of_scope:
+          - "Appeals workflow / user-facing ban notices beyond the sign-in message."
+          - "Timed/temporary bans; IP-based blocking."
+          - "Rate-limiting (separate concern)."
+        tasks:
+          - id: TASK-133
+            title: "db: users.banned_at + ban_reason; email_blocklist table + migration + codegen"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["packages/db"]
+            description: |
+              ALTER users ADD banned_at timestamptz, ban_reason text; new
+              email_blocklist (id, value text unique [email or domain], is_domain
+              boolean, reason text, added_by uuid fk users, created_at).
+              migration + codegen.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Columns + table added (nullable/clean); codegen; existing rows unaffected."
+          - id: TASK-134
+            title: "auth: enforce ban + blocklist at the magic-link gate + revoke sessions on ban"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              In sendMagicLink (auth.ts) reject blocklisted email/domain + banned
+              users before sending (friendly error, no email). On ban, delete the
+              user's authSession rows. Add a banned check on session resolution
+              so a live session can't act post-ban.
+            depends_on: [TASK-133]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Blocklisted email -> no link sent + friendly error; banned user's sessions deleted and sign-in rejected; covered by tests."
+          - id: TASK-135
+            title: "lib + API: ban/unban + blocklist CRUD (guards, audit-logged)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              PATCH /api/admin/users/[id] {banned, reason} with self/last-admin
+              guards; /api/admin/blocklist GET/POST/DELETE. recordAudit on all.
+            depends_on: [TASK-133, TASK-123]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Ban/unban + blocklist CRUD work; self/last-admin ban 4xx; audit rows; 403 non-admin; tests."
+          - id: TASK-136
+            title: "UI: ban/unban on user detail + /admin/blocklist CRUD"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Ban/unban control (reason) on the user detail; /admin/blocklist
+              page to list/add/remove entries.
+            depends_on: [TASK-135]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Ban control calls the endpoint w/ reason; blocklist page CRUD works; component tests."
+          - id: TASK-137
+            title: "e2e: banned user can't sign in; blocklisted email can't request a link"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Admin bans a user -> that user's new magic-link sign-in is
+              rejected; admin blocklists an email -> requesting a link for it
+              sends nothing and shows the friendly message.
+            depends_on: [TASK-134, TASK-135, TASK-136]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "e2e passes both enforcement paths."
+              - "STORY-46 acceptance_criteria satisfied."
+      - id: STORY-47
+        title: "Audit log viewer"
+        description: |
+          The logging UI — a queryable, filterable view over audit_log.
+        acceptance_criteria:
+          - "/admin/activity lists audit entries newest-first with filters for actor, target type/id, action, and time range, plus pagination."
+          - "Project and user detail pages (STORY-44/45) link to their scoped audit view (pre-filtered by target)."
+          - "A no-match state is shown distinctly from an empty (no audit yet) state."
+        user_flow:
+          - "Admin opens /admin -> Activity"
+          - "Filters by actor / action / target / time; the list updates"
+          - "From a project or user detail, clicks 'View activity' -> /admin/activity pre-filtered to that target"
+        out_of_scope:
+          - "CSV/JSON export."
+          - "Real-time streaming / live tail."
+          - "Editing or deleting audit entries (append-only)."
+        tasks:
+          - id: TASK-138
+            title: "lib + API: GET /api/admin/audit with filters + pagination"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              adminQueryAudit({actor, targetType, targetId, action, from, to,
+              limit, offset}) + GET /api/admin/audit role-gated; joins actor
+              email for display.
+            depends_on: [TASK-122]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Filters compose; pagination works; 403 non-admin; tests."
+          - id: TASK-139
+            title: "UI: /admin/activity table + filters + scoped links"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              /admin/activity filterable table; add 'View activity' links on
+              project/user detail pages that deep-link with target filters; empty
+              vs no-match states.
+            depends_on: [TASK-138]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Filters narrow the list; scoped deep-links work; both empty states render; component test."
+              - "STORY-47 acceptance_criteria satisfied."
+      - id: STORY-48
+        title: "Admin overview / platform health"
+        description: |
+          Replace the placeholder admin landing with a live health + activity
+          overview.
+        acceptance_criteria:
+          - "/admin landing shows live counts: users, projects (active/archived), running sandboxes (from the orchestrator), platform-key status per provider, and the most recent admin actions."
+          - "If the orchestrator is unreachable, the sandbox/health tiles degrade gracefully (show 'unavailable') without breaking the page."
+        user_flow:
+          - "Admin opens /admin and sees the overview dashboard with counts, key status, running sandboxes, and recent activity"
+          - "Clicks through tiles to the relevant section (projects / users / activity / api-keys)"
+        out_of_scope:
+          - "Historical charts / time-series."
+          - "Alerting / notifications / paging."
+        tasks:
+          - id: TASK-140
+            title: "orchestrator: internal endpoint for running-sandbox count + health"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              Internal-secret-gated GET /admin/stats (or extend health)
+              returning running sandbox count (DockerSandbox label listing) +
+              gitSha/uptime.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Endpoint returns the running-sandbox count behind the internal secret; unit/integration test."
+          - id: TASK-141
+            title: "lib + API: GET /api/admin/overview (counts + key status + recent actions)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Aggregate user/project counts, platform-key meta per provider,
+              recent audit rows; call the orchestrator stats endpoint (tolerate
+              failure).
+            depends_on: [TASK-140, TASK-122]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Returns counts+key status+recent actions; orchestrator-down yields a degraded field not a 500; 403 non-admin; tests."
+          - id: TASK-142
+            title: "UI: replace /admin landing with the overview dashboard"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Replace the placeholder SECTIONS landing with tiles (counts,
+              running sandboxes, key status per provider, recent admin actions)
+              linking to sections; graceful 'unavailable' tiles.
+            depends_on: [TASK-141]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Landing renders live tiles; degrades gracefully when orchestrator stats absent; component test."
+              - "STORY-48 acceptance_criteria satisfied."
+
+  - id: EPIC-09
+    title: "Platform configuration & cost"
+    description: |
+      The platform-config half of the admin console: an admin-wide usage & cost
+      dashboard (built on the EPIC-05 metering stories) and an admin-managed MCP
+      connector registry (replacing today's static .mcp.json/template config).
+      Multi-provider platform keys (STORY-38) and usage metering + budget caps
+      (STORY-22/23) already exist as `ready` stories in EPIC-05 — build those in
+      place; this epic depends on them and adds the admin-wide surfaces. MCP
+      changes are ADR-gated (AGENTS.md) — the connector story leads with an ADR
+      requiring both-contributor sign-off before implementation.
+    stories:
+      - id: STORY-49
+        title: "Admin usage & cost dashboard"
+        description: |
+          An admin-wide view of platform spend + per-project/user usage, on top
+          of STORY-22's usage_events. Build STORY-22/23 (EPIC-05) first.
+        acceptance_criteria:
+          - "/admin/usage shows aggregate spend against the platform key and per-project and per-user usage (tokens + cost estimate) over a selectable time window, reflecting real recorded usage_events (STORY-22)."
+          - "The dashboard surfaces the per-project budget caps (STORY-23) and lets an admin set/adjust a cap."
+          - "Route is 403 for non-admins."
+        user_flow:
+          - "Admin opens /admin -> Usage"
+          - "Picks a time window; sees total spend + top projects/users by usage"
+          - "Opens a project's usage and sets/adjusts its budget cap"
+        out_of_scope:
+          - "Building the metering pipeline or usage_events table (STORY-22) or the cap engine (STORY-23) — this consumes them."
+          - "Invoicing / billing / payment."
+        tasks:
+          - id: TASK-143
+            title: "lib + API: admin usage aggregation (GET /api/admin/usage)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Aggregate usage_events (STORY-22) by project + user + total over a
+              window; include platform-key spend estimate. Role-gated. NOTE:
+              depends on STORY-22's usage_events table existing (EPIC-05) — build
+              that first.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Returns windowed totals + per-project/user breakdown; 403 non-admin; tests (gated on usage_events)."
+          - id: TASK-144
+            title: "UI: /admin/usage dashboard + budget-cap setter"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              /admin/usage with a window picker, totals, top projects/users, and
+              an admin budget-cap setter (writes the STORY-23 cap).
+            depends_on: [TASK-143]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Dashboard renders real usage; window picker works; cap setter persists; component test."
+              - "STORY-49 acceptance_criteria satisfied."
+          - id: TASK-145
+            title: "test: real-Postgres integration for usage aggregation"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Seed usage_events, assert aggregation by project/user/window.
+            depends_on: [TASK-143]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Integration asserts correct aggregates by project/user/window."
+      - id: STORY-50
+        title: "MCP connector configuration"
+        description: |
+          An admin-managed registry of MCP connectors (enable/disable, encrypted
+          credentials, usage caps) replacing static config. ADR-GATED — the first
+          task is the ADR; implementation waits on both-contributor sign-off.
+        acceptance_criteria:
+          - "An ADR proposes the admin-managed MCP connector model (registry shape, credential storage via @praxis/crypto, enable/disable, usage caps, orchestrator rendering) — Status Proposed, requiring both-contributor sign-off before implementation."
+          - "An admin manages connectors (list, enable/disable, set per-connector credentials encrypted at rest, set usage caps); changes are audit-logged."
+          - "At sandbox start the orchestrator renders each project's .mcp.json + Claude settings from the ENABLED registry and delivers credentials via the ephemeral-file pattern (outside /workspace)."
+          - "A configured+enabled connector is reachable by the sandbox agent (verified at the Docker/integration layer)."
+        user_flow:
+          - "Admin opens /admin -> Connectors"
+          - "Enables a connector, sets its credential + usage cap"
+          - "A new project's sandbox starts with that connector wired; the agent can use it"
+        out_of_scope:
+          - "A public connector marketplace."
+          - "Arbitrary user-supplied MCP servers (admin-curated only)."
+          - "Changing the ACP host or Path-A wiring beyond what the ADR approves."
+        tasks:
+          - id: TASK-146
+            title: "ADR: admin-managed MCP connector registry (Proposed — both-contributor sign-off)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["packages/db"]
+            description: |
+              Write the ADR (Context/Decision/Consequences/Alternatives) for the
+              registry shape, credential storage (@praxis/crypto), enable/disable,
+              usage caps, and orchestrator rendering of .mcp.json/settings from
+              the registry (ADR-0018 Path A compatible). Status Proposed;
+              implementation tasks must NOT start until both contributors sign
+              off. (Docs-only change under docs/decisions/.)
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "ADR committed under docs/decisions/ as Proposed, covering registry + creds + rendering + caps."
+          - id: TASK-147
+            title: "db: mcp_connectors table + migration + codegen"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["packages/db"]
+            description: |
+              mcp_connectors (id, name unique, command_ref text, args jsonb,
+              enabled boolean default false, credentials_encrypted text nullable,
+              usage_cap int nullable, created_by uuid, created_at). migration +
+              codegen.
+            depends_on: [TASK-146]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Table added; codegen; clean."
+          - id: TASK-148
+            title: "orchestrator: render .mcp.json + settings from the enabled registry"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              At sandbox start, read enabled connectors and write the project's
+              .mcp.json + Claude settings (enableAllProjectMcpServers / list) and
+              deliver credentials via the ephemeral-file pattern outside
+              /workspace (orchestrator-runtime.md).
+            depends_on: [TASK-147]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "A fresh sandbox gets .mcp.json from the enabled registry; creds delivered outside /workspace; integration test."
+          - id: TASK-149
+            title: "lib + API + UI: /admin/connectors CRUD (creds via crypto, caps, audit-logged)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Admin CRUD for connectors — enable/disable, set credentials
+              (encrypt via @praxis/crypto), set usage cap; role-gated;
+              recordAudit. /admin/connectors UI.
+            depends_on: [TASK-147, TASK-123]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "CRUD works; credentials encrypted at rest + never returned plaintext; audit rows; 403 non-admin; tests."
+          - id: TASK-150
+            title: "integration: a configured connector reaches the sandbox agent"
+            status: ready
+            priority: med
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              Docker-gated — enable a connector, start a sandbox, assert the
+              agent sees it (.mcp.json present + server resolvable).
+            depends_on: [TASK-148, TASK-149]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Docker-gated integration confirms the enabled connector is wired into the sandbox."
+              - "STORY-50 acceptance_criteria satisfied."
