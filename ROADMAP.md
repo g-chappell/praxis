@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 27 / 41 (66%)
+- **Features verified:** 28 / 41 (68%)
 - **Total tasks:** 120
-- **Done:** 97 (81%)
-- **Ready:** 23
+- **Done:** 98 (82%)
+- **Ready:** 22
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1848,7 +1848,7 @@ addition to the Sandbox interface (ADR + sign-off).
     - Typing narrows the list; sort reorders; no-match state renders; component test covers filter + sort + empty states.
     - STORY-41 acceptance_criteria satisfied.
 
-- **STORY-42** — Duplicate / fork a project
+- **STORY-42** — Duplicate / fork a project  [:white_check_mark: verified]
   > Use a finished project as the seed for a new one — clone its
   > /workspace contents AND git history into a fresh, independent
   > sandbox. Requires a new Sandbox-interface method (ADR + sign-off);
@@ -1898,7 +1898,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > on the dashboard row with a pending state + router.refresh().
     _Task AC:_
     - 403 non-owner; success creates a new row and returns its id; UI shows 'Duplicating…' then the new row; route + component tests.
-  - :black_circle: **TASK-121** :checkered_flag: — e2e: duplicate produces an independent copy  `med` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-121** :checkered_flag: — e2e: duplicate produces an independent copy  `med` `medium` _(apps/web)_  
     _depends on: TASK-119, TASK-120_
     > Create + seed a project, edit a file, Duplicate, open the copy,
     > assert the edited file is present, then assert editing the copy

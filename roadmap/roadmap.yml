@@ -2965,6 +2965,8 @@ epics:
           /workspace contents AND git history into a fresh, independent
           sandbox. Requires a new Sandbox-interface method (ADR + sign-off);
           the only architecturally load-bearing story in the epic.
+        verified_at: '2026-06-06T12:56:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "A Duplicate action on a dashboard project creates a new, independent project (default name 'Copy of <name>') owned by the same team."
           - "The duplicate's /workspace contains the same files and full git history as the source at duplication time; it opens to that state."
@@ -3050,7 +3052,7 @@ epics:
               - "403 non-owner; success creates a new row and returns its id; UI shows 'Duplicating…' then the new row; route + component tests."
           - id: TASK-121
             title: "e2e: duplicate produces an independent copy"
-            status: ready
+            status: done
             priority: med
             complexity: medium
             workspaces: ["apps/web"]
@@ -3060,6 +3062,7 @@ epics:
               doesn't change the original.
             depends_on: [TASK-119, TASK-120]
             attempt_count: 0
+            completed: '2026-06-06T12:56:00Z'
             is_terminal: true
             task_acceptance:
               - "e2e passes asserting the copy has the source's files and is independent of the original."
