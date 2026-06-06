@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 30 / 49 (61%)
 - **Total tasks:** 149
-- **Done:** 104 (70%)
-- **Ready:** 45
+- **Done:** 106 (71%)
+- **Ready:** 43
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1183,7 +1183,7 @@ that closes the POC.
   **Out of scope:**
   - Multi-provider image generation (later).
   - Image editing / inpainting (later).
-  - :black_circle: **TASK-042** — infrastructure/mcp-servers/image-gen MCP server  `high` `large` _(infrastructure/mcp-servers)_  
+  - :white_check_mark: **TASK-042** — infrastructure/mcp-servers/image-gen MCP server  `high` `large` _(infrastructure/mcp-servers)_ · [PR](https://github.com/g-chappell/praxis/pull/310)  
     _depends on: TASK-001_
     > MCP server (stdio) implementing tools/list + tools/call for
     > generate_image. Args: prompt, width, height, save_path. Uses
@@ -1191,7 +1191,7 @@ that closes the POC.
     > /workspace/public/textures/<slug>.png.
     _Task AC:_
     - Standalone test against the MCP server returns a PNG file on disk.
-  - :black_circle: **TASK-043** — Per-project usage cap  `high` `small` _(infrastructure/mcp-servers, services/orchestrator)_  
+  - :white_check_mark: **TASK-043** — Per-project usage cap  `high` `small` _(infrastructure/mcp-servers, services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/310)  
     _depends on: TASK-042_
     > Counter stored in Postgres (events table or a small `mcp_usage`
     > table). MCP server reads PROJECT_ID + cap from env on startup

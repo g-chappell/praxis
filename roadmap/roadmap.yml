@@ -1864,7 +1864,7 @@ epics:
         tasks:
           - id: TASK-042
             title: "infrastructure/mcp-servers/image-gen MCP server"
-            status: ready
+            status: done
             priority: high
             complexity: large
             workspaces: ["infrastructure/mcp-servers"]
@@ -1875,11 +1875,13 @@ epics:
               /workspace/public/textures/<slug>.png.
             depends_on: [TASK-001]
             attempt_count: 0
+            completed: '2026-06-06T17:48:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/310
             task_acceptance:
               - "Standalone test against the MCP server returns a PNG file on disk."
           - id: TASK-043
             title: "Per-project usage cap"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["infrastructure/mcp-servers", "services/orchestrator"]
@@ -1889,6 +1891,8 @@ epics:
               and rejects with an explicit error after the cap is hit.
             depends_on: [TASK-042]
             attempt_count: 0
+            completed: '2026-06-06T17:48:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/310
             task_acceptance:
               - "Integration test crosses the cap and observes a clean refusal."
           - id: TASK-044
