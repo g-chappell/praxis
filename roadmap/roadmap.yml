@@ -2747,7 +2747,7 @@ epics:
         tasks:
           - id: TASK-107
             title: "db: add nullable description to projects (drizzle migration + codegen)"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -2757,6 +2757,7 @@ epics:
               schema exports. `name` already exists.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-06T11:59:00Z'
             is_terminal: false
             task_acceptance:
               - "Migration adds a nullable description column; codegen drift check passes; existing rows read back null."

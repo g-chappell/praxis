@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 25 / 41 (61%)
 - **Total tasks:** 120
-- **Done:** 83 (69%)
-- **Ready:** 37
+- **Done:** 84 (70%)
+- **Ready:** 36
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1737,7 +1737,7 @@ addition to the Sandbox interface (ADR + sign-off).
   - Rich-text / markdown descriptions (plain text only).
   - Renaming from inside the workspace header (dashboard only this pass).
   - Edit history / audit UI of name changes.
-  - :black_circle: **TASK-107** — db: add nullable description to projects (drizzle migration + codegen)  `high` `small` _(packages/db)_
+  - :white_check_mark: **TASK-107** — db: add nullable description to projects (drizzle migration + codegen)  `high` `small` _(packages/db)_
     > Add a nullable `description` text column to the projects table.
     > Generate the drizzle migration, run codegen, update the @praxis/db
     > schema exports. `name` already exists.
