@@ -181,6 +181,9 @@ export const projects = pgTable('projects', {
   controlMode: text('control_mode').notNull().default('serialised'),
   createdBy: uuid('created_by').references(() => users.id),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  // Soft-archive flag (STORY-40): null = active, set = hidden from the default
+  // dashboard list. Reversible; distinct from destructive delete (STORY-28).
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
 });
 
 // ─── sessions ─────────────────────────────────────────────────────────
