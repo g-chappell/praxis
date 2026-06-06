@@ -3016,7 +3016,7 @@ epics:
               - "Docker-gated integration test (RUN_DOCKER_TESTS=1) asserts files + .git land in the new volume and the source is untouched."
           - id: TASK-119
             title: "orchestrator: fork endpoint (clone source → new project sandbox)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -3027,6 +3027,7 @@ epics:
               source has no volume). Logged.
             depends_on: [TASK-118]
             attempt_count: 0
+            completed: '2026-06-06T12:51:00Z'
             is_terminal: false
             task_acceptance:
               - "Endpoint clones source→new and returns ok; missing-volume source falls back to template seed; integration test (Docker job) covers both."

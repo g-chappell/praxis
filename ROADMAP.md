@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 27 / 41 (66%)
 - **Total tasks:** 120
-- **Done:** 95 (79%)
-- **Ready:** 25
+- **Done:** 96 (80%)
+- **Ready:** 24
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1882,7 +1882,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > CLI / a helper container (Bun-safe per the dockerode rule).
     _Task AC:_
     - Docker-gated integration test (RUN_DOCKER_TESTS=1) asserts files + .git land in the new volume and the source is untouched.
-  - :black_circle: **TASK-119** — orchestrator: fork endpoint (clone source → new project sandbox)  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-119** — orchestrator: fork endpoint (clone source → new project sandbox)  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-118_
     > Internal-secret-gated endpoint that clones a source project's
     > volume into a new project's volume and prepares it to start
