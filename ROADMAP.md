@@ -11,8 +11,8 @@ _Created: 2026-05-31_
 - **Features verified:** 28 / 49 (57%)
 - **Total tasks:** 149
 - **Done:** 98 (66%)
-- **Ready:** 51
-- **In progress:** 0
+- **Ready:** 50
+- **In progress:** 1
 - **Blocked:** 0
 
 ---
@@ -1931,7 +1931,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
   - The audit viewer UI (STORY-47).
   - Retention / rotation / archival of audit rows.
   - Backfilling historical actions that predate this table.
-  - :black_circle: **TASK-122** — db: audit_log table + audit_action enum + migration + codegen  `high` `small` _(packages/db)_
+  - :large_orange_diamond: **TASK-122** — db: audit_log table + audit_action enum + migration + codegen  `high` `small` _(packages/db)_
     > Add audit_log (id uuid pk, actor_user_id uuid fk users, action
     > audit_action enum, target_type text, target_id text, metadata
     > jsonb, ip text nullable, created_at timestamptz default now). A
