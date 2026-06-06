@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 29 / 49 (59%)
 - **Total tasks:** 149
-- **Done:** 102 (68%)
-- **Ready:** 47
+- **Done:** 103 (69%)
+- **Ready:** 46
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1543,7 +1543,7 @@ flags, observability) mount into.
     > provider; existing Anthropic callers default to 'anthropic'.
     _Task AC:_
     - Migration adds provider, backfills 'anthropic', enforces one active per provider; getActivePlatformKey('anthropic') unchanged; getActivePlatformKey('openai') returns the active OpenAI key or null.
-  - :black_circle: **TASK-105** :checkered_flag: — Admin UI: manage the OpenAI platform key (paste / rotate, masked, role-gated)  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-105** :checkered_flag: — Admin UI: manage the OpenAI platform key (paste / rotate, masked, role-gated)  `high` `medium` _(apps/web)_  
     _depends on: TASK-104_
     > Extend the STORY-21 admin platform-keys surface to a second provider:
     > an OpenAI section to paste / rotate / deactivate, value shown masked,
