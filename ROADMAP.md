@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 27 / 41 (66%)
 - **Total tasks:** 120
-- **Done:** 93 (78%)
-- **Ready:** 27
+- **Done:** 94 (78%)
+- **Ready:** 26
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1868,7 +1868,7 @@ addition to the Sandbox interface (ADR + sign-off).
   - Carrying over the live preview / running agent session / chat history (a fresh sandbox + fresh agent session).
   - Cross-team duplication or duplicating someone else's project.
   - Selective/partial duplication (always the whole workspace).
-  - :black_circle: **TASK-117** — ADR + Sandbox interface: add clone capability  `high` `medium` _(packages/sandbox)_
+  - :white_check_mark: **TASK-117** — ADR + Sandbox interface: add clone capability  `high` `medium` _(packages/sandbox)_
     > ADR (Context/Decision/Consequences/Alternatives) for adding a
     > clone method to the Sandbox interface that copies a source
     > project's named volume contents (incl. .git) into a new

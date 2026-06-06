@@ -2983,7 +2983,7 @@ epics:
         tasks:
           - id: TASK-117
             title: "ADR + Sandbox interface: add clone capability"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/sandbox"]
@@ -2995,6 +2995,7 @@ epics:
               no Docker types in the signature.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-06T12:48:00Z'
             is_terminal: false
             task_acceptance:
               - "ADR committed under docs/decisions/; interface gains the method with no Docker types in the signature; marked Proposed pending sign-off."
