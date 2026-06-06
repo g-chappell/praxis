@@ -9,13 +9,15 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { getActivePlatformKeyMeta, setActivePlatformKey } from '@praxis/keys';
 
 import { isUserAdmin } from '@/lib/admin';
+import { clientIp, recordAudit } from '@/lib/audit';
 import { getAuth } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  const hdrs = await headers();
+  const session = await getAuth().api.getSession({ headers: hdrs });
   if (!session?.user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -35,5 +37,12 @@ export async function POST(req: NextRequest) {
 
   await setActivePlatformKey(key, session.user.id);
   const meta = await getActivePlatformKeyMeta();
+  // Audit the rotation (masked key only — never the raw secret).
+  await recordAudit(session.user.id, 'api_key.rotated', {
+    targetType: 'platform_api_key',
+    targetId: 'platform',
+    metadata: meta ? { maskedKey: meta.maskedKey } : {},
+    ip: clientIp(hdrs),
+  });
   return NextResponse.json({ ok: true, meta });
 }
