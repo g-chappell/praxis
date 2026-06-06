@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 26 / 41 (63%)
 - **Total tasks:** 120
-- **Done:** 90 (75%)
-- **Ready:** 30
+- **Done:** 91 (76%)
+- **Ready:** 29
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1768,7 +1768,7 @@ addition to the Sandbox interface (ADR + sign-off).
     - e2e passes asserting the updated name + description persist across a reload.
     - STORY-39 acceptance_criteria satisfied.
 
-- **STORY-40** — Archive and restore a project
+- **STORY-40** — Archive and restore a project  [:hourglass: pending]
   > A reversible alternative to delete: archiving removes a project from
   > the active list without touching its volume; restore brings it back.
   > Delete-with-cleanup (STORY-28) remains the only destructive path.
@@ -1807,7 +1807,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > dashboard; Restore action on archived rows; empty states for each.
     _Task AC:_
     - Archiving removes the row from Active and shows it under Archived; restore reverses it; component test covers the toggle + actions.
-  - :black_circle: **TASK-114** :checkered_flag: — e2e: archive then restore round-trips  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-114** :checkered_flag: — e2e: archive then restore round-trips  `med` `small` _(apps/web)_  
     _depends on: TASK-112, TASK-113_
     > Create → archive (gone from Active, present in Archived) → restore
     > (back in Active, opens with files).

@@ -2820,6 +2820,8 @@ epics:
           A reversible alternative to delete: archiving removes a project from
           the active list without touching its volume; restore brings it back.
           Delete-with-cleanup (STORY-28) remains the only destructive path.
+        verified_at: '2026-06-06T12:21:00Z'
+        feature_complete: pending
         acceptance_criteria:
           - "Each active project row exposes an Archive action; archiving sets archived_at and removes the project from the default dashboard list immediately."
           - "An Archived view (tab/section) lists archived projects with a Restore action that clears archived_at and returns them to the active list."
@@ -2886,7 +2888,7 @@ epics:
               - "Archiving removes the row from Active and shows it under Archived; restore reverses it; component test covers the toggle + actions."
           - id: TASK-114
             title: "e2e: archive then restore round-trips"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -2895,6 +2897,7 @@ epics:
               (back in Active, opens with files).
             depends_on: [TASK-112, TASK-113]
             attempt_count: 0
+            completed: '2026-06-06T12:21:00Z'
             is_terminal: true
             task_acceptance:
               - "e2e passes the full archive→restore round-trip."
