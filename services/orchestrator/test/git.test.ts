@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ExecResult, SandboxHandle } from '@praxis/sandbox';
 
-import { gitBranch, gitDiff, gitLog, gitStatus, isValidRev } from '../src/git';
+import { gitBranch, gitDiff, gitLog, gitRevert, gitStatus, isValidRev } from '../src/git';
 
 const handle: SandboxHandle = { projectId: 'p1', containerId: 'c1' };
 
@@ -156,5 +156,23 @@ describe('gitDiff', () => {
     expect(diff.files.map((f) => ({ path: f.path, status: f.status }))).toEqual([
       { path: 'src/new.ts', status: 'R' },
     ]);
+  });
+});
+
+describe('gitRevert', () => {
+  it('runs reset --hard to the (quoted) target and returns the new HEAD', async () => {
+    const sb = fakeExec([
+      { match: 'reset --hard', result: { stdout: '' } },
+      { match: 'rev-parse HEAD', result: { stdout: 'newhead\n' } },
+    ]);
+    const result = await gitRevert(sb, handle, 'abc123');
+    expect(result).toEqual({ head: 'newhead' });
+    expect(sb.calls.some((c) => c.includes("git reset --hard 'abc123'"))).toBe(true);
+  });
+
+  it('rejects an invalid revision before running git', async () => {
+    const sb = fakeExec([]);
+    await expect(gitRevert(sb, handle, 'a; rm -rf /')).rejects.toThrow('invalid revision');
+    expect(sb.calls).toHaveLength(0);
   });
 });

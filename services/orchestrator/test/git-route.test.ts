@@ -116,3 +116,41 @@ describe('GET /:id/git/diff', () => {
     expect(((await res.json()) as { error: string }).error).toBe('git_error');
   });
 });
+
+describe('POST /:id/git/revert', () => {
+  function post(body: unknown, headers: Record<string, string> = HDR) {
+    return gitRoute.request('/p1/git/revert', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...headers },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('rejects without the internal secret (403)', async () => {
+    const res = await post({ to: 'abc123' }, {});
+    expect(res.status).toBe(403);
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it('400s on a missing/invalid target (before touching the sandbox)', async () => {
+    expect((await post({})).status).toBe(400);
+    expect((await post({ to: 'a; rm -rf /' })).status).toBe(400);
+    expect(exec).not.toHaveBeenCalled();
+  });
+
+  it('409s when no session is live', async () => {
+    getRoomByProject.mockReturnValueOnce(undefined);
+    expect((await post({ to: 'abc123' })).status).toBe(409);
+  });
+
+  it('resets to the target and returns the new HEAD', async () => {
+    exec.mockImplementation(async (_h: unknown, cmd: string) => {
+      if (cmd.includes('reset --hard')) return execResult('');
+      if (cmd.includes('rev-parse HEAD')) return execResult('newhead\n');
+      return execResult();
+    });
+    const res = await post({ to: 'abc123' });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, head: 'newhead' });
+  });
+});

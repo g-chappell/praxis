@@ -11,7 +11,7 @@
 
 import { type Context, Hono } from 'hono';
 
-import { gitBranch, gitDiff, gitLog, gitStatus, GitError, isValidRev } from '../git';
+import { gitBranch, gitDiff, gitLog, gitRevert, gitStatus, GitError, isValidRev } from '../git';
 import { logger } from '../logger';
 import { getRoomByProject, getSandbox } from '../runtime';
 
@@ -80,6 +80,23 @@ gitRoute.get('/:projectId/git/diff', async (c) => {
     return c.json(await gitDiff(getSandbox(), handle, from, to));
   } catch (err) {
     return gitFailure(c, projectId, 'diff', err);
+  }
+});
+
+gitRoute.post('/:projectId/git/revert', async (c) => {
+  if (!hasSecret(c.req.header('x-internal-secret'))) return c.json({ error: 'forbidden' }, 403);
+  const projectId = c.req.param('projectId');
+  const body = (await c.req.json().catch(() => null)) as { to?: unknown } | null;
+  const to = typeof body?.to === 'string' ? body.to : '';
+  if (!to || !isValidRev(to)) return c.json({ error: 'bad_request' }, 400);
+  const handle = handleFor(projectId);
+  if (!handle) return c.json({ error: 'no_active_session' }, 409);
+  try {
+    const result = await gitRevert(getSandbox(), handle, to);
+    logger.info({ projectId, head: result.head }, 'git.reverted');
+    return c.json({ ok: true, ...result });
+  } catch (err) {
+    return gitFailure(c, projectId, 'revert', err);
   }
 });
 

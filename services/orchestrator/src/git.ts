@@ -172,6 +172,22 @@ export async function gitDiff(
   return { from, to, files };
 }
 
+/** Rewind the working tree + HEAD to `to` (STORY-16 revert). `git reset --hard`
+ *  discards commits after `to` from the branch tip — recoverable via reflog, and
+ *  guarded in the UI by a type-the-SHA confirmation. The sandbox file watcher
+ *  broadcasts the resulting file changes to the room, so the editor refreshes.
+ *  Returns the new HEAD sha. */
+export async function gitRevert(
+  sandbox: ExecSandbox,
+  handle: SandboxHandle,
+  to: string,
+): Promise<{ head: string }> {
+  if (!isValidRev(to)) throw new GitError('invalid revision');
+  await run(sandbox, handle, `git reset --hard ${q(to)}`);
+  const head = (await run(sandbox, handle, 'git rev-parse HEAD')).trim();
+  return { head };
+}
+
 function parseBinaryPaths(numstatZ: string): Set<string> {
   const binary = new Set<string>();
   const tokens = numstatZ.split('\0').filter((t) => t.length > 0);
