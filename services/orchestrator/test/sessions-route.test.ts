@@ -28,7 +28,7 @@ vi.mock('../src/preview', () => ({
 }));
 
 vi.mock('../src/templates', () => ({
-  readTemplateConfig: () => ({ previewPort: 5173, setup: '', dev: '' }),
+  readTemplateConfig: () => ({ previewPort: 5173, setup: '', dev: '', mcpServers: [] }),
 }));
 
 vi.mock('@praxis/db', () => ({

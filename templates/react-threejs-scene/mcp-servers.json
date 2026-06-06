@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "image-gen": {
-      "description": "Generate textures/sprites/images into public/textures (POC MCP server).",
-      "enabled": true
-    }
-  }
-}

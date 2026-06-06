@@ -162,7 +162,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build sandbox base image
-        run: docker build -t praxis-sandbox-base:latest infrastructure/docker/sandbox-base
+        # Context = repo root so the bundled image-gen MCP server source is visible.
+        run: docker build -t praxis-sandbox-base:latest -f infrastructure/docker/sandbox-base/Dockerfile .
+      - name: Smoke-check the baked MCP server wrapper resolves on PATH
+        run: docker run --rm praxis-sandbox-base:latest which praxis-mcp-image-gen
       - uses: pnpm/action-setup@v3
         with:
           version: 9.15.5

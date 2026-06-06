@@ -13,6 +13,7 @@ import { projects, sessions } from '@praxis/db';
 import { db } from '@praxis/db/client';
 
 import { logger } from '../logger';
+import { seedImageGenMcp } from '../mcp-seed';
 import { previewUrlFor, registerPreview } from '../preview';
 import { createRoom, getRoomByProject, getSandbox, mintTicket, type SessionRoom } from '../runtime';
 import { readTemplateConfig } from '../templates';
@@ -69,7 +70,7 @@ async function createProjectRoom(
 
   // Register the preview: map the project's slug → the sandbox's dev-server port
   // so Caddy's wildcard proxies <projectId>.preview.<domain> here (STORY-13).
-  const { previewPort, setup, dev } = readTemplateConfig(templateId);
+  const { previewPort, setup, dev, mcpServers } = readTemplateConfig(templateId);
   let previewUrl: string | null = null;
   try {
     const addr = await getSandbox().exposePort(handle, previewPort); // http://<ip>:<port>
@@ -106,6 +107,25 @@ async function createProjectRoom(
   const sessionId = session!.id;
 
   const room = createRoom(sessionId, projectId, handle, apiKey, previewUrl, openaiKey);
+  // Wire the image-gen MCP server (STORY-15) when the template opts in. Runs once
+  // per room lifetime (rejoin reuses the live room), so the cred file's usage
+  // token always matches this room; a later room re-seeds with its fresh token.
+  // Best-effort: a seed failure must never block session creation.
+  if (mcpServers.includes('image-gen')) {
+    try {
+      await seedImageGenMcp(getSandbox(), handle, {
+        openaiKey,
+        usageToken: room.mcpToken,
+        usageUrl:
+          process.env.PRAXIS_MCP_USAGE_URL ?? 'http://praxis-orchestrator:4001/internal/mcp/usage',
+      });
+    } catch (err) {
+      logger.warn(
+        { projectId, err: err instanceof Error ? err.message : String(err) },
+        'mcp.seed_failed',
+      );
+    }
+  }
   // Seed the resume id so the first prompt's openAgent loads the prior
   // conversation via session/load (ADR-0017/STORY-36). Null on a project's first
   // ever session.
