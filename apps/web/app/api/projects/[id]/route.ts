@@ -8,14 +8,20 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 import { getAuth } from '@/lib/auth';
-import { deleteProject, parseProjectPatch, updateProject, userOwnsProject } from '@/lib/projects';
+import {
+  deleteProject,
+  parseProjectPatch,
+  setProjectArchived,
+  updateProject,
+  userOwnsProject,
+} from '@/lib/projects';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// PATCH /api/projects/[id] — rename / re-describe a project the user owns
-// (STORY-39). Validates at the boundary, persists via updateProject, and logs
-// the change for traceability.
+// PATCH /api/projects/[id] — rename / re-describe (STORY-39) or archive/restore
+// (STORY-40) a project the user owns. Validates at the boundary, persists, and
+// logs the change for traceability.
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session?.user) {
@@ -29,7 +35,25 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const body = (await req.json().catch(() => null)) as {
     name?: unknown;
     description?: unknown;
+    archived?: unknown;
   } | null;
+
+  // Archive / restore is a distinct directive from rename — handle it first.
+  if (typeof body?.archived === 'boolean') {
+    const ok = await setProjectArchived(session.user.id, projectId, body.archived);
+    if (!ok) {
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+    console.info(
+      JSON.stringify({
+        event: body.archived ? 'project.archived' : 'project.restored',
+        projectId,
+        userId: session.user.id,
+        at: new Date().toISOString(),
+      }),
+    );
+    return NextResponse.json({ id: projectId, archived: body.archived });
+  }
 
   const parsed = parseProjectPatch(body);
   if ('error' in parsed) {

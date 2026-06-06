@@ -7,18 +7,19 @@ import { projects } from '@praxis/db';
 import { db } from '@praxis/db/client';
 
 import { getAuth } from '@/lib/auth';
-import { ensurePersonalTeam, listUserProjects } from '@/lib/projects';
+import { ensurePersonalTeam, listUserProjects, parseProjectStatus } from '@/lib/projects';
 import { DEFAULT_TEMPLATE_ID, isTemplateId } from '@/lib/templates';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await getAuth().api.getSession({ headers: await headers() });
   if (!session?.user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
-  return NextResponse.json({ projects: await listUserProjects(session.user.id) });
+  const status = parseProjectStatus(req.nextUrl.searchParams.get('status'));
+  return NextResponse.json({ projects: await listUserProjects(session.user.id, { status }) });
 }
 
 export async function POST(req: NextRequest) {

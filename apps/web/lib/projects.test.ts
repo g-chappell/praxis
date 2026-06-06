@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { DESCRIPTION_MAX, NAME_MAX, parseProjectPatch } from './projects';
+import { DESCRIPTION_MAX, NAME_MAX, parseProjectPatch, parseProjectStatus } from './projects';
 
 describe('parseProjectPatch', () => {
   it('accepts a valid name + description and forwards them untrimmed', () => {
@@ -45,5 +45,19 @@ describe('parseProjectPatch', () => {
   it('rejects an empty patch (no fields)', () => {
     expect(parseProjectPatch({})).toEqual({ error: 'no_fields' });
     expect(parseProjectPatch(null)).toEqual({ error: 'no_fields' });
+  });
+});
+
+describe('parseProjectStatus', () => {
+  it('passes through archived and all', () => {
+    expect(parseProjectStatus('archived')).toBe('archived');
+    expect(parseProjectStatus('all')).toBe('all');
+  });
+
+  it('defaults anything else (incl. null / unknown) to active', () => {
+    expect(parseProjectStatus('active')).toBe('active');
+    expect(parseProjectStatus(null)).toBe('active');
+    expect(parseProjectStatus('bogus')).toBe('active');
+    expect(parseProjectStatus(undefined)).toBe('active');
   });
 });
