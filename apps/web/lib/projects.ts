@@ -2,7 +2,7 @@
 // gives each user an implicit "Personal" team on first project. Full team
 // management is a later epic.
 
-import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 
 import { projects, teamMemberships, teams } from '@praxis/db';
 import { type Database, db } from '@praxis/db/client';
@@ -21,6 +21,14 @@ export type ProjectStatus = 'active' | 'archived' | 'all';
 /** Narrow an untrusted ?status query value to a ProjectStatus (default active). */
 export function parseProjectStatus(value: unknown): ProjectStatus {
   return value === 'archived' || value === 'all' ? value : 'active';
+}
+
+/** Sort order for the project list. Defaults to `recent` (newest first). */
+export type ProjectSort = 'recent' | 'oldest' | 'name';
+
+/** Narrow an untrusted ?sort query value to a ProjectSort (default recent). */
+export function parseProjectSort(value: unknown): ProjectSort {
+  return value === 'oldest' || value === 'name' ? value : 'recent';
 }
 
 /** Field length bounds shared by the PATCH boundary and the edit form. */
@@ -89,20 +97,28 @@ export async function userOwnsProject(
   return Boolean(row);
 }
 
-/** All projects in the user's team(s), newest first. Defaults to active
- *  (un-archived); pass `status` to list archived-only or all (STORY-40). */
+/** All projects in the user's team(s). Defaults to active (un-archived),
+ *  newest first; pass `status` to list archived-only or all (STORY-40) and
+ *  `sort` to order by recent / oldest / name (STORY-41). */
 export async function listUserProjects(
   userId: string,
-  opts: { status?: ProjectStatus } = {},
+  opts: { status?: ProjectStatus; sort?: ProjectSort } = {},
   database: Database = db,
 ): Promise<ProjectSummary[]> {
   const status = opts.status ?? 'active';
+  const sort = opts.sort ?? 'recent';
   const archiveFilter =
     status === 'active'
       ? isNull(projects.archivedAt)
       : status === 'archived'
         ? isNotNull(projects.archivedAt)
         : undefined;
+  const order =
+    sort === 'oldest'
+      ? asc(projects.createdAt)
+      : sort === 'name'
+        ? asc(projects.name)
+        : desc(projects.createdAt);
 
   return database
     .select({
@@ -115,7 +131,7 @@ export async function listUserProjects(
     .from(projects)
     .innerJoin(teamMemberships, eq(teamMemberships.teamId, projects.teamId))
     .where(and(eq(teamMemberships.userId, userId), archiveFilter))
-    .orderBy(desc(projects.createdAt));
+    .orderBy(order);
 }
 
 /** Archive (`archive: true`) or restore (`archive: false`) a project the user

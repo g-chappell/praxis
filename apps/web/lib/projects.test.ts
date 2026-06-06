@@ -4,7 +4,13 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { DESCRIPTION_MAX, NAME_MAX, parseProjectPatch, parseProjectStatus } from './projects';
+import {
+  DESCRIPTION_MAX,
+  NAME_MAX,
+  parseProjectPatch,
+  parseProjectSort,
+  parseProjectStatus,
+} from './projects';
 
 describe('parseProjectPatch', () => {
   it('accepts a valid name + description and forwards them untrimmed', () => {
@@ -59,5 +65,19 @@ describe('parseProjectStatus', () => {
     expect(parseProjectStatus(null)).toBe('active');
     expect(parseProjectStatus('bogus')).toBe('active');
     expect(parseProjectStatus(undefined)).toBe('active');
+  });
+});
+
+describe('parseProjectSort', () => {
+  it('passes through oldest and name', () => {
+    expect(parseProjectSort('oldest')).toBe('oldest');
+    expect(parseProjectSort('name')).toBe('name');
+  });
+
+  it('defaults anything else (incl. null / unknown) to recent', () => {
+    expect(parseProjectSort('recent')).toBe('recent');
+    expect(parseProjectSort(null)).toBe('recent');
+    expect(parseProjectSort('bogus')).toBe('recent');
+    expect(parseProjectSort(undefined)).toBe('recent');
   });
 });
