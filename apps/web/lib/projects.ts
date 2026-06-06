@@ -196,3 +196,33 @@ export async function deleteProject(userId: string, projectId: string): Promise<
   await db.delete(projects).where(eq(projects.id, projectId));
   return true;
 }
+
+/** Create a copy of a project the user owns: a new row in the same team, named
+ *  "Copy of <name>", same template. Returns the new project's id + templateId
+ *  (the caller triggers the sandbox clone via the orchestrator), or null when
+ *  the source isn't the user's. The join enforces ownership. The `database` is
+ *  injectable for persistence tests. */
+export async function duplicateProjectRow(
+  userId: string,
+  sourceProjectId: string,
+  database: Database = db,
+): Promise<{ id: string; templateId: string } | null> {
+  const [src] = await database
+    .select({ name: projects.name, templateId: projects.templateId, teamId: projects.teamId })
+    .from(projects)
+    .innerJoin(teamMemberships, eq(teamMemberships.teamId, projects.teamId))
+    .where(and(eq(projects.id, sourceProjectId), eq(teamMemberships.userId, userId)))
+    .limit(1);
+  if (!src) return null;
+
+  const [row] = await database
+    .insert(projects)
+    .values({
+      teamId: src.teamId,
+      name: `Copy of ${src.name}`,
+      templateId: src.templateId,
+      createdBy: userId,
+    })
+    .returning({ id: projects.id });
+  return { id: row!.id, templateId: src.templateId };
+}
