@@ -2709,3 +2709,338 @@ epics:
             task_acceptance:
               - "Dashboard lists projects (open), supports delete-with-confirm, and shows an empty state; verified in a browser drive."
               - "STORY-28 acceptance_criteria satisfied."
+
+  - id: EPIC-07
+    title: "Project lifecycle v2 — manage, organize, and reuse projects"
+    description: |
+      EPIC-06 made projects creatable, openable, and deletable. As a pair
+      accumulates projects, four lifecycle gaps now block real use: a bad
+      name can't be fixed, finished projects can't be set aside without
+      destructive deletion, a long dashboard list can't be searched, and a
+      project that worked can't be used as a starting point for the next.
+      This epic adds rename/describe, archive/restore, dashboard
+      search/sort/filter, and duplicate/fork — the last requiring an
+      addition to the Sandbox interface (ADR + sign-off).
+    stories:
+      - id: STORY-39
+        title: "Rename and re-describe a project"
+        description: |
+          Add an editable description and make the project name editable
+          after creation — the metadata spine that the archive (STORY-40)
+          and dashboard search/sort (STORY-41) stories build on.
+        acceptance_criteria:
+          - "A project row on the dashboard exposes an Edit action that reveals an inline form pre-filled with the current name and description."
+          - "Saving persists name + description via PATCH /api/projects/[id]; the row reflects the new name and description without a full page navigation (router.refresh())."
+          - "Save is disabled when the name is empty; name is capped at 120 chars, description at 280; both trimmed."
+          - "A non-owner (or signed-out) calling PATCH gets 403/401 and no row changes."
+          - "A failed save shows an inline error by the form and leaves the original values intact."
+        user_flow:
+          - "On /dashboard, the owner clicks Edit on a project row"
+          - "The row swaps to an inline form: a name text input (pre-filled) + a short description textarea + Save / Cancel"
+          - "Owner edits, clicks Save (disabled while name empty or request pending)"
+          - "System PATCHes, on 2xx collapses the form and shows the updated name + description"
+          - "On error, an inline message appears and the form stays open with the entered values"
+        out_of_scope:
+          - "Rich-text / markdown descriptions (plain text only)."
+          - "Renaming from inside the workspace header (dashboard only this pass)."
+          - "Edit history / audit UI of name changes."
+        tasks:
+          - id: TASK-107
+            title: "db: add nullable description to projects (drizzle migration + codegen)"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["packages/db"]
+            description: |
+              Add a nullable `description` text column to the projects table.
+              Generate the drizzle migration, run codegen, update the @praxis/db
+              schema exports. `name` already exists.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Migration adds a nullable description column; codegen drift check passes; existing rows read back null."
+          - id: TASK-108
+            title: "lib + API: PATCH /api/projects/[id] (name + description, ownership-checked)"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Add updateProject(userId, projectId, {name?, description?}) to
+              lib/projects.ts (ownership via userOwnsProject, trim, validate
+              name 1–120 / description ≤280), and a PATCH handler in
+              app/api/projects/[id]/route.ts returning the updated summary;
+              console.info({event:'project.updated'}).
+            depends_on: [TASK-107]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "401 unauth / 403 non-owner / 400 empty-or-overlong name / 200 with {id,name,description} on success; covered by route + lib tests."
+          - id: TASK-109
+            title: "lib + UI: surface description in ProjectSummary + inline edit form"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Extend ProjectSummary + listUserProjects to select description;
+              add a client EditProjectButton / inline form on the dashboard row
+              (matches the DeleteProjectButton client pattern; Save disabled on
+              empty/pending; router.refresh() on success).
+            depends_on: [TASK-108]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Edit reveals pre-filled fields; empty name disables Save; successful save shows the new name + description; covered by a component test."
+          - id: TASK-110
+            title: "e2e: rename round-trips"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Playwright — a signed-in user creates a project, edits its name +
+              description, and asserts the row updates and survives a reload.
+            depends_on: [TASK-108, TASK-109]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "e2e passes asserting the updated name + description persist across a reload."
+              - "STORY-39 acceptance_criteria satisfied."
+      - id: STORY-40
+        title: "Archive and restore a project"
+        description: |
+          A reversible alternative to delete: archiving removes a project from
+          the active list without touching its volume; restore brings it back.
+          Delete-with-cleanup (STORY-28) remains the only destructive path.
+        acceptance_criteria:
+          - "Each active project row exposes an Archive action; archiving sets archived_at and removes the project from the default dashboard list immediately."
+          - "An Archived view (tab/section) lists archived projects with a Restore action that clears archived_at and returns them to the active list."
+          - "The default GET /api/projects (and listUserProjects) returns only active projects; an explicit ?status=archived|all returns the others."
+          - "Archiving does not destroy the sandbox/volume — the project's files survive and reopen after restore (the running container is left to the existing 30-min idle sweep)."
+          - "Delete-with-cleanup (STORY-28) remains available for both active and archived projects."
+        user_flow:
+          - "Owner clicks Archive on an active project row (lightweight confirm — it's reversible)"
+          - "The row disappears from the active list"
+          - "Owner switches to the Archived tab and sees it listed"
+          - "Owner clicks Restore — it returns to the active list, openable, files intact"
+        out_of_scope:
+          - "Auto-archiving by inactivity (manual only this pass)."
+          - "Forcibly destroying the sandbox container on archive (idle sweep handles it)."
+          - "Bulk archive / multi-select."
+        tasks:
+          - id: TASK-111
+            title: "db: add nullable archived_at timestamptz to projects"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["packages/db"]
+            description: |
+              Add a nullable archived_at timestamptz column; null = active.
+              Drizzle migration + codegen.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Nullable column added; existing rows read null; drift check passes."
+          - id: TASK-112
+            title: "lib + API: archive/restore + status-filtered list"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              archiveProject/restoreProject(userId, projectId) (ownership-checked,
+              set/clear archived_at, console.info event); listUserProjects(userId,
+              {status}) defaults to active; GET /api/projects honors
+              ?status=active|archived|all; add archive + restore endpoints
+              (PATCH {archived:true|false} or POST).
+            depends_on: [TASK-111]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Archive sets the timestamp and drops the project from the default list; restore clears it; non-owner 403; covered by tests."
+          - id: TASK-113
+            title: "UI: archive/restore actions + Archived view"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Archive action on active rows; an Active/Archived toggle on the
+              dashboard; Restore action on archived rows; empty states for each.
+            depends_on: [TASK-112]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Archiving removes the row from Active and shows it under Archived; restore reverses it; component test covers the toggle + actions."
+          - id: TASK-114
+            title: "e2e: archive then restore round-trips"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Create → archive (gone from Active, present in Archived) → restore
+              (back in Active, opens with files).
+            depends_on: [TASK-112, TASK-113]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "e2e passes the full archive→restore round-trip."
+              - "STORY-40 acceptance_criteria satisfied."
+      - id: STORY-41
+        title: "Dashboard search, sort, and filter"
+        description: |
+          Make a growing project list navigable: search by name, sort by
+          recent/oldest/name, and switch active vs archived. Builds on the
+          metadata (STORY-39) and the status filter (STORY-40).
+        acceptance_criteria:
+          - "A search box filters the visible list by name (case-insensitive substring); clearing it restores the full list."
+          - "A sort control offers Recent (default), Oldest, and Name (A–Z); the order updates immediately."
+          - "The Active/Archived filter from STORY-40 composes with search + sort (search within the current tab)."
+          - "A distinct no-match empty state ('No projects match …') is shown when search yields nothing, separate from the 'no projects yet' empty state."
+        user_flow:
+          - "Owner lands on /dashboard with several projects (Recent order, Active tab)"
+          - "Types in the search box — list narrows live to name matches"
+          - "Picks Name from the sort control — list reorders A–Z"
+          - "Clears search — full current-tab list returns in the chosen sort"
+        out_of_scope:
+          - "Full-text search over file contents or descriptions (name only)."
+          - "Server-side pagination (client filter/sort is sufficient at POC scale)."
+          - "Saved filters / per-user default sort persistence."
+        tasks:
+          - id: TASK-115
+            title: "lib + API: sort param on the project list"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              listUserProjects(userId, {status, sort}) supporting
+              recent|oldest|name, default recent, composing with status.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Each sort returns the documented order; defaults to recent; covered by a lib test."
+          - id: TASK-116
+            title: "UI: search box + sort control + Active/Archived tabs"
+            status: ready
+            priority: med
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Add the search input, sort dropdown, and wire the tabs from
+              STORY-40; client-side filter/sort over the loaded list; no-match
+              empty state; note in code that filtering is client-side for small
+              lists.
+            depends_on: [TASK-115]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Typing narrows the list; sort reorders; no-match state renders; component test covers filter + sort + empty states."
+              - "STORY-41 acceptance_criteria satisfied."
+      - id: STORY-42
+        title: "Duplicate / fork a project"
+        description: |
+          Use a finished project as the seed for a new one — clone its
+          /workspace contents AND git history into a fresh, independent
+          sandbox. Requires a new Sandbox-interface method (ADR + sign-off);
+          the only architecturally load-bearing story in the epic.
+        acceptance_criteria:
+          - "A Duplicate action on a dashboard project creates a new, independent project (default name 'Copy of <name>') owned by the same team."
+          - "The duplicate's /workspace contains the same files and full git history as the source at duplication time; it opens to that state."
+          - "The two projects are fully independent — editing one does not change the other (separate sandbox volumes)."
+          - "Cloning the source volume into the new project's volume goes through a new Sandbox-interface method (no Docker specifics leaked to consumers), introduced under an ADR with both-contributor sign-off."
+          - "A duplicate of a source whose sandbox has never started (no volume yet) falls back to seeding the source's template — it never produces an empty or errored project."
+        user_flow:
+          - "Owner clicks Duplicate on a project row"
+          - "System creates the new project row and triggers the clone; the row shows a brief 'Duplicating…' state"
+          - "On success the new 'Copy of <name>' appears in the list, openable"
+          - "Opening it shows the same files + git log; edits there don't touch the original"
+        out_of_scope:
+          - "Carrying over the live preview / running agent session / chat history (a fresh sandbox + fresh agent session)."
+          - "Cross-team duplication or duplicating someone else's project."
+          - "Selective/partial duplication (always the whole workspace)."
+        tasks:
+          - id: TASK-117
+            title: "ADR + Sandbox interface: add clone capability"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["packages/sandbox"]
+            description: |
+              ADR (Context/Decision/Consequences/Alternatives) for adding a
+              clone method to the Sandbox interface that copies a source
+              project's named volume contents (incl. .git) into a new
+              praxis-project-<newId> volume; define the method signature only,
+              no Docker types in the signature.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "ADR committed under docs/decisions/; interface gains the method with no Docker types in the signature; marked Proposed pending sign-off."
+          - id: TASK-118
+            title: "packages/sandbox: DockerSandbox clone implementation (Bun-safe)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["packages/sandbox"]
+            description: |
+              Implement the volume copy preserving git history via the docker
+              CLI / a helper container (Bun-safe per the dockerode rule).
+            depends_on: [TASK-117]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Docker-gated integration test (RUN_DOCKER_TESTS=1) asserts files + .git land in the new volume and the source is untouched."
+          - id: TASK-119
+            title: "orchestrator: fork endpoint (clone source → new project sandbox)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              Internal-secret-gated endpoint that clones a source project's
+              volume into a new project's volume and prepares it to start
+              (reusing the start/seed path; template-seed fallback when the
+              source has no volume). Logged.
+            depends_on: [TASK-118]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Endpoint clones source→new and returns ok; missing-volume source falls back to template seed; integration test (Docker job) covers both."
+          - id: TASK-120
+            title: "lib + API + UI: Duplicate action (create copy → clone → opens)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              POST /api/projects/[id]/duplicate — ownership-checked, creates the
+              new project row (Copy of <name>, same team/template), calls the
+              orchestrator fork, logs project.duplicated; a DuplicateProjectButton
+              on the dashboard row with a pending state + router.refresh().
+            depends_on: [TASK-119]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "403 non-owner; success creates a new row and returns its id; UI shows 'Duplicating…' then the new row; route + component tests."
+          - id: TASK-121
+            title: "e2e: duplicate produces an independent copy"
+            status: ready
+            priority: med
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Create + seed a project, edit a file, Duplicate, open the copy,
+              assert the edited file is present, then assert editing the copy
+              doesn't change the original.
+            depends_on: [TASK-119, TASK-120]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "e2e passes asserting the copy has the source's files and is independent of the original."
+              - "STORY-42 acceptance_criteria satisfied."
