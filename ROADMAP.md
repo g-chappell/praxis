@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 26 / 41 (63%)
 - **Total tasks:** 120
-- **Done:** 89 (74%)
-- **Ready:** 31
+- **Done:** 90 (75%)
+- **Ready:** 30
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1801,7 +1801,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > (PATCH {archived:true|false} or POST).
     _Task AC:_
     - Archive sets the timestamp and drops the project from the default list; restore clears it; non-owner 403; covered by tests.
-  - :black_circle: **TASK-113** — UI: archive/restore actions + Archived view  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-113** — UI: archive/restore actions + Archived view  `high` `medium` _(apps/web)_  
     _depends on: TASK-112_
     > Archive action on active rows; an Active/Archived toggle on the
     > dashboard; Restore action on archived rows; empty states for each.
