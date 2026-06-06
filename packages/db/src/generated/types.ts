@@ -8,6 +8,9 @@ import type * as schema from '../schema.js';
 export type AgentTurn = InferSelectModel<typeof schema.agentTurns>;
 export type NewAgentTurn = InferInsertModel<typeof schema.agentTurns>;
 
+export type AuditLog = InferSelectModel<typeof schema.auditLog>;
+export type NewAuditLog = InferInsertModel<typeof schema.auditLog>;
+
 export type AuthSession = InferSelectModel<typeof schema.authSession>;
 export type NewAuthSession = InferInsertModel<typeof schema.authSession>;
 

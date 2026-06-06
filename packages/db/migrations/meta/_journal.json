@@ -57,6 +57,13 @@
       "when": 1780748070459,
       "tag": "0007_lyrical_hellcat",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780755215278,
+      "tag": "0008_shiny_blade",
+      "breakpoints": true
     }
   ]
 }

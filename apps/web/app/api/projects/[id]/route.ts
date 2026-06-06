@@ -7,6 +7,7 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
+import { clientIp, recordAudit } from '@/lib/audit';
 import { getAuth } from '@/lib/auth';
 import {
   deleteProject,
@@ -23,7 +24,8 @@ export const dynamic = 'force-dynamic';
 // (STORY-40) a project the user owns. Validates at the boundary, persists, and
 // logs the change for traceability.
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  const hdrs = await headers();
+  const session = await getAuth().api.getSession({ headers: hdrs });
   if (!session?.user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -52,6 +54,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         at: new Date().toISOString(),
       }),
     );
+    await recordAudit(session.user.id, body.archived ? 'project.archived' : 'project.restored', {
+      targetType: 'project',
+      targetId: projectId,
+      ip: clientIp(hdrs),
+    });
     return NextResponse.json({ id: projectId, archived: body.archived });
   }
 
@@ -74,6 +81,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       at: new Date().toISOString(),
     }),
   );
+  await recordAudit(session.user.id, 'project.updated', {
+    targetType: 'project',
+    targetId: projectId,
+    metadata: { fields: Object.keys(parsed.fields) },
+    ip: clientIp(hdrs),
+  });
 
   return NextResponse.json({
     id: updated.id,
@@ -83,7 +96,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  const hdrs = await headers();
+  const session = await getAuth().api.getSession({ headers: hdrs });
   if (!session?.user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -119,6 +133,11 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
       at: new Date().toISOString(),
     }),
   );
+  await recordAudit(session.user.id, 'project.deleted', {
+    targetType: 'project',
+    targetId: projectId,
+    ip: clientIp(hdrs),
+  });
 
   return NextResponse.json({ ok: true });
 }

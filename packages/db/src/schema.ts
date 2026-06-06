@@ -216,6 +216,45 @@ export const events = pgTable(
   (table) => [index('idx_events_project_time').on(table.projectId, table.createdAt)],
 );
 
+// ─── audit_action ─────────────────────────────────────────────────────
+// Accountability actions written to audit_log (STORY-43). Covers the
+// currently-wired admin/destructive actions; extend the list as new
+// audited actions land (EPIC-08 bans, role changes, etc.).
+export const auditAction = pgEnum('audit_action', [
+  'project.deleted',
+  'project.archived',
+  'project.restored',
+  'project.updated',
+  'project.duplicated',
+  'api_key.rotated',
+]);
+
+// ─── audit_log ────────────────────────────────────────────────────────
+// The accountability backbone (STORY-43): one append-only row per
+// admin/destructive action, added alongside — never replacing — the
+// existing console.info stdout logs. Indexed for the three query
+// dimensions the viewer (STORY-47) needs: by actor, by target, by time.
+export const auditLog = pgTable(
+  'audit_log',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    actorUserId: uuid('actor_user_id')
+      .references(() => users.id)
+      .notNull(),
+    action: auditAction('action').notNull(),
+    targetType: text('target_type').notNull(),
+    targetId: text('target_id').notNull(),
+    metadata: jsonb('metadata'),
+    ip: text('ip'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [
+    index('idx_audit_log_actor_time').on(table.actorUserId, table.createdAt),
+    index('idx_audit_log_target_time').on(table.targetType, table.targetId, table.createdAt),
+    index('idx_audit_log_created').on(table.createdAt),
+  ],
+);
+
 // ─── agent_turns ──────────────────────────────────────────────────────
 export const agentTurns = pgTable('agent_turns', {
   id: uuid('id').primaryKey().defaultRandom(),

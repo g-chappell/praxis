@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 28 / 49 (57%)
+- **Features verified:** 29 / 49 (59%)
 - **Total tasks:** 149
-- **Done:** 98 (66%)
-- **Ready:** 51
+- **Done:** 101 (68%)
+- **Ready:** 48
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1919,7 +1919,7 @@ blocklist, an activity-log viewer, and a health overview. Every
 /api/admin/* route is role-gated server-side; admin actions never widen the
 ownership helpers; destructive actions require a reason and are audit-logged.
 
-- **STORY-43** — Audit log foundation
+- **STORY-43** — Audit log foundation  [:white_check_mark: verified]
   > The accountability backbone — a queryable audit_log every
   > admin/destructive action writes to. Plumbing only; the viewer is a
   > later story (STORY-47).
@@ -1931,7 +1931,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
   - The audit viewer UI (STORY-47).
   - Retention / rotation / archival of audit rows.
   - Backfilling historical actions that predate this table.
-  - :black_circle: **TASK-122** — db: audit_log table + audit_action enum + migration + codegen  `high` `small` _(packages/db)_
+  - :white_check_mark: **TASK-122** — db: audit_log table + audit_action enum + migration + codegen  `high` `small` _(packages/db)_
     > Add audit_log (id uuid pk, actor_user_id uuid fk users, action
     > audit_action enum, target_type text, target_id text, metadata
     > jsonb, ip text nullable, created_at timestamptz default now). A
@@ -1939,7 +1939,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     > drizzle migration + db:codegen.
     _Task AC:_
     - Migration creates audit_log + the audit_action enum; codegen regenerates types; existing rows unaffected.
-  - :black_circle: **TASK-123** — lib: recordAudit() helper + wire existing web emissions  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-123** — lib: recordAudit() helper + wire existing web emissions  `high` `medium` _(apps/web)_  
     _depends on: TASK-122_
     > recordAudit(actorUserId, action, {targetType, targetId, metadata,
     > ip}) inserts a row (injectable db for tests). Wire the existing
@@ -1949,7 +1949,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     > does not break the action.
     _Task AC:_
     - Each wired action persists an audit_log row with the correct action+target+actor; an audit failure does not 500 the action; covered by tests.
-  - :black_circle: **TASK-124** :checkered_flag: — test: real-Postgres integration for recordAudit + query helpers  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-124** :checkered_flag: — test: real-Postgres integration for recordAudit + query helpers  `med` `small` _(apps/web)_  
     _depends on: TASK-123_
     > RUN_DB_TESTS=1 integration — recordAudit writes; query-by-actor /
     > target / time returns the expected rows.

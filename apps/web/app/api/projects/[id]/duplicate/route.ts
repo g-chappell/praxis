@@ -7,6 +7,7 @@
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
+import { clientIp, recordAudit } from '@/lib/audit';
 import { getAuth } from '@/lib/auth';
 import { deleteProject, duplicateProjectRow, userOwnsProject } from '@/lib/projects';
 
@@ -14,7 +15,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
-  const session = await getAuth().api.getSession({ headers: await headers() });
+  const hdrs = await headers();
+  const session = await getAuth().api.getSession({ headers: hdrs });
   if (!session?.user) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
@@ -58,6 +60,12 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
       at: new Date().toISOString(),
     }),
   );
+  await recordAudit(session.user.id, 'project.duplicated', {
+    targetType: 'project',
+    targetId: sourceProjectId,
+    metadata: { newProjectId: copy.id },
+    ip: clientIp(hdrs),
+  });
 
   return NextResponse.json({ id: copy.id });
 }
