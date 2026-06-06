@@ -1897,7 +1897,7 @@ epics:
               - "Integration test crosses the cap and observes a clean refusal."
           - id: TASK-044
             title: "Wire MCP server into the react-threejs-scene sandbox"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["templates/react-threejs-scene", "packages/sandbox", "services/orchestrator"]
@@ -1912,6 +1912,8 @@ epics:
               Operator: paste the OpenAI key in /admin + rebuild sandbox-base.
             depends_on: [TASK-042, TASK-040, TASK-022, TASK-106]
             attempt_count: 0
+            completed: '2026-06-06T18:31:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/311
             is_terminal: true
             task_acceptance:
               - "End-to-end: Claude Code is asked to add a stone texture; sees it appear in the preview."

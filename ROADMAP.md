@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 30 / 49 (61%)
 - **Total tasks:** 149
-- **Done:** 106 (71%)
-- **Ready:** 43
+- **Done:** 107 (72%)
+- **Ready:** 42
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1198,7 +1198,7 @@ that closes the POC.
     > and rejects with an explicit error after the cap is hit.
     _Task AC:_
     - Integration test crosses the cap and observes a clean refusal.
-  - :black_circle: **TASK-044** :checkered_flag: — Wire MCP server into the react-threejs-scene sandbox  `high` `medium` _(templates/react-threejs-scene, packages/sandbox, services/orchestrator)_  
+  - :white_check_mark: **TASK-044** :checkered_flag: — Wire MCP server into the react-threejs-scene sandbox  `high` `medium` _(templates/react-threejs-scene, packages/sandbox, services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/311)  
     _depends on: TASK-042, TASK-040, TASK-022, TASK-106_
     > Per ADR-0018 (Path A — confirmed by spike): at project creation the
     > orchestrator seeds /workspace/.mcp.json (server command, no secrets) +
