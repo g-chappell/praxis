@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 26 / 41 (63%)
 - **Total tasks:** 120
-- **Done:** 88 (73%)
-- **Ready:** 32
+- **Done:** 89 (74%)
+- **Ready:** 31
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1792,7 +1792,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > Drizzle migration + codegen.
     _Task AC:_
     - Nullable column added; existing rows read null; drift check passes.
-  - :black_circle: **TASK-112** — lib + API: archive/restore + status-filtered list  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-112** — lib + API: archive/restore + status-filtered list  `high` `medium` _(apps/web)_  
     _depends on: TASK-111_
     > archiveProject/restoreProject(userId, projectId) (ownership-checked,
     > set/clear archived_at, console.info event); listUserProjects(userId,

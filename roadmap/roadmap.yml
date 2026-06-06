@@ -2853,7 +2853,7 @@ epics:
               - "Nullable column added; existing rows read null; drift check passes."
           - id: TASK-112
             title: "lib + API: archive/restore + status-filtered list"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -2865,6 +2865,7 @@ epics:
               (PATCH {archived:true|false} or POST).
             depends_on: [TASK-111]
             attempt_count: 0
+            completed: '2026-06-06T12:17:00Z'
             is_terminal: false
             task_acceptance:
               - "Archive sets the timestamp and drops the project from the default list; restore clears it; non-owner 403; covered by tests."
