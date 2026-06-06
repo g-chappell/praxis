@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 27 / 41 (66%)
 - **Total tasks:** 120
-- **Done:** 94 (78%)
-- **Ready:** 26
+- **Done:** 95 (79%)
+- **Ready:** 25
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1876,7 +1876,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > no Docker types in the signature.
     _Task AC:_
     - ADR committed under docs/decisions/; interface gains the method with no Docker types in the signature; marked Proposed pending sign-off.
-  - :black_circle: **TASK-118** — packages/sandbox: DockerSandbox clone implementation (Bun-safe)  `high` `medium` _(packages/sandbox)_  
+  - :white_check_mark: **TASK-118** — packages/sandbox: DockerSandbox clone implementation (Bun-safe)  `high` `medium` _(packages/sandbox)_  
     _depends on: TASK-117_
     > Implement the volume copy preserving git history via the docker
     > CLI / a helper container (Bun-safe per the dockerode rule).

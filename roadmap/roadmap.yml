@@ -3001,7 +3001,7 @@ epics:
               - "ADR committed under docs/decisions/; interface gains the method with no Docker types in the signature; marked Proposed pending sign-off."
           - id: TASK-118
             title: "packages/sandbox: DockerSandbox clone implementation (Bun-safe)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/sandbox"]
@@ -3010,6 +3010,7 @@ epics:
               CLI / a helper container (Bun-safe per the dockerode rule).
             depends_on: [TASK-117]
             attempt_count: 0
+            completed: '2026-06-06T12:49:00Z'
             is_terminal: false
             task_acceptance:
               - "Docker-gated integration test (RUN_DOCKER_TESTS=1) asserts files + .git land in the new volume and the source is untouched."
