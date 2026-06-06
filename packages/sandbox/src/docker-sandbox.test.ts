@@ -279,4 +279,63 @@ describeDocker('DockerSandbox (real Docker)', () => {
     },
     T,
   );
+
+  it(
+    'clone copies files + git history into a new independent volume; source untouched',
+    async () => {
+      const src = `test-${randomBytes(6).toString('hex')}`;
+      const dst = `test-${randomBytes(6).toString('hex')}`;
+      let sh: SandboxHandle | undefined;
+      let dh: SandboxHandle | undefined;
+      try {
+        // Seed the source with a template (→ an initial commit) + an extra file.
+        sh = await seeder.start(src, 'blank');
+        await seeder.writeFile(sh, 'hello.txt', 'from source');
+        await seeder.exec(
+          sh,
+          'cd /workspace && git -c user.email=a@b.c -c user.name=t add -A && ' +
+            'git -c user.email=a@b.c -c user.name=t commit -q -m "add hello"',
+        );
+        const srcLog = (
+          await seeder.exec(sh, 'cd /workspace && git log --oneline | wc -l')
+        ).stdout.trim();
+
+        // Clone source → dst, then start the new project (populated volume → no seed).
+        expect(await seeder.clone(src, dst)).toBe(true);
+        dh = await seeder.start(dst, 'blank');
+
+        // Same file content + same git history landed in the clone.
+        expect((await seeder.exec(dh, 'cat /workspace/hello.txt')).stdout).toContain('from source');
+        const dstLog = (
+          await seeder.exec(dh, 'cd /workspace && git log --oneline | wc -l')
+        ).stdout.trim();
+        expect(dstLog).toBe(srcLog);
+
+        // Independence: editing the clone does not change the source.
+        await seeder.writeFile(dh, 'hello.txt', 'changed in clone');
+        expect((await seeder.exec(sh, 'cat /workspace/hello.txt')).stdout).toContain('from source');
+      } finally {
+        if (sh) await seeder.stop(sh);
+        if (dh) await seeder.stop(dh);
+        for (const pid of [src, dst]) {
+          try {
+            await docker.getVolume(`praxis-project-${pid}`).remove({ force: true });
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+    },
+    T,
+  );
+
+  it(
+    'clone returns false when the source has no volume',
+    async () => {
+      const src = `test-${randomBytes(6).toString('hex')}`; // never started
+      const dst = `test-${randomBytes(6).toString('hex')}`;
+      expect(await seeder.clone(src, dst)).toBe(false);
+    },
+    T,
+  );
 });

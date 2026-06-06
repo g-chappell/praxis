@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 
 import { ArchiveProjectButton } from '@/components/archive-project-button';
 import { DeleteProjectButton } from '@/components/delete-project-button';
+import { DuplicateProjectButton } from '@/components/duplicate-project-button';
 import { EditProjectButton } from '@/components/edit-project-button';
 import type { ProjectSort, ProjectStatus, ProjectSummary } from '@/lib/projects';
 
@@ -113,7 +114,10 @@ export function ProjectList({
                   Open
                 </Link>
                 {p.archivedAt === null && (
-                  <EditProjectButton projectId={p.id} name={p.name} description={p.description} />
+                  <>
+                    <EditProjectButton projectId={p.id} name={p.name} description={p.description} />
+                    <DuplicateProjectButton projectId={p.id} />
+                  </>
                 )}
                 <ArchiveProjectButton
                   projectId={p.id}

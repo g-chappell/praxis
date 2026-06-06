@@ -482,6 +482,44 @@ export class DockerSandbox implements Sandbox {
     this.activity.delete(projectId);
   }
 
+  /** Copy a source project's volume (files + .git) into the new project's volume
+   *  via a short-lived helper container that mounts both and runs `cp -a`. The
+   *  source is mounted read-only (never mutated). Returns false when the source
+   *  has no volume to copy (caller seeds the template instead). See ADR-0019.
+   *  Volume-to-volume copy keeps this Bun-safe — no streamed putArchive; the
+   *  helper lifecycle is unary dockerode, like destroy(). */
+  async clone(sourceProjectId: string, newProjectId: string): Promise<boolean> {
+    const srcVolume = `praxis-project-${sourceProjectId}`;
+    const dstVolume = `praxis-project-${newProjectId}`;
+
+    // Nothing to copy if the source never started (no volume).
+    try {
+      await this.docker.getVolume(srcVolume).inspect();
+    } catch (err) {
+      if (isAlreadyGone(err)) return false;
+      throw err;
+    }
+
+    // `cp -a /src/. /dst/` copies contents incl. dotfiles (.git) into the new
+    // volume, which Docker auto-creates on mount. Source is read-only.
+    const helper = await this.docker.createContainer({
+      Image: this.image,
+      Cmd: ['cp', '-a', '/src/.', '/dst/'],
+      HostConfig: { Binds: [`${srcVolume}:/src:ro`, `${dstVolume}:/dst`] },
+    });
+    try {
+      await helper.start();
+      const status = (await helper.wait()) as { StatusCode?: number };
+      const code = status?.StatusCode ?? 0;
+      if (code !== 0) {
+        throw new Error(`sandbox clone failed (exit ${code})`);
+      }
+    } finally {
+      await helper.remove({ force: true }).catch(() => {});
+    }
+    return true;
+  }
+
   /** Tar /workspace out of the container and PUT it to the object store. */
   private async snapshot(handle: SandboxHandle, container: Docker.Container): Promise<void> {
     if (!this.store) return;

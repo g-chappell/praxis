@@ -75,6 +75,12 @@ export interface Sandbox {
    *  project is deleted (leaves no stale artifacts). Takes a projectId because
    *  the project may not be currently running. */
   destroy(projectId: string): Promise<void>;
+  /** Copy a source project's workspace (files + full git history) into a new
+   *  project's volume, for duplication (ADR-0019). Takes projectIds because the
+   *  source may be stopped; the source is read-only (never mutated). Returns
+   *  true when a source volume was copied, false when the source has no volume
+   *  (the caller should seed the template instead). */
+  clone(sourceProjectId: string, newProjectId: string): Promise<boolean>;
 }
 
 export { DockerSandbox, type DockerSandboxConfig } from './docker-sandbox.js';

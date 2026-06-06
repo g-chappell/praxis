@@ -32,6 +32,7 @@ describe('@praxis/sandbox interface', () => {
       exposePort: async () => 'https://preview.example',
       stop: async () => {},
       destroy: async () => {},
+      clone: async () => true,
     };
 
     expect(typeof noop.start).toBe('function');

@@ -14,7 +14,12 @@ import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
 
 import { eq } from 'drizzle-orm';
 
-import { listUserProjects, setProjectArchived, updateProject } from './projects';
+import {
+  duplicateProjectRow,
+  listUserProjects,
+  setProjectArchived,
+  updateProject,
+} from './projects';
 
 const describeDb = dbTestsEnabled() ? describe : describe.skip;
 
@@ -171,6 +176,38 @@ describeDb('listUserProjects sort order (real DB)', () => {
 
       const byName = await listUserProjects(owner, { sort: 'name' }, db);
       expect(byName.map((p) => p.name)).toEqual(['Apple', 'Banana', 'Cherry']);
+    });
+  });
+});
+
+describeDb('duplicateProjectRow (real DB)', () => {
+  it('creates a "Copy of <name>" row in the same team with the same template', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const { projectId } = await seedTeamWithProject(db, owner);
+
+      const copy = await duplicateProjectRow(owner, projectId, db);
+      expect(copy).not.toBeNull();
+      expect(copy!.id).not.toBe(projectId);
+      expect(copy!.templateId).toBe('react-threejs-scene');
+
+      // Both the source and the copy are in the owner's list, same team.
+      const all = await listUserProjects(owner, { status: 'all' }, db);
+      const names = all.map((p) => p.name);
+      expect(names).toContain('P');
+      expect(names).toContain('Copy of P');
+    });
+  });
+
+  it('returns null for a non-member (no row created)', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const stranger = await seedUser(db);
+      const { projectId } = await seedTeamWithProject(db, owner);
+
+      expect(await duplicateProjectRow(stranger, projectId, db)).toBeNull();
+      const ownerProjects = await listUserProjects(owner, { status: 'all' }, db);
+      expect(ownerProjects).toHaveLength(1);
     });
   });
 });

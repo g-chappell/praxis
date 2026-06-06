@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 27 / 41 (66%)
+- **Features verified:** 28 / 41 (68%)
 - **Total tasks:** 120
-- **Done:** 93 (78%)
-- **Ready:** 27
+- **Done:** 98 (82%)
+- **Ready:** 22
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1848,7 +1848,7 @@ addition to the Sandbox interface (ADR + sign-off).
     - Typing narrows the list; sort reorders; no-match state renders; component test covers filter + sort + empty states.
     - STORY-41 acceptance_criteria satisfied.
 
-- **STORY-42** — Duplicate / fork a project
+- **STORY-42** — Duplicate / fork a project  [:white_check_mark: verified]
   > Use a finished project as the seed for a new one — clone its
   > /workspace contents AND git history into a fresh, independent
   > sandbox. Requires a new Sandbox-interface method (ADR + sign-off);
@@ -1868,7 +1868,7 @@ addition to the Sandbox interface (ADR + sign-off).
   - Carrying over the live preview / running agent session / chat history (a fresh sandbox + fresh agent session).
   - Cross-team duplication or duplicating someone else's project.
   - Selective/partial duplication (always the whole workspace).
-  - :black_circle: **TASK-117** — ADR + Sandbox interface: add clone capability  `high` `medium` _(packages/sandbox)_
+  - :white_check_mark: **TASK-117** — ADR + Sandbox interface: add clone capability  `high` `medium` _(packages/sandbox)_
     > ADR (Context/Decision/Consequences/Alternatives) for adding a
     > clone method to the Sandbox interface that copies a source
     > project's named volume contents (incl. .git) into a new
@@ -1876,13 +1876,13 @@ addition to the Sandbox interface (ADR + sign-off).
     > no Docker types in the signature.
     _Task AC:_
     - ADR committed under docs/decisions/; interface gains the method with no Docker types in the signature; marked Proposed pending sign-off.
-  - :black_circle: **TASK-118** — packages/sandbox: DockerSandbox clone implementation (Bun-safe)  `high` `medium` _(packages/sandbox)_  
+  - :white_check_mark: **TASK-118** — packages/sandbox: DockerSandbox clone implementation (Bun-safe)  `high` `medium` _(packages/sandbox)_  
     _depends on: TASK-117_
     > Implement the volume copy preserving git history via the docker
     > CLI / a helper container (Bun-safe per the dockerode rule).
     _Task AC:_
     - Docker-gated integration test (RUN_DOCKER_TESTS=1) asserts files + .git land in the new volume and the source is untouched.
-  - :black_circle: **TASK-119** — orchestrator: fork endpoint (clone source → new project sandbox)  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-119** — orchestrator: fork endpoint (clone source → new project sandbox)  `high` `medium` _(services/orchestrator)_  
     _depends on: TASK-118_
     > Internal-secret-gated endpoint that clones a source project's
     > volume into a new project's volume and prepares it to start
@@ -1890,7 +1890,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > source has no volume). Logged.
     _Task AC:_
     - Endpoint clones source→new and returns ok; missing-volume source falls back to template seed; integration test (Docker job) covers both.
-  - :black_circle: **TASK-120** — lib + API + UI: Duplicate action (create copy → clone → opens)  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-120** — lib + API + UI: Duplicate action (create copy → clone → opens)  `high` `medium` _(apps/web)_  
     _depends on: TASK-119_
     > POST /api/projects/[id]/duplicate — ownership-checked, creates the
     > new project row (Copy of <name>, same team/template), calls the
@@ -1898,7 +1898,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > on the dashboard row with a pending state + router.refresh().
     _Task AC:_
     - 403 non-owner; success creates a new row and returns its id; UI shows 'Duplicating…' then the new row; route + component tests.
-  - :black_circle: **TASK-121** :checkered_flag: — e2e: duplicate produces an independent copy  `med` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-121** :checkered_flag: — e2e: duplicate produces an independent copy  `med` `medium` _(apps/web)_  
     _depends on: TASK-119, TASK-120_
     > Create + seed a project, edit a file, Duplicate, open the copy,
     > assert the edited file is present, then assert editing the copy
