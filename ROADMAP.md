@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 27 / 41 (66%)
 - **Total tasks:** 120
-- **Done:** 96 (80%)
-- **Ready:** 24
+- **Done:** 97 (81%)
+- **Ready:** 23
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1890,7 +1890,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > source has no volume). Logged.
     _Task AC:_
     - Endpoint clones source→new and returns ok; missing-volume source falls back to template seed; integration test (Docker job) covers both.
-  - :black_circle: **TASK-120** — lib + API + UI: Duplicate action (create copy → clone → opens)  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-120** — lib + API + UI: Duplicate action (create copy → clone → opens)  `high` `medium` _(apps/web)_  
     _depends on: TASK-119_
     > POST /api/projects/[id]/duplicate — ownership-checked, creates the
     > new project row (Copy of <name>, same team/template), calls the

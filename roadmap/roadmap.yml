@@ -3033,7 +3033,7 @@ epics:
               - "Endpoint clones source→new and returns ok; missing-volume source falls back to template seed; integration test (Docker job) covers both."
           - id: TASK-120
             title: "lib + API + UI: Duplicate action (create copy → clone → opens)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3044,6 +3044,7 @@ epics:
               on the dashboard row with a pending state + router.refresh().
             depends_on: [TASK-119]
             attempt_count: 0
+            completed: '2026-06-06T12:54:00Z'
             is_terminal: false
             task_acceptance:
               - "403 non-owner; success creates a new row and returns its id; UI shows 'Duplicating…' then the new row; route + component tests."
