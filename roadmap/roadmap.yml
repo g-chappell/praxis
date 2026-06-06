@@ -2728,6 +2728,8 @@ epics:
           Add an editable description and make the project name editable
           after creation — the metadata spine that the archive (STORY-40)
           and dashboard search/sort (STORY-41) stories build on.
+        verified_at: '2026-06-06T12:07:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "A project row on the dashboard exposes an Edit action that reveals an inline form pre-filled with the current name and description."
           - "Saving persists name + description via PATCH /api/projects/[id]; the row reflects the new name and description without a full page navigation (router.refresh())."
@@ -2798,7 +2800,7 @@ epics:
               - "Edit reveals pre-filled fields; empty name disables Save; successful save shows the new name + description; covered by a component test."
           - id: TASK-110
             title: "e2e: rename round-trips"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -2807,6 +2809,7 @@ epics:
               description, and asserts the row updates and survives a reload.
             depends_on: [TASK-108, TASK-109]
             attempt_count: 0
+            completed: '2026-06-06T12:07:00Z'
             is_terminal: true
             task_acceptance:
               - "e2e passes asserting the updated name + description persist across a reload."

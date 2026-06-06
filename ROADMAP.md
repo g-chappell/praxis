@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 25 / 41 (61%)
+- **Features verified:** 26 / 41 (63%)
 - **Total tasks:** 120
-- **Done:** 86 (72%)
-- **Ready:** 34
+- **Done:** 87 (73%)
+- **Ready:** 33
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1717,7 +1717,7 @@ This epic adds rename/describe, archive/restore, dashboard
 search/sort/filter, and duplicate/fork — the last requiring an
 addition to the Sandbox interface (ADR + sign-off).
 
-- **STORY-39** — Rename and re-describe a project
+- **STORY-39** — Rename and re-describe a project  [:white_check_mark: verified]
   > Add an editable description and make the project name editable
   > after creation — the metadata spine that the archive (STORY-40)
   > and dashboard search/sort (STORY-41) stories build on.
@@ -1760,7 +1760,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > empty/pending; router.refresh() on success).
     _Task AC:_
     - Edit reveals pre-filled fields; empty name disables Save; successful save shows the new name + description; covered by a component test.
-  - :black_circle: **TASK-110** :checkered_flag: — e2e: rename round-trips  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-110** :checkered_flag: — e2e: rename round-trips  `med` `small` _(apps/web)_  
     _depends on: TASK-108, TASK-109_
     > Playwright — a signed-in user creates a project, edits its name +
     > description, and asserts the row updates and survives a reload.
