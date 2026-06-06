@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 29 / 49 (59%)
+- **Features verified:** 30 / 49 (61%)
 - **Total tasks:** 149
-- **Done:** 101 (68%)
-- **Ready:** 48
+- **Done:** 104 (70%)
+- **Ready:** 45
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1516,7 +1516,7 @@ flags, observability) mount into.
     - Settings UI no longer implies OAuth powers sessions; docs note the reserved role.
     - STORY-24 acceptance_criteria satisfied.
 
-- **STORY-38** — Multi-provider platform keys (OpenAI alongside Anthropic)
+- **STORY-38** — Multi-provider platform keys (OpenAI alongside Anthropic)  [:white_check_mark: verified]
   > Makes platform_api_keys multi-provider so external-API keys are managed
   > exactly like the platform Anthropic key (admin UI, encrypted at rest,
   > rotatable, role-gated). Driven by STORY-15: the image-gen MCP server
@@ -1535,7 +1535,7 @@ flags, observability) mount into.
   **Out of scope:**
   - Per-user or per-project external keys (platform-owned only, POC).
   - Providers beyond Anthropic + OpenAI.
-  - :black_circle: **TASK-104** — DB + key service: platform_api_keys provider column + per-provider active + accessor  `high` `medium` _(packages/db, apps/web)_
+  - :white_check_mark: **TASK-104** — DB + key service: platform_api_keys provider column + per-provider active + accessor  `high` `medium` _(packages/db, apps/web)_
     > Add a `provider` column to platform_api_keys (default 'anthropic';
     > backfill existing rows), replace the single one-active index with a
     > one-active-per-provider partial unique index, + migration. Parametrise
@@ -1543,7 +1543,7 @@ flags, observability) mount into.
     > provider; existing Anthropic callers default to 'anthropic'.
     _Task AC:_
     - Migration adds provider, backfills 'anthropic', enforces one active per provider; getActivePlatformKey('anthropic') unchanged; getActivePlatformKey('openai') returns the active OpenAI key or null.
-  - :black_circle: **TASK-105** :checkered_flag: — Admin UI: manage the OpenAI platform key (paste / rotate, masked, role-gated)  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-105** :checkered_flag: — Admin UI: manage the OpenAI platform key (paste / rotate, masked, role-gated)  `high` `medium` _(apps/web)_  
     _depends on: TASK-104_
     > Extend the STORY-21 admin platform-keys surface to a second provider:
     > an OpenAI section to paste / rotate / deactivate, value shown masked,
@@ -1551,7 +1551,7 @@ flags, observability) mount into.
     > client bundles or logs.
     _Task AC:_
     - An admin can set + rotate the OpenAI key from /admin; a non-admin is refused server-side; the value is never returned in plaintext.
-  - :black_circle: **TASK-106** :checkered_flag: — POST /sessions: decrypt + pass the active OpenAI key to the orchestrator  `high` `small` _(apps/web, services/orchestrator)_  
+  - :white_check_mark: **TASK-106** :checkered_flag: — POST /sessions: decrypt + pass the active OpenAI key to the orchestrator  `high` `small` _(apps/web, services/orchestrator)_  
     _depends on: TASK-104_
     > In the web /api/sessions handler, also decrypt the active OpenAI
     > platform key (Node/libsodium, like the Anthropic key) and pass it to

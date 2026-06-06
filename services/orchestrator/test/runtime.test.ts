@@ -81,10 +81,22 @@ describe('rooms', () => {
     expect(room?.projectId).toBe('p1');
     expect(room?.handle).toEqual(handle);
     expect(room?.apiKey).toBe('sk-ant-test');
+    expect(room?.openaiKey).toBeUndefined(); // optional, omitted here
     expect(room?.sockets.size).toBe(0);
 
     deleteRoom('sess-2');
     expect(getRoom('sess-2')).toBeUndefined();
+  });
+
+  it('holds an optional OpenAI key on the room (STORY-38)', () => {
+    const handle = { projectId: 'p-oai', containerId: 'c1' };
+    createRoom('sess-oai', 'p-oai', handle, 'sk-ant-test', null, 'sk-openai-test');
+
+    const room = getRoom('sess-oai');
+    expect(room?.apiKey).toBe('sk-ant-test');
+    expect(room?.openaiKey).toBe('sk-openai-test');
+
+    deleteRoom('sess-oai');
   });
 
   it('getRoomByProject finds the live room for a project, undefined after delete (STORY-32)', () => {
