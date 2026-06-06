@@ -3099,7 +3099,7 @@ epics:
         tasks:
           - id: TASK-122
             title: "db: audit_log table + audit_action enum + migration + codegen"
-            status: in-progress
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -3111,6 +3111,7 @@ epics:
               drizzle migration + db:codegen.
             depends_on: []
             attempt_count: 1
+            completed: '2026-06-06T14:15:00Z'
             last_attempted: '2026-06-06T14:13:00Z'
             is_terminal: false
             task_acceptance:
