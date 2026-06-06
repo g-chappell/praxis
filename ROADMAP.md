@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 25 / 41 (61%)
 - **Total tasks:** 120
-- **Done:** 84 (70%)
-- **Ready:** 36
+- **Done:** 85 (71%)
+- **Ready:** 35
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1743,7 +1743,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > schema exports. `name` already exists.
     _Task AC:_
     - Migration adds a nullable description column; codegen drift check passes; existing rows read back null.
-  - :black_circle: **TASK-108** — lib + API: PATCH /api/projects/[id] (name + description, ownership-checked)  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-108** — lib + API: PATCH /api/projects/[id] (name + description, ownership-checked)  `high` `small` _(apps/web)_  
     _depends on: TASK-107_
     > Add updateProject(userId, projectId, {name?, description?}) to
     > lib/projects.ts (ownership via userOwnsProject, trim, validate

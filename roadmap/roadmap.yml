@@ -2763,7 +2763,7 @@ epics:
               - "Migration adds a nullable description column; codegen drift check passes; existing rows read back null."
           - id: TASK-108
             title: "lib + API: PATCH /api/projects/[id] (name + description, ownership-checked)"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -2775,6 +2775,7 @@ epics:
               console.info({event:'project.updated'}).
             depends_on: [TASK-107]
             attempt_count: 0
+            completed: '2026-06-06T12:03:00Z'
             is_terminal: false
             task_acceptance:
               - "401 unauth / 403 non-owner / 400 empty-or-overlong name / 200 with {id,name,description} on success; covered by route + lib tests."
