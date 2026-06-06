@@ -168,6 +168,7 @@ export const projects = pgTable('projects', {
     .references(() => teams.id, { onDelete: 'cascade' })
     .notNull(),
   name: text('name').notNull(),
+  description: text('description'),
   templateId: text('template_id').notNull(),
   harness: text('harness').notNull().default('claude-code'),
   // The project's persistent ACP agent session id (ADR-0017/STORY-36). Set after

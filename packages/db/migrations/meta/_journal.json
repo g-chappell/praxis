@@ -43,6 +43,13 @@
       "when": 1780671663367,
       "tag": "0005_amazing_wilson_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780747129607,
+      "tag": "0006_striped_mordo",
+      "breakpoints": true
     }
   ]
 }
