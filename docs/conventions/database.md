@@ -5,7 +5,7 @@ Cookbook split out of `AGENTS.md` tier-3.
 
 ## Drizzle is the source of truth
 
-- **Schema lives in TypeScript** at `packages/db/src/schema/*.ts`.
+- **Schema lives in TypeScript** at `packages/db/src/schema.ts`.
   Drizzle's `pg-core` builders are the authoritative description of
   the database.
 - **`project_plan.md` §9 SQL is a one-time verification artefact** —
@@ -13,14 +13,48 @@ Cookbook split out of `AGENTS.md` tier-3.
   When schema and §9 diverge, the TS schema wins; if the divergence
   is intentional, file an ADR.
 - **Migrations are generated** with `pnpm db:generate` (drizzle-kit)
-  and **committed** to `packages/db/drizzle/`. Don't hand-edit
+  and **committed** to `packages/db/migrations/`. Don't hand-edit
   generated SQL — re-generate after schema changes and review the
-  diff.
-- **Apply with** `pnpm db:migrate` from a developer machine or the
-  VPS. Migration runs are not coupled to service boot — services
-  fail loud if the schema is behind.
+  diff. When you generate on a branch cut from an old `main`, the
+  migration number may collide with one merged meanwhile — re-run
+  `db:generate` on top of current `main` so it lands as the next free
+  number.
+- **Dev/test:** apply with `pnpm db:migrate`. **Prod is different — it
+  has no Drizzle journal; see "Prod migrations are manual" below.**
+  Migration runs are not coupled to service boot.
 - See ADR-0005 for why Better Auth's `session` and `verification`
   tables are owned by BA's migration set, not ours.
+
+## Prod migrations are manual (no journal) — apply them by hand, right after merge
+
+The prod DB (`praxis-db` container on the VPS, `praxis`/`praxis`) was
+established with `drizzle-kit push` (schema-diff), so it has **no
+`__drizzle_migrations` / `praxis_migrations` journal**. Running
+`pnpm db:migrate` against prod would treat every migration as unapplied
+and replay `0000`→latest, colliding on un-guarded `CREATE TYPE`/table
+statements. **Never `db:migrate` against prod.**
+
+Instead, apply the one new migration's SQL directly:
+
+```bash
+docker exec -i praxis-db psql -U praxis -d praxis -v ON_ERROR_STOP=1 \
+  < packages/db/migrations/NNNN_<name>.sql
+# then verify
+docker exec praxis-db psql -U praxis -d praxis -c '\d <table>'
+```
+
+(The dev DB is a separate container, `praxis-db-dev2` on `:5433`.)
+
+**This makes every migration PR an operator follow-up — and flagging it
+is not enough; _execute it immediately after merge_.** Nothing in the
+deploy applies it, and a missing column/table fails **silently** for a
+while: best-effort writes (e.g. `recordAudit`) swallow the error, and a
+feature only breaks when its query is first exercised. STORY-38's
+`0009` (the `provider` column) was flagged but left unapplied and
+silently broke the live admin-keys page + `POST /sessions` until it was
+caught tasks later. Apply, verify with `\d`, then move on. **Applied
+ledger:** 0008 (STORY-43 audit_log), 0009 (STORY-38 multi-provider),
+0010 (STORY-15 mcp_usage) — all applied 2026-06-06.
 
 ## Two import surfaces from `@praxis/db`
 
