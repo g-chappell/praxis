@@ -3087,6 +3087,8 @@ epics:
           The accountability backbone — a queryable audit_log every
           admin/destructive action writes to. Plumbing only; the viewer is a
           later story (STORY-47).
+        verified_at: '2026-06-06T15:41:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "A new audit_log row is written for every wired action (project.deleted/archived/restored/updated/duplicated, api_key.rotated), capturing actorUserId, action, targetType, targetId, metadata jsonb, ip, and createdAt."
           - "Audit rows are queryable by actor, by target (type+id), and by time range via a lib helper."
@@ -3137,7 +3139,7 @@ epics:
               - "Each wired action persists an audit_log row with the correct action+target+actor; an audit failure does not 500 the action; covered by tests."
           - id: TASK-124
             title: "test: real-Postgres integration for recordAudit + query helpers"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -3146,6 +3148,7 @@ epics:
               target / time returns the expected rows.
             depends_on: [TASK-123]
             attempt_count: 0
+            completed: '2026-06-06T15:40:00Z'
             is_terminal: true
             task_acceptance:
               - "Integration test asserts persistence + the three query dimensions."
