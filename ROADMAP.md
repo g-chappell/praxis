@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 30 / 49 (61%)
 - **Total tasks:** 149
-- **Done:** 107 (72%)
-- **Ready:** 42
+- **Done:** 109 (73%)
+- **Ready:** 40
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1228,14 +1228,14 @@ that closes the POC.
   **Out of scope:**
   - Branches / merges UI (later).
   - Pushing to a remote (later).
-  - :black_circle: **TASK-045** — Orchestrator: git data API (branch, log, status, diff)  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-045** — Orchestrator: git data API (branch, log, status, diff)  `high` `medium` _(services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/312)  
     _depends on: TASK-029_
     > GET /projects/<id>/git/{branch,log,status} and
     > /git/diff?from=<sha>&to=<sha>. Backed by Sandbox.exec running
     > git commands in the project directory.
     _Task AC:_
     - All four endpoints return structured JSON; integration tests pass.
-  - :black_circle: **TASK-046** :checkered_flag: — Frontend: GitPanel component + revert with confirmation  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-046** :checkered_flag: — Frontend: GitPanel component + revert with confirmation  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/312)  
     _depends on: TASK-045, TASK-030_
     > GitPanel mounts in workspace right rail. Log list, file diff
     > via Monaco diff editor, Revert action with a 'Type the commit

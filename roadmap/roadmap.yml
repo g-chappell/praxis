@@ -1940,7 +1940,7 @@ epics:
         tasks:
           - id: TASK-045
             title: "Orchestrator: git data API (branch, log, status, diff)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -1950,11 +1950,13 @@ epics:
               git commands in the project directory.
             depends_on: [TASK-029]
             attempt_count: 0
+            completed: '2026-06-06T19:20:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/312
             task_acceptance:
               - "All four endpoints return structured JSON; integration tests pass."
           - id: TASK-046
             title: "Frontend: GitPanel component + revert with confirmation"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -1964,6 +1966,8 @@ epics:
               SHA to confirm' modal.
             depends_on: [TASK-045, TASK-030]
             attempt_count: 0
+            completed: '2026-06-06T19:20:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/312
             is_terminal: true
             task_acceptance:
               - "Manual test: revert a known commit, working tree state matches."
