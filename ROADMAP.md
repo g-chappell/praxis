@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 28 / 41 (68%)
-- **Total tasks:** 120
-- **Done:** 98 (82%)
-- **Ready:** 22
+- **Features verified:** 28 / 49 (57%)
+- **Total tasks:** 149
+- **Done:** 98 (66%)
+- **Ready:** 51
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1906,3 +1906,359 @@ addition to the Sandbox interface (ADR + sign-off).
     _Task AC:_
     - e2e passes asserting the copy has the source's files and is independent of the original.
     - STORY-42 acceptance_criteria satisfied.
+
+## EPIC-08 — Admin console: accountability & moderation
+
+Extends the EPIC-05 admin shell (STORY-20/21) from a single API-key page
+into a real admin console. Today admins cannot see other users' projects,
+administer users, ban abusers, or answer "what happened" (destructive
+actions only console.info to stdout; the events table is chat-only). This
+epic adds a queryable audit trail, an all-projects directory with
+moderation, user administration with roles, bans + an email/domain
+blocklist, an activity-log viewer, and a health overview. Every
+/api/admin/* route is role-gated server-side; admin actions never widen the
+ownership helpers; destructive actions require a reason and are audit-logged.
+
+- **STORY-43** — Audit log foundation
+  > The accountability backbone — a queryable audit_log every
+  > admin/destructive action writes to. Plumbing only; the viewer is a
+  > later story (STORY-47).
+  **Acceptance criteria:**
+  - A new audit_log row is written for every wired action (project.deleted/archived/restored/updated/duplicated, api_key.rotated), capturing actorUserId, action, targetType, targetId, metadata jsonb, ip, and createdAt.
+  - Audit rows are queryable by actor, by target (type+id), and by time range via a lib helper.
+  - Existing console.info stdout logs are preserved (the audit row is added, not a replacement).
+  **Out of scope:**
+  - The audit viewer UI (STORY-47).
+  - Retention / rotation / archival of audit rows.
+  - Backfilling historical actions that predate this table.
+  - :black_circle: **TASK-122** — db: audit_log table + audit_action enum + migration + codegen  `high` `small` _(packages/db)_
+    > Add audit_log (id uuid pk, actor_user_id uuid fk users, action
+    > audit_action enum, target_type text, target_id text, metadata
+    > jsonb, ip text nullable, created_at timestamptz default now). A
+    > pgEnum audit_action covers the wired actions with room to grow.
+    > drizzle migration + db:codegen.
+    _Task AC:_
+    - Migration creates audit_log + the audit_action enum; codegen regenerates types; existing rows unaffected.
+  - :black_circle: **TASK-123** — lib: recordAudit() helper + wire existing web emissions  `high` `medium` _(apps/web)_  
+    _depends on: TASK-122_
+    > recordAudit(actorUserId, action, {targetType, targetId, metadata,
+    > ip}) inserts a row (injectable db for tests). Wire the existing
+    > console.info emission sites (project [id] route delete/patch
+    > archive+restore+update, duplicate route, admin api-keys rotate) to
+    > also call recordAudit. Non-fatal: an audit insert failure logs but
+    > does not break the action.
+    _Task AC:_
+    - Each wired action persists an audit_log row with the correct action+target+actor; an audit failure does not 500 the action; covered by tests.
+  - :black_circle: **TASK-124** :checkered_flag: — test: real-Postgres integration for recordAudit + query helpers  `med` `small` _(apps/web)_  
+    _depends on: TASK-123_
+    > RUN_DB_TESTS=1 integration — recordAudit writes; query-by-actor /
+    > target / time returns the expected rows.
+    _Task AC:_
+    - Integration test asserts persistence + the three query dimensions.
+    - STORY-43 acceptance_criteria satisfied.
+
+- **STORY-44** — Admin projects directory + moderation
+  > An admin sees every project (any owner) and can archive/delete any of
+  > them, audit-logged with a reason.
+  **Acceptance criteria:**
+  - An admin sees every project regardless of ownership with owner, members, status (active/archived), created, and last activity; the list is searchable by name/owner and sortable.
+  - An admin can archive or delete ANY project from the admin UI with a required reason; it performs the same cleanup as the owner path (delete destroys the sandbox) and writes an audit_log row.
+  - All /api/admin/projects* routes return 403 for non-admins and never widen the ownership helpers.
+  **User flow:**
+  1. Admin opens /admin -> Projects
+  2. Sees a searchable/sortable table of all projects (owner, members count, status, last activity)
+  3. Opens a project -> detail (members, sessions, recent activity)
+  4. Archives or deletes it with a confirm + reason; the row updates and the action is audited
+  **Out of scope:**
+  - Editing project content/files as admin.
+  - Transferring ownership between teams.
+  - Bulk actions / multi-select.
+  - :black_circle: **TASK-125** — lib + API: GET /api/admin/projects (all projects + owner + members + status)  `high` `medium` _(apps/web)_
+    > adminListProjects() joins projects -> teams (owner via createdBy)
+    > -> teamMemberships (members) -> latest activity (sessions/events).
+    > GET /api/admin/projects role-gated via isUserAdmin; supports ?q and
+    > ?sort.
+    _Task AC:_
+    - 200 for admin returns all projects with owner+members+status; 403 for non-admin; covered by tests.
+  - :black_circle: **TASK-126** — lib + API: admin archive/delete any project (audit-logged, reason)  `high` `medium` _(apps/web)_  
+    _depends on: TASK-123, TASK-125_
+    > New role-authorized PATCH+DELETE /api/admin/projects/[id] that
+    > bypass ownership (admin authz, NOT userOwnsProject) and reuse
+    > setProjectArchived/deleteProject internals + the orchestrator
+    > destroy; require a reason; recordAudit.
+    _Task AC:_
+    - Admin archives/deletes a non-owned project; reason required; audit row written; 403 for non-admin; tests.
+  - :black_circle: **TASK-127** — UI: /admin/projects table + project detail  `high` `medium` _(apps/web)_  
+    _depends on: TASK-125_
+    > /admin/projects searchable/sortable table; /admin/projects/[id]
+    > detail (members, sessions, recent activity) with archive/delete
+    > actions (confirm + reason).
+    _Task AC:_
+    - Table lists all projects, search+sort work; detail shows members+activity; actions call the admin endpoints; component tests.
+  - :black_circle: **TASK-128** :checkered_flag: — e2e: admin lists all projects + archives one  `med` `small` _(apps/web)_  
+    _depends on: TASK-126, TASK-127_
+    > Admin signs in, opens /admin/projects, sees a project owned by
+    > another user, archives it with a reason; asserts it moves to
+    > archived + an audit entry exists.
+    _Task AC:_
+    - e2e passes the admin archive-with-reason flow.
+    - STORY-44 acceptance_criteria satisfied.
+
+- **STORY-45** — Admin users directory + role management
+  > List/search all users, view a user's detail, and manage admin roles
+  > with safety guards.
+  **Acceptance criteria:**
+  - An admin lists and searches all users (email, role, created, project count, banned status) and opens a user detail showing their teams/projects, sessions, and recent activity.
+  - An admin promotes/demotes a user's role; the system blocks self-demotion and blocks removing the last remaining admin; every role change is audit-logged.
+  - All /api/admin/users* routes are 403 for non-admins.
+  **User flow:**
+  1. Admin opens /admin -> Users
+  2. Searches/sorts the user list
+  3. Opens a user -> detail (projects, sessions, activity, role, banned status)
+  4. Promotes or demotes their role (guarded); the change is audited
+  **Out of scope:**
+  - Creating users / editing profile fields (name, email).
+  - Ban/unban (STORY-46).
+  - :black_circle: **TASK-129** — lib + API: GET /api/admin/users + GET /api/admin/users/[id] detail  `high` `medium` _(apps/web)_
+    > adminListUsers() (email, role, createdAt, project count, bannedAt)
+    > with ?q; adminGetUser(id) detail (teams/projects, sessions, recent
+    > audit/activity). Role-gated.
+    _Task AC:_
+    - List returns all users w/ counts; detail returns the user's projects+activity; 403 non-admin; tests.
+  - :black_circle: **TASK-130** — lib + API: role promote/demote with guards (audit-logged)  `high` `medium` _(apps/web)_  
+    _depends on: TASK-123, TASK-129_
+    > PATCH /api/admin/users/[id] {role}; reject self-demotion and
+    > last-admin removal (count admins); recordAudit.
+    _Task AC:_
+    - Promote/demote works; self-demote 4xx; demoting the last admin 4xx; audit row; tests.
+  - :black_circle: **TASK-131** — UI: /admin/users list + user detail  `high` `medium` _(apps/web)_  
+    _depends on: TASK-129_
+    > /admin/users searchable list; /admin/users/[id] detail with role
+    > control (guarded) + sections for projects/sessions/activity.
+    _Task AC:_
+    - List searches; detail renders sections; role control calls the endpoint and reflects guards; component tests.
+  - :black_circle: **TASK-132** :checkered_flag: — e2e: list users + promote/demote with guard  `med` `small` _(apps/web)_  
+    _depends on: TASK-130, TASK-131_
+    > Admin lists users, promotes a user to admin, then is blocked from
+    > demoting themselves / the last admin.
+    _Task AC:_
+    - e2e passes promote + guard.
+    - STORY-45 acceptance_criteria satisfied.
+
+- **STORY-46** — Ban users + email/domain blocklist
+  > Soft-ban abusive users (revoke sessions + block sign-in) and block
+  > emails/domains at the magic-link gate.
+  **Acceptance criteria:**
+  - An admin bans a user with a reason; their active sessions are revoked (authSession rows deleted) and any future magic-link sign-in is rejected with a clear message; unban restores access.
+  - An admin adds an email or domain to a blocklist; a matching address cannot request a magic link or sign up (blocked at the sendMagicLink gate, apps/web/lib/auth.ts), with a friendly message; admins can manage (list/add/remove) entries.
+  - Admins cannot ban themselves or the last remaining admin; ban/unban and blocklist changes are audit-logged.
+  **User flow:**
+  1. Admin opens a user detail -> Ban (reason); the user is signed out everywhere and can't sign back in
+  2. Admin opens /admin/blocklist -> adds an email or domain
+  3. A blocklisted person requesting a link sees a friendly 'not permitted' message and no email is sent
+  4. Admin removes the entry / unbans to restore access
+  **Out of scope:**
+  - Appeals workflow / user-facing ban notices beyond the sign-in message.
+  - Timed/temporary bans; IP-based blocking.
+  - Rate-limiting (separate concern).
+  - :black_circle: **TASK-133** — db: users.banned_at + ban_reason; email_blocklist table + migration + codegen  `high` `small` _(packages/db)_
+    > ALTER users ADD banned_at timestamptz, ban_reason text; new
+    > email_blocklist (id, value text unique [email or domain], is_domain
+    > boolean, reason text, added_by uuid fk users, created_at).
+    > migration + codegen.
+    _Task AC:_
+    - Columns + table added (nullable/clean); codegen; existing rows unaffected.
+  - :black_circle: **TASK-134** — auth: enforce ban + blocklist at the magic-link gate + revoke sessions on ban  `high` `medium` _(apps/web)_  
+    _depends on: TASK-133_
+    > In sendMagicLink (auth.ts) reject blocklisted email/domain + banned
+    > users before sending (friendly error, no email). On ban, delete the
+    > user's authSession rows. Add a banned check on session resolution
+    > so a live session can't act post-ban.
+    _Task AC:_
+    - Blocklisted email -> no link sent + friendly error; banned user's sessions deleted and sign-in rejected; covered by tests.
+  - :black_circle: **TASK-135** — lib + API: ban/unban + blocklist CRUD (guards, audit-logged)  `high` `medium` _(apps/web)_  
+    _depends on: TASK-133, TASK-123_
+    > PATCH /api/admin/users/[id] {banned, reason} with self/last-admin
+    > guards; /api/admin/blocklist GET/POST/DELETE. recordAudit on all.
+    _Task AC:_
+    - Ban/unban + blocklist CRUD work; self/last-admin ban 4xx; audit rows; 403 non-admin; tests.
+  - :black_circle: **TASK-136** — UI: ban/unban on user detail + /admin/blocklist CRUD  `high` `medium` _(apps/web)_  
+    _depends on: TASK-135_
+    > Ban/unban control (reason) on the user detail; /admin/blocklist
+    > page to list/add/remove entries.
+    _Task AC:_
+    - Ban control calls the endpoint w/ reason; blocklist page CRUD works; component tests.
+  - :black_circle: **TASK-137** :checkered_flag: — e2e: banned user can't sign in; blocklisted email can't request a link  `med` `small` _(apps/web)_  
+    _depends on: TASK-134, TASK-135, TASK-136_
+    > Admin bans a user -> that user's new magic-link sign-in is
+    > rejected; admin blocklists an email -> requesting a link for it
+    > sends nothing and shows the friendly message.
+    _Task AC:_
+    - e2e passes both enforcement paths.
+    - STORY-46 acceptance_criteria satisfied.
+
+- **STORY-47** — Audit log viewer
+  > The logging UI — a queryable, filterable view over audit_log.
+  **Acceptance criteria:**
+  - /admin/activity lists audit entries newest-first with filters for actor, target type/id, action, and time range, plus pagination.
+  - Project and user detail pages (STORY-44/45) link to their scoped audit view (pre-filtered by target).
+  - A no-match state is shown distinctly from an empty (no audit yet) state.
+  **User flow:**
+  1. Admin opens /admin -> Activity
+  2. Filters by actor / action / target / time; the list updates
+  3. From a project or user detail, clicks 'View activity' -> /admin/activity pre-filtered to that target
+  **Out of scope:**
+  - CSV/JSON export.
+  - Real-time streaming / live tail.
+  - Editing or deleting audit entries (append-only).
+  - :black_circle: **TASK-138** — lib + API: GET /api/admin/audit with filters + pagination  `high` `medium` _(apps/web)_  
+    _depends on: TASK-122_
+    > adminQueryAudit({actor, targetType, targetId, action, from, to,
+    > limit, offset}) + GET /api/admin/audit role-gated; joins actor
+    > email for display.
+    _Task AC:_
+    - Filters compose; pagination works; 403 non-admin; tests.
+  - :black_circle: **TASK-139** :checkered_flag: — UI: /admin/activity table + filters + scoped links  `high` `medium` _(apps/web)_  
+    _depends on: TASK-138_
+    > /admin/activity filterable table; add 'View activity' links on
+    > project/user detail pages that deep-link with target filters; empty
+    > vs no-match states.
+    _Task AC:_
+    - Filters narrow the list; scoped deep-links work; both empty states render; component test.
+    - STORY-47 acceptance_criteria satisfied.
+
+- **STORY-48** — Admin overview / platform health
+  > Replace the placeholder admin landing with a live health + activity
+  > overview.
+  **Acceptance criteria:**
+  - /admin landing shows live counts: users, projects (active/archived), running sandboxes (from the orchestrator), platform-key status per provider, and the most recent admin actions.
+  - If the orchestrator is unreachable, the sandbox/health tiles degrade gracefully (show 'unavailable') without breaking the page.
+  **User flow:**
+  1. Admin opens /admin and sees the overview dashboard with counts, key status, running sandboxes, and recent activity
+  2. Clicks through tiles to the relevant section (projects / users / activity / api-keys)
+  **Out of scope:**
+  - Historical charts / time-series.
+  - Alerting / notifications / paging.
+  - :black_circle: **TASK-140** — orchestrator: internal endpoint for running-sandbox count + health  `high` `medium` _(services/orchestrator)_
+    > Internal-secret-gated GET /admin/stats (or extend health)
+    > returning running sandbox count (DockerSandbox label listing) +
+    > gitSha/uptime.
+    _Task AC:_
+    - Endpoint returns the running-sandbox count behind the internal secret; unit/integration test.
+  - :black_circle: **TASK-141** — lib + API: GET /api/admin/overview (counts + key status + recent actions)  `high` `medium` _(apps/web)_  
+    _depends on: TASK-140, TASK-122_
+    > Aggregate user/project counts, platform-key meta per provider,
+    > recent audit rows; call the orchestrator stats endpoint (tolerate
+    > failure).
+    _Task AC:_
+    - Returns counts+key status+recent actions; orchestrator-down yields a degraded field not a 500; 403 non-admin; tests.
+  - :black_circle: **TASK-142** :checkered_flag: — UI: replace /admin landing with the overview dashboard  `high` `medium` _(apps/web)_  
+    _depends on: TASK-141_
+    > Replace the placeholder SECTIONS landing with tiles (counts,
+    > running sandboxes, key status per provider, recent admin actions)
+    > linking to sections; graceful 'unavailable' tiles.
+    _Task AC:_
+    - Landing renders live tiles; degrades gracefully when orchestrator stats absent; component test.
+    - STORY-48 acceptance_criteria satisfied.
+
+## EPIC-09 — Platform configuration & cost
+
+The platform-config half of the admin console: an admin-wide usage & cost
+dashboard (built on the EPIC-05 metering stories) and an admin-managed MCP
+connector registry (replacing today's static .mcp.json/template config).
+Multi-provider platform keys (STORY-38) and usage metering + budget caps
+(STORY-22/23) already exist as `ready` stories in EPIC-05 — build those in
+place; this epic depends on them and adds the admin-wide surfaces. MCP
+changes are ADR-gated (AGENTS.md) — the connector story leads with an ADR
+requiring both-contributor sign-off before implementation.
+
+- **STORY-49** — Admin usage & cost dashboard
+  > An admin-wide view of platform spend + per-project/user usage, on top
+  > of STORY-22's usage_events. Build STORY-22/23 (EPIC-05) first.
+  **Acceptance criteria:**
+  - /admin/usage shows aggregate spend against the platform key and per-project and per-user usage (tokens + cost estimate) over a selectable time window, reflecting real recorded usage_events (STORY-22).
+  - The dashboard surfaces the per-project budget caps (STORY-23) and lets an admin set/adjust a cap.
+  - Route is 403 for non-admins.
+  **User flow:**
+  1. Admin opens /admin -> Usage
+  2. Picks a time window; sees total spend + top projects/users by usage
+  3. Opens a project's usage and sets/adjusts its budget cap
+  **Out of scope:**
+  - Building the metering pipeline or usage_events table (STORY-22) or the cap engine (STORY-23) — this consumes them.
+  - Invoicing / billing / payment.
+  - :black_circle: **TASK-143** — lib + API: admin usage aggregation (GET /api/admin/usage)  `high` `medium` _(apps/web)_
+    > Aggregate usage_events (STORY-22) by project + user + total over a
+    > window; include platform-key spend estimate. Role-gated. NOTE:
+    > depends on STORY-22's usage_events table existing (EPIC-05) — build
+    > that first.
+    _Task AC:_
+    - Returns windowed totals + per-project/user breakdown; 403 non-admin; tests (gated on usage_events).
+  - :black_circle: **TASK-144** :checkered_flag: — UI: /admin/usage dashboard + budget-cap setter  `high` `medium` _(apps/web)_  
+    _depends on: TASK-143_
+    > /admin/usage with a window picker, totals, top projects/users, and
+    > an admin budget-cap setter (writes the STORY-23 cap).
+    _Task AC:_
+    - Dashboard renders real usage; window picker works; cap setter persists; component test.
+    - STORY-49 acceptance_criteria satisfied.
+  - :black_circle: **TASK-145** :checkered_flag: — test: real-Postgres integration for usage aggregation  `med` `small` _(apps/web)_  
+    _depends on: TASK-143_
+    > Seed usage_events, assert aggregation by project/user/window.
+    _Task AC:_
+    - Integration asserts correct aggregates by project/user/window.
+
+- **STORY-50** — MCP connector configuration
+  > An admin-managed registry of MCP connectors (enable/disable, encrypted
+  > credentials, usage caps) replacing static config. ADR-GATED — the first
+  > task is the ADR; implementation waits on both-contributor sign-off.
+  **Acceptance criteria:**
+  - An ADR proposes the admin-managed MCP connector model (registry shape, credential storage via @praxis/crypto, enable/disable, usage caps, orchestrator rendering) — Status Proposed, requiring both-contributor sign-off before implementation.
+  - An admin manages connectors (list, enable/disable, set per-connector credentials encrypted at rest, set usage caps); changes are audit-logged.
+  - At sandbox start the orchestrator renders each project's .mcp.json + Claude settings from the ENABLED registry and delivers credentials via the ephemeral-file pattern (outside /workspace).
+  - A configured+enabled connector is reachable by the sandbox agent (verified at the Docker/integration layer).
+  **User flow:**
+  1. Admin opens /admin -> Connectors
+  2. Enables a connector, sets its credential + usage cap
+  3. A new project's sandbox starts with that connector wired; the agent can use it
+  **Out of scope:**
+  - A public connector marketplace.
+  - Arbitrary user-supplied MCP servers (admin-curated only).
+  - Changing the ACP host or Path-A wiring beyond what the ADR approves.
+  - :black_circle: **TASK-146** — ADR: admin-managed MCP connector registry (Proposed — both-contributor sign-off)  `high` `medium` _(packages/db)_
+    > Write the ADR (Context/Decision/Consequences/Alternatives) for the
+    > registry shape, credential storage (@praxis/crypto), enable/disable,
+    > usage caps, and orchestrator rendering of .mcp.json/settings from
+    > the registry (ADR-0018 Path A compatible). Status Proposed;
+    > implementation tasks must NOT start until both contributors sign
+    > off. (Docs-only change under docs/decisions/.)
+    _Task AC:_
+    - ADR committed under docs/decisions/ as Proposed, covering registry + creds + rendering + caps.
+  - :black_circle: **TASK-147** — db: mcp_connectors table + migration + codegen  `high` `small` _(packages/db)_  
+    _depends on: TASK-146_
+    > mcp_connectors (id, name unique, command_ref text, args jsonb,
+    > enabled boolean default false, credentials_encrypted text nullable,
+    > usage_cap int nullable, created_by uuid, created_at). migration +
+    > codegen.
+    _Task AC:_
+    - Table added; codegen; clean.
+  - :black_circle: **TASK-148** — orchestrator: render .mcp.json + settings from the enabled registry  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-147_
+    > At sandbox start, read enabled connectors and write the project's
+    > .mcp.json + Claude settings (enableAllProjectMcpServers / list) and
+    > deliver credentials via the ephemeral-file pattern outside
+    > /workspace (orchestrator-runtime.md).
+    _Task AC:_
+    - A fresh sandbox gets .mcp.json from the enabled registry; creds delivered outside /workspace; integration test.
+  - :black_circle: **TASK-149** — lib + API + UI: /admin/connectors CRUD (creds via crypto, caps, audit-logged)  `high` `medium` _(apps/web)_  
+    _depends on: TASK-147, TASK-123_
+    > Admin CRUD for connectors — enable/disable, set credentials
+    > (encrypt via @praxis/crypto), set usage cap; role-gated;
+    > recordAudit. /admin/connectors UI.
+    _Task AC:_
+    - CRUD works; credentials encrypted at rest + never returned plaintext; audit rows; 403 non-admin; tests.
+  - :black_circle: **TASK-150** :checkered_flag: — integration: a configured connector reaches the sandbox agent  `med` `medium` _(services/orchestrator)_  
+    _depends on: TASK-148, TASK-149_
+    > Docker-gated — enable a connector, start a sandbox, assert the
+    > agent sees it (.mcp.json present + server resolvable).
+    _Task AC:_
+    - Docker-gated integration confirms the enabled connector is wired into the sandbox.
+    - STORY-50 acceptance_criteria satisfied.
