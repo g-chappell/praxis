@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 25 / 41 (61%)
 - **Total tasks:** 120
-- **Done:** 85 (71%)
-- **Ready:** 35
+- **Done:** 86 (72%)
+- **Ready:** 34
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1752,7 +1752,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > console.info({event:'project.updated'}).
     _Task AC:_
     - 401 unauth / 403 non-owner / 400 empty-or-overlong name / 200 with {id,name,description} on success; covered by route + lib tests.
-  - :black_circle: **TASK-109** — lib + UI: surface description in ProjectSummary + inline edit form  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-109** — lib + UI: surface description in ProjectSummary + inline edit form  `high` `small` _(apps/web)_  
     _depends on: TASK-108_
     > Extend ProjectSummary + listUserProjects to select description;
     > add a client EditProjectButton / inline form on the dashboard row

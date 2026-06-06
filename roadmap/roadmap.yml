@@ -2781,7 +2781,7 @@ epics:
               - "401 unauth / 403 non-owner / 400 empty-or-overlong name / 200 with {id,name,description} on success; covered by route + lib tests."
           - id: TASK-109
             title: "lib + UI: surface description in ProjectSummary + inline edit form"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -2792,6 +2792,7 @@ epics:
               empty/pending; router.refresh() on success).
             depends_on: [TASK-108]
             attempt_count: 0
+            completed: '2026-06-06T12:05:00Z'
             is_terminal: false
             task_acceptance:
               - "Edit reveals pre-filled fields; empty name disables Save; successful save shows the new name + description; covered by a component test."
