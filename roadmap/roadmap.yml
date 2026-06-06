@@ -2422,7 +2422,7 @@ epics:
         tasks:
           - id: TASK-104
             title: "DB + key service: platform_api_keys provider column + per-provider active + accessor"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/db", "apps/web"]
@@ -2434,6 +2434,7 @@ epics:
               provider; existing Anthropic callers default to 'anthropic'.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-06T16:27:00Z'
             task_acceptance:
               - "Migration adds provider, backfills 'anthropic', enforces one active per provider; getActivePlatformKey('anthropic') unchanged; getActivePlatformKey('openai') returns the active OpenAI key or null."
           - id: TASK-105

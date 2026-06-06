@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 29 / 49 (59%)
 - **Total tasks:** 149
-- **Done:** 101 (68%)
-- **Ready:** 48
+- **Done:** 102 (68%)
+- **Ready:** 47
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1535,7 +1535,7 @@ flags, observability) mount into.
   **Out of scope:**
   - Per-user or per-project external keys (platform-owned only, POC).
   - Providers beyond Anthropic + OpenAI.
-  - :black_circle: **TASK-104** — DB + key service: platform_api_keys provider column + per-provider active + accessor  `high` `medium` _(packages/db, apps/web)_
+  - :white_check_mark: **TASK-104** — DB + key service: platform_api_keys provider column + per-provider active + accessor  `high` `medium` _(packages/db, apps/web)_
     > Add a `provider` column to platform_api_keys (default 'anthropic';
     > backfill existing rows), replace the single one-active index with a
     > one-active-per-provider partial unique index, + migration. Parametrise
