@@ -8,10 +8,55 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 
 import { getAuth } from '@/lib/auth';
-import { deleteProject, userOwnsProject } from '@/lib/projects';
+import { deleteProject, parseProjectPatch, updateProject, userOwnsProject } from '@/lib/projects';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// PATCH /api/projects/[id] — rename / re-describe a project the user owns
+// (STORY-39). Validates at the boundary, persists via updateProject, and logs
+// the change for traceability.
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  if (!session?.user) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+  const projectId = params.id;
+  if (!(await userOwnsProject(session.user.id, projectId))) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+
+  const body = (await req.json().catch(() => null)) as {
+    name?: unknown;
+    description?: unknown;
+  } | null;
+
+  const parsed = parseProjectPatch(body);
+  if ('error' in parsed) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 });
+  }
+
+  const updated = await updateProject(session.user.id, projectId, parsed.fields);
+  if (!updated) {
+    return NextResponse.json({ error: 'not_found' }, { status: 404 });
+  }
+
+  console.info(
+    JSON.stringify({
+      event: 'project.updated',
+      projectId,
+      userId: session.user.id,
+      fields: Object.keys(parsed.fields),
+      at: new Date().toISOString(),
+    }),
+  );
+
+  return NextResponse.json({
+    id: updated.id,
+    name: updated.name,
+    description: updated.description,
+  });
+}
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const session = await getAuth().api.getSession({ headers: await headers() });

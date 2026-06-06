@@ -10,7 +10,41 @@ import { type Database, db } from '@praxis/db/client';
 export interface ProjectSummary {
   id: string;
   name: string;
+  description: string | null;
   createdAt: Date | null;
+}
+
+/** Field length bounds shared by the PATCH boundary and the edit form. */
+export const NAME_MAX = 120;
+export const DESCRIPTION_MAX = 280;
+
+export type ProjectPatchError = 'invalid_name' | 'invalid_description' | 'no_fields';
+
+/** Validate a PATCH body at the HTTP boundary (pure — no DB). `name`, when
+ *  present, must be a non-empty string ≤ NAME_MAX after trim; `description`,
+ *  when present, a string ≤ DESCRIPTION_MAX after trim. At least one field is
+ *  required. Returns the raw (untrimmed) fields to forward to updateProject,
+ *  which does the trimming. */
+export function parseProjectPatch(
+  body: { name?: unknown; description?: unknown } | null,
+): { fields: { name?: string; description?: string } } | { error: ProjectPatchError } {
+  const fields: { name?: string; description?: string } = {};
+  if (body?.name !== undefined) {
+    if (typeof body.name !== 'string' || !body.name.trim() || body.name.trim().length > NAME_MAX) {
+      return { error: 'invalid_name' };
+    }
+    fields.name = body.name;
+  }
+  if (body?.description !== undefined) {
+    if (typeof body.description !== 'string' || body.description.trim().length > DESCRIPTION_MAX) {
+      return { error: 'invalid_description' };
+    }
+    fields.description = body.description;
+  }
+  if (fields.name === undefined && fields.description === undefined) {
+    return { error: 'no_fields' };
+  }
+  return { fields };
 }
 
 /** Return the user's first team, creating a personal team + membership if none. */
@@ -49,11 +83,50 @@ export async function userOwnsProject(
 /** All projects in the user's team(s), newest first. */
 export async function listUserProjects(userId: string): Promise<ProjectSummary[]> {
   return db
-    .select({ id: projects.id, name: projects.name, createdAt: projects.createdAt })
+    .select({
+      id: projects.id,
+      name: projects.name,
+      description: projects.description,
+      createdAt: projects.createdAt,
+    })
     .from(projects)
     .innerJoin(teamMemberships, eq(teamMemberships.teamId, projects.teamId))
     .where(eq(teamMemberships.userId, userId))
     .orderBy(desc(projects.createdAt));
+}
+
+/** Update a project the user owns. Trims inputs; `name` (when provided) must be
+ *  non-empty and ≤ NAME_MAX, `description` ≤ DESCRIPTION_MAX (empty string clears
+ *  it to null). Returns the updated summary, or null when the project isn't the
+ *  user's or doesn't exist. Callers validate at the HTTP boundary; this guards
+ *  ownership and persists. The `database` is injectable for persistence tests. */
+export async function updateProject(
+  userId: string,
+  projectId: string,
+  fields: { name?: string; description?: string | null },
+  database: Database = db,
+): Promise<ProjectSummary | null> {
+  if (!(await userOwnsProject(userId, projectId, database))) return null;
+
+  const patch: { name?: string; description?: string | null } = {};
+  if (fields.name !== undefined) patch.name = fields.name.trim();
+  if (fields.description !== undefined) {
+    const trimmed = (fields.description ?? '').trim();
+    patch.description = trimmed === '' ? null : trimmed;
+  }
+  if (Object.keys(patch).length === 0) return null;
+
+  const [row] = await database
+    .update(projects)
+    .set(patch)
+    .where(eq(projects.id, projectId))
+    .returning({
+      id: projects.id,
+      name: projects.name,
+      description: projects.description,
+      createdAt: projects.createdAt,
+    });
+  return row ?? null;
 }
 
 /** Delete a project the user owns (cascades its sessions). Returns false when the
