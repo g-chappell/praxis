@@ -2728,6 +2728,8 @@ epics:
           Add an editable description and make the project name editable
           after creation — the metadata spine that the archive (STORY-40)
           and dashboard search/sort (STORY-41) stories build on.
+        verified_at: '2026-06-06T12:07:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "A project row on the dashboard exposes an Edit action that reveals an inline form pre-filled with the current name and description."
           - "Saving persists name + description via PATCH /api/projects/[id]; the row reflects the new name and description without a full page navigation (router.refresh())."
@@ -2747,7 +2749,7 @@ epics:
         tasks:
           - id: TASK-107
             title: "db: add nullable description to projects (drizzle migration + codegen)"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -2757,12 +2759,13 @@ epics:
               schema exports. `name` already exists.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-06T11:59:00Z'
             is_terminal: false
             task_acceptance:
               - "Migration adds a nullable description column; codegen drift check passes; existing rows read back null."
           - id: TASK-108
             title: "lib + API: PATCH /api/projects/[id] (name + description, ownership-checked)"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -2774,12 +2777,13 @@ epics:
               console.info({event:'project.updated'}).
             depends_on: [TASK-107]
             attempt_count: 0
+            completed: '2026-06-06T12:03:00Z'
             is_terminal: false
             task_acceptance:
               - "401 unauth / 403 non-owner / 400 empty-or-overlong name / 200 with {id,name,description} on success; covered by route + lib tests."
           - id: TASK-109
             title: "lib + UI: surface description in ProjectSummary + inline edit form"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -2790,12 +2794,13 @@ epics:
               empty/pending; router.refresh() on success).
             depends_on: [TASK-108]
             attempt_count: 0
+            completed: '2026-06-06T12:05:00Z'
             is_terminal: false
             task_acceptance:
               - "Edit reveals pre-filled fields; empty name disables Save; successful save shows the new name + description; covered by a component test."
           - id: TASK-110
             title: "e2e: rename round-trips"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -2804,6 +2809,7 @@ epics:
               description, and asserts the row updates and survives a reload.
             depends_on: [TASK-108, TASK-109]
             attempt_count: 0
+            completed: '2026-06-06T12:07:00Z'
             is_terminal: true
             task_acceptance:
               - "e2e passes asserting the updated name + description persist across a reload."

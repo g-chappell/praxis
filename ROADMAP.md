@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 25 / 41 (61%)
+- **Features verified:** 26 / 41 (63%)
 - **Total tasks:** 120
-- **Done:** 83 (69%)
-- **Ready:** 37
+- **Done:** 87 (73%)
+- **Ready:** 33
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1717,7 +1717,7 @@ This epic adds rename/describe, archive/restore, dashboard
 search/sort/filter, and duplicate/fork — the last requiring an
 addition to the Sandbox interface (ADR + sign-off).
 
-- **STORY-39** — Rename and re-describe a project
+- **STORY-39** — Rename and re-describe a project  [:white_check_mark: verified]
   > Add an editable description and make the project name editable
   > after creation — the metadata spine that the archive (STORY-40)
   > and dashboard search/sort (STORY-41) stories build on.
@@ -1737,13 +1737,13 @@ addition to the Sandbox interface (ADR + sign-off).
   - Rich-text / markdown descriptions (plain text only).
   - Renaming from inside the workspace header (dashboard only this pass).
   - Edit history / audit UI of name changes.
-  - :black_circle: **TASK-107** — db: add nullable description to projects (drizzle migration + codegen)  `high` `small` _(packages/db)_
+  - :white_check_mark: **TASK-107** — db: add nullable description to projects (drizzle migration + codegen)  `high` `small` _(packages/db)_
     > Add a nullable `description` text column to the projects table.
     > Generate the drizzle migration, run codegen, update the @praxis/db
     > schema exports. `name` already exists.
     _Task AC:_
     - Migration adds a nullable description column; codegen drift check passes; existing rows read back null.
-  - :black_circle: **TASK-108** — lib + API: PATCH /api/projects/[id] (name + description, ownership-checked)  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-108** — lib + API: PATCH /api/projects/[id] (name + description, ownership-checked)  `high` `small` _(apps/web)_  
     _depends on: TASK-107_
     > Add updateProject(userId, projectId, {name?, description?}) to
     > lib/projects.ts (ownership via userOwnsProject, trim, validate
@@ -1752,7 +1752,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > console.info({event:'project.updated'}).
     _Task AC:_
     - 401 unauth / 403 non-owner / 400 empty-or-overlong name / 200 with {id,name,description} on success; covered by route + lib tests.
-  - :black_circle: **TASK-109** — lib + UI: surface description in ProjectSummary + inline edit form  `high` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-109** — lib + UI: surface description in ProjectSummary + inline edit form  `high` `small` _(apps/web)_  
     _depends on: TASK-108_
     > Extend ProjectSummary + listUserProjects to select description;
     > add a client EditProjectButton / inline form on the dashboard row
@@ -1760,7 +1760,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > empty/pending; router.refresh() on success).
     _Task AC:_
     - Edit reveals pre-filled fields; empty name disables Save; successful save shows the new name + description; covered by a component test.
-  - :black_circle: **TASK-110** :checkered_flag: — e2e: rename round-trips  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-110** :checkered_flag: — e2e: rename round-trips  `med` `small` _(apps/web)_  
     _depends on: TASK-108, TASK-109_
     > Playwright — a signed-in user creates a project, edits its name +
     > description, and asserts the row updates and survives a reload.
