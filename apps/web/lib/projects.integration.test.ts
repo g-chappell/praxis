@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { projects, teamMemberships, teams, users } from '@praxis/db';
 import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
 
-import { updateProject } from './projects';
+import { listUserProjects, setProjectArchived, updateProject } from './projects';
 
 const describeDb = dbTestsEnabled() ? describe : describe.skip;
 
@@ -94,6 +94,49 @@ describeDb('updateProject (real DB)', () => {
 
       const result = await updateProject(owner, projectId, {}, db);
       expect(result).toBeNull();
+    });
+  });
+});
+
+describeDb('setProjectArchived + listUserProjects status filter (real DB)', () => {
+  it('archive hides from the default (active) list; archived list shows it; restore reverses', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const { projectId } = await seedTeamWithProject(db, owner);
+
+      // Active by default.
+      let active = await listUserProjects(owner, {}, db);
+      expect(active.map((p) => p.id)).toContain(projectId);
+
+      // Archive → drops from active, appears in archived.
+      expect(await setProjectArchived(owner, projectId, true, db)).toBe(true);
+      active = await listUserProjects(owner, { status: 'active' }, db);
+      expect(active.map((p) => p.id)).not.toContain(projectId);
+      const archived = await listUserProjects(owner, { status: 'archived' }, db);
+      expect(archived.map((p) => p.id)).toContain(projectId);
+      expect(archived.find((p) => p.id === projectId)!.archivedAt).toBeInstanceOf(Date);
+
+      // 'all' includes it regardless.
+      const all = await listUserProjects(owner, { status: 'all' }, db);
+      expect(all.map((p) => p.id)).toContain(projectId);
+
+      // Restore → back in active, cleared.
+      expect(await setProjectArchived(owner, projectId, false, db)).toBe(true);
+      active = await listUserProjects(owner, { status: 'active' }, db);
+      expect(active.map((p) => p.id)).toContain(projectId);
+      expect(active.find((p) => p.id === projectId)!.archivedAt).toBeNull();
+    });
+  });
+
+  it('a non-member cannot archive (returns false, no change)', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const stranger = await seedUser(db);
+      const { projectId } = await seedTeamWithProject(db, owner);
+
+      expect(await setProjectArchived(stranger, projectId, true, db)).toBe(false);
+      const active = await listUserProjects(owner, { status: 'active' }, db);
+      expect(active.map((p) => p.id)).toContain(projectId);
     });
   });
 });

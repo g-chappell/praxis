@@ -2,7 +2,7 @@
 // gives each user an implicit "Personal" team on first project. Full team
 // management is a later epic.
 
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 
 import { projects, teamMemberships, teams } from '@praxis/db';
 import { type Database, db } from '@praxis/db/client';
@@ -12,6 +12,15 @@ export interface ProjectSummary {
   name: string;
   description: string | null;
   createdAt: Date | null;
+  archivedAt: Date | null;
+}
+
+/** Which slice of a user's projects to list. Defaults to `active` everywhere. */
+export type ProjectStatus = 'active' | 'archived' | 'all';
+
+/** Narrow an untrusted ?status query value to a ProjectStatus (default active). */
+export function parseProjectStatus(value: unknown): ProjectStatus {
+  return value === 'archived' || value === 'all' ? value : 'active';
 }
 
 /** Field length bounds shared by the PATCH boundary and the edit form. */
@@ -80,19 +89,52 @@ export async function userOwnsProject(
   return Boolean(row);
 }
 
-/** All projects in the user's team(s), newest first. */
-export async function listUserProjects(userId: string): Promise<ProjectSummary[]> {
-  return db
+/** All projects in the user's team(s), newest first. Defaults to active
+ *  (un-archived); pass `status` to list archived-only or all (STORY-40). */
+export async function listUserProjects(
+  userId: string,
+  opts: { status?: ProjectStatus } = {},
+  database: Database = db,
+): Promise<ProjectSummary[]> {
+  const status = opts.status ?? 'active';
+  const archiveFilter =
+    status === 'active'
+      ? isNull(projects.archivedAt)
+      : status === 'archived'
+        ? isNotNull(projects.archivedAt)
+        : undefined;
+
+  return database
     .select({
       id: projects.id,
       name: projects.name,
       description: projects.description,
       createdAt: projects.createdAt,
+      archivedAt: projects.archivedAt,
     })
     .from(projects)
     .innerJoin(teamMemberships, eq(teamMemberships.teamId, projects.teamId))
-    .where(eq(teamMemberships.userId, userId))
+    .where(and(eq(teamMemberships.userId, userId), archiveFilter))
     .orderBy(desc(projects.createdAt));
+}
+
+/** Archive (`archive: true`) or restore (`archive: false`) a project the user
+ *  owns. Sets/clears archived_at; the volume + sandbox are untouched (the idle
+ *  sweep reaps any running container). Returns false when the project isn't the
+ *  user's or doesn't exist. The `database` is injectable for persistence tests. */
+export async function setProjectArchived(
+  userId: string,
+  projectId: string,
+  archive: boolean,
+  database: Database = db,
+): Promise<boolean> {
+  if (!(await userOwnsProject(userId, projectId, database))) return false;
+  const [row] = await database
+    .update(projects)
+    .set({ archivedAt: archive ? new Date() : null })
+    .where(eq(projects.id, projectId))
+    .returning({ id: projects.id });
+  return Boolean(row);
 }
 
 /** Update a project the user owns. Trims inputs; `name` (when provided) must be
@@ -125,6 +167,7 @@ export async function updateProject(
       name: projects.name,
       description: projects.description,
       createdAt: projects.createdAt,
+      archivedAt: projects.archivedAt,
     });
   return row ?? null;
 }

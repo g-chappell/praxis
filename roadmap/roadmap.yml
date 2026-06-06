@@ -2820,6 +2820,8 @@ epics:
           A reversible alternative to delete: archiving removes a project from
           the active list without touching its volume; restore brings it back.
           Delete-with-cleanup (STORY-28) remains the only destructive path.
+        verified_at: '2026-06-06T12:21:00Z'
+        feature_complete: pending
         acceptance_criteria:
           - "Each active project row exposes an Archive action; archiving sets archived_at and removes the project from the default dashboard list immediately."
           - "An Archived view (tab/section) lists archived projects with a Restore action that clears archived_at and returns them to the active list."
@@ -2838,7 +2840,7 @@ epics:
         tasks:
           - id: TASK-111
             title: "db: add nullable archived_at timestamptz to projects"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -2847,12 +2849,13 @@ epics:
               Drizzle migration + codegen.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-06T12:14:00Z'
             is_terminal: false
             task_acceptance:
               - "Nullable column added; existing rows read null; drift check passes."
           - id: TASK-112
             title: "lib + API: archive/restore + status-filtered list"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -2864,12 +2867,13 @@ epics:
               (PATCH {archived:true|false} or POST).
             depends_on: [TASK-111]
             attempt_count: 0
+            completed: '2026-06-06T12:17:00Z'
             is_terminal: false
             task_acceptance:
               - "Archive sets the timestamp and drops the project from the default list; restore clears it; non-owner 403; covered by tests."
           - id: TASK-113
             title: "UI: archive/restore actions + Archived view"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -2878,12 +2882,13 @@ epics:
               dashboard; Restore action on archived rows; empty states for each.
             depends_on: [TASK-112]
             attempt_count: 0
+            completed: '2026-06-06T12:19:00Z'
             is_terminal: false
             task_acceptance:
               - "Archiving removes the row from Active and shows it under Archived; restore reverses it; component test covers the toggle + actions."
           - id: TASK-114
             title: "e2e: archive then restore round-trips"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -2892,6 +2897,7 @@ epics:
               (back in Active, opens with files).
             depends_on: [TASK-112, TASK-113]
             attempt_count: 0
+            completed: '2026-06-06T12:21:00Z'
             is_terminal: true
             task_acceptance:
               - "e2e passes the full archive→restore round-trip."

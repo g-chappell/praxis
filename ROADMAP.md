@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 26 / 41 (63%)
 - **Total tasks:** 120
-- **Done:** 87 (73%)
-- **Ready:** 33
+- **Done:** 91 (76%)
+- **Ready:** 29
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1768,7 +1768,7 @@ addition to the Sandbox interface (ADR + sign-off).
     - e2e passes asserting the updated name + description persist across a reload.
     - STORY-39 acceptance_criteria satisfied.
 
-- **STORY-40** — Archive and restore a project
+- **STORY-40** — Archive and restore a project  [:hourglass: pending]
   > A reversible alternative to delete: archiving removes a project from
   > the active list without touching its volume; restore brings it back.
   > Delete-with-cleanup (STORY-28) remains the only destructive path.
@@ -1787,12 +1787,12 @@ addition to the Sandbox interface (ADR + sign-off).
   - Auto-archiving by inactivity (manual only this pass).
   - Forcibly destroying the sandbox container on archive (idle sweep handles it).
   - Bulk archive / multi-select.
-  - :black_circle: **TASK-111** — db: add nullable archived_at timestamptz to projects  `high` `small` _(packages/db)_
+  - :white_check_mark: **TASK-111** — db: add nullable archived_at timestamptz to projects  `high` `small` _(packages/db)_
     > Add a nullable archived_at timestamptz column; null = active.
     > Drizzle migration + codegen.
     _Task AC:_
     - Nullable column added; existing rows read null; drift check passes.
-  - :black_circle: **TASK-112** — lib + API: archive/restore + status-filtered list  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-112** — lib + API: archive/restore + status-filtered list  `high` `medium` _(apps/web)_  
     _depends on: TASK-111_
     > archiveProject/restoreProject(userId, projectId) (ownership-checked,
     > set/clear archived_at, console.info event); listUserProjects(userId,
@@ -1801,13 +1801,13 @@ addition to the Sandbox interface (ADR + sign-off).
     > (PATCH {archived:true|false} or POST).
     _Task AC:_
     - Archive sets the timestamp and drops the project from the default list; restore clears it; non-owner 403; covered by tests.
-  - :black_circle: **TASK-113** — UI: archive/restore actions + Archived view  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-113** — UI: archive/restore actions + Archived view  `high` `medium` _(apps/web)_  
     _depends on: TASK-112_
     > Archive action on active rows; an Active/Archived toggle on the
     > dashboard; Restore action on archived rows; empty states for each.
     _Task AC:_
     - Archiving removes the row from Active and shows it under Archived; restore reverses it; component test covers the toggle + actions.
-  - :black_circle: **TASK-114** :checkered_flag: — e2e: archive then restore round-trips  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-114** :checkered_flag: — e2e: archive then restore round-trips  `med` `small` _(apps/web)_  
     _depends on: TASK-112, TASK-113_
     > Create → archive (gone from Active, present in Archived) → restore
     > (back in Active, opens with files).
