@@ -3,11 +3,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 import { AppNav } from '@/components/app-nav';
+import { ArchiveProjectButton } from '@/components/archive-project-button';
 import { CreateProjectForm } from '@/components/create-project-form';
 import { DeleteProjectButton } from '@/components/delete-project-button';
 import { EditProjectButton } from '@/components/edit-project-button';
 import { getAuth } from '@/lib/auth';
-import { listUserProjects } from '@/lib/projects';
+import { listUserProjects, parseProjectStatus } from '@/lib/projects';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -16,7 +17,16 @@ export const metadata = {
   title: 'Dashboard — Praxis',
 };
 
-export default async function DashboardPage() {
+const TABS = [
+  { status: 'active' as const, label: 'Active', href: '/dashboard' },
+  { status: 'archived' as const, label: 'Archived', href: '/dashboard?status=archived' },
+];
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { status?: string };
+}) {
   const session = await getAuth().api.getSession({
     headers: await headers(),
   });
@@ -28,7 +38,11 @@ export default async function DashboardPage() {
     redirect('/signin');
   }
 
-  const projects = await listUserProjects(session.user.id);
+  // The UI only toggles Active vs Archived (never 'all'); parseProjectStatus
+  // defaults anything unexpected to active.
+  const raw = parseProjectStatus(searchParams.status);
+  const status = raw === 'archived' ? 'archived' : 'active';
+  const projects = await listUserProjects(session.user.id, { status });
 
   return (
     <>
@@ -42,10 +56,34 @@ export default async function DashboardPage() {
           <CreateProjectForm />
         </div>
 
+        <div className="mb-4 flex gap-1 border-b" role="tablist">
+          {TABS.map((tab) => {
+            const active = tab.status === status;
+            return (
+              <Link
+                key={tab.status}
+                href={tab.href}
+                role="tab"
+                aria-selected={active}
+                data-testid={`tab-${tab.status}`}
+                className={
+                  active
+                    ? 'border-b-2 border-foreground px-3 py-2 text-sm font-medium'
+                    : 'border-b-2 border-transparent px-3 py-2 text-sm text-muted-foreground hover:text-foreground'
+                }
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
+        </div>
+
         {projects.length === 0 ? (
           <div className="rounded-md border border-dashed px-6 py-12 text-center">
             <p className="text-sm text-muted-foreground">
-              No projects yet. Start one to build with the agent.
+              {status === 'archived'
+                ? 'No archived projects.'
+                : 'No projects yet. Start one to build with the agent.'}
             </p>
           </div>
         ) : (
@@ -72,7 +110,14 @@ export default async function DashboardPage() {
                   >
                     Open
                   </Link>
-                  <EditProjectButton projectId={p.id} name={p.name} description={p.description} />
+                  {p.archivedAt === null && (
+                    <EditProjectButton projectId={p.id} name={p.name} description={p.description} />
+                  )}
+                  <ArchiveProjectButton
+                    projectId={p.id}
+                    projectName={p.name}
+                    archived={p.archivedAt !== null}
+                  />
                   <DeleteProjectButton projectId={p.id} projectName={p.name} />
                 </div>
               </li>
