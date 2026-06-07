@@ -9,8 +9,8 @@ _Created: 2026-05-31_
 ## Summary
 
 - **Features verified:** 30 / 49 (61%)
-- **Total tasks:** 149
-- **Done:** 109 (73%)
+- **Total tasks:** 150
+- **Done:** 110 (73%)
 - **Ready:** 40
 - **In progress:** 0
 - **Blocked:** 0
@@ -1262,7 +1262,7 @@ that closes the POC.
   **Out of scope:**
   - In-house authored learning content (post-POC).
   - Progress tracking on link interactions (post-POC).
-  - :black_circle: **TASK-047** — Auto-commit guidance in template AGENTS.md + a /commit skill  `high` `small` _(templates/react-threejs-scene)_  
+  - :white_check_mark: **TASK-047** — Auto-commit guidance in template AGENTS.md + a /commit skill  `high` `small` _(templates/react-threejs-scene)_ · [PR](https://github.com/g-chappell/praxis/pull/314)  
     _depends on: TASK-040_
     > AGENTS.md section: when to commit (task complete; before
     > destructive op; on user ask) and how (imperative mood,
@@ -1279,13 +1279,27 @@ that closes the POC.
     > on-demand TLS, Better Auth.
     _Task AC:_
     - Seed runs idempotently; SELECT COUNT(*) FROM learning_links ≥10.
-  - :black_circle: **TASK-049** :checkered_flag: — Workspace learning panel grouped by topic  `med` `small` _(apps/web)_  
+  - :black_circle: **TASK-049** — Workspace learning panel grouped by topic  `med` `small` _(apps/web)_  
     _depends on: TASK-048, TASK-032_
     > Collapsible panel near the chat panel grouping links by topic
     > tag. Cards: title + source. External links open in a new tab.
     _Task AC:_
     - Snapshot test of the panel rendering grouped links.
     - STORY-17 acceptance_criteria satisfied.
+  - :black_circle: **TASK-151** :checkered_flag: — Attribute agent git commits to the initiating user (fallback: project owner)  `med` `medium` _(services/orchestrator, packages/acp-host)_  
+    _depends on: TASK-047_
+    > Configure the sandbox git author so commits the agent makes are
+    > attributed to the user who sent the prompt for that turn, defaulting
+    > to the project owner when the prompter can't be resolved. Set
+    > GIT_AUTHOR_NAME / GIT_AUTHOR_EMAIL (and the matching committer vars)
+    > per turn — e.g. as the orchestrator hands a prompt to the agent — so
+    > in a multiplayer room each commit reflects whoever prompted, not one
+    > fixed identity. Implements STORY-17 AC "commits ... with the prompting
+    > user as author"; the template guidance (TASK-047) covers commit
+    > timing/messages only, not authorship.
+    _Task AC:_
+    - A commit made during user A's turn has author = user A; a commit during user B's turn has author = user B.
+    - When the prompter can't be resolved, the commit author defaults to the project owner.
 
 - **STORY-18** — Internal dogfood + first university pair
   > Validate the POC by using it. Founders pair to build a small
