@@ -54,7 +54,13 @@ feature only breaks when its query is first exercised. STORY-38's
 silently broke the live admin-keys page + `POST /sessions` until it was
 caught tasks later. Apply, verify with `\d`, then move on. **Applied
 ledger:** 0008 (STORY-43 audit_log), 0009 (STORY-38 multi-provider),
-0010 (STORY-15 mcp_usage) — all applied 2026-06-06.
+0010 (STORY-15 mcp_usage) — all applied 2026-06-06; 0006 (STORY-39
+`projects.description`), 0007 (STORY-40 `projects.archived_at`) — applied
+2026-06-07 (they had been **missed** in the EPIC-07 rollout and silently
+broke the dashboard/login projects query until a later redeploy first
+exercised it — the same silent-failure trap as 0009). **Lesson:** when
+catching up the ledger, reconcile the _whole_ `0000…latest` range against
+prod's `\d`, not just the newest migration.
 
 ## Two import surfaces from `@praxis/db`
 
