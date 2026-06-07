@@ -170,6 +170,9 @@ wsRoute.get(
         // Send the current prompt-control state (mode/holder/queue, STORY-34) so the
         // joiner's control bar + input gating render correctly.
         send(ws, controlStateFrame(room));
+        // Tell the joiner whether the dev server is up yet (STORY-51) so a late
+        // joiner whose room is already ready doesn't sit on the loading screen.
+        send(ws, { type: 'workspace_ready', previewReady: room.previewReady });
       },
 
       onMessage: async (evt, ws) => {

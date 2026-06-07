@@ -112,6 +112,11 @@ export interface SessionRoom {
   // server presents it to POST /internal/mcp/usage; the orchestrator maps it back
   // to this project to cap usage — so no DB creds ever enter the sandbox.
   mcpToken: string;
+  // True once the dev server has answered a readiness probe (STORY-51). The web
+  // client holds its loading screen until this is true (broadcast as
+  // `workspace_ready`), so the preview is never a 502 on entry. Templates with no
+  // dev server are marked ready immediately.
+  previewReady: boolean;
 }
 
 const rooms = new Map<string, SessionRoom>();
@@ -144,10 +149,18 @@ export function createRoom(
     controlRequests: new Set(),
     queue: [],
     mcpToken: crypto.randomUUID(),
+    previewReady: false,
   };
   rooms.set(sessionId, room);
   mcpTokens.set(room.mcpToken, sessionId);
   return room;
+}
+
+/** Send a frame to every socket currently in a room. Mirrors ws.ts's local
+ *  broadcast so non-WS modules (the readiness probe) can push frames too. */
+export function broadcastToRoom(room: SessionRoom, payload: unknown): void {
+  const data = JSON.stringify(payload);
+  for (const sock of room.sockets) sock.send(data);
 }
 
 export function getRoom(sessionId: string): SessionRoom | undefined {

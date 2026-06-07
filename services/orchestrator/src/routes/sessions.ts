@@ -15,6 +15,7 @@ import { db } from '@praxis/db/client';
 import { logger } from '../logger';
 import { seedImageGenMcp } from '../mcp-seed';
 import { previewUrlFor, registerPreview } from '../preview';
+import { startReadinessProbe } from '../readiness';
 import { createRoom, getRoomByProject, getSandbox, mintTicket, type SessionRoom } from '../runtime';
 import { readTemplateConfig } from '../templates';
 
@@ -139,6 +140,10 @@ async function createProjectRoom(
   room.mode = seed.controlMode === 'turn_based' ? 'turn_based' : 'serialised';
   room.ownerUserId = seed.ownerUserId;
   if (room.mode === 'turn_based') room.controlHolder = seed.ownerUserId ?? undefined;
+  // Probe the dev server and broadcast `workspace_ready` once it answers so the
+  // client's loading screen only clears when the preview is actually serveable
+  // (STORY-51). No dev server → ready immediately.
+  startReadinessProbe(room, Boolean(dev));
   logger.info({ sessionId, projectId }, 'session.created');
   return room;
 }
