@@ -50,4 +50,15 @@ describe('IdleSweeper', () => {
     await new IdleSweeper(sandbox, { idleMs: 1234 }).sweep(5000);
     expect(sandbox.listIdle).toHaveBeenCalledWith(1234, 5000);
   });
+
+  it('awaits an async onStop before the sweep resolves (teardown completes)', async () => {
+    const { sandbox } = fakeSandbox([{ projectId: 'a', containerId: 'ca' }]);
+    let done = false;
+    const onStop = vi.fn(async () => {
+      await Promise.resolve();
+      done = true; // only set after the microtask — proves the sweep awaited it
+    });
+    await new IdleSweeper(sandbox, { onStop }).sweep();
+    expect(done).toBe(true);
+  });
 });

@@ -10,7 +10,7 @@ import { app } from './app';
 import { logger } from './logger';
 import { setPreviewIpResolver } from './preview';
 import { getSandbox } from './runtime';
-import { startIdleSweep } from './sandbox-sweep';
+import { reconcileSessionsOnBoot, startIdleSweep } from './sandbox-sweep';
 import { isPreviewSocket, previewWebsocket, tryPreviewUpgrade } from './routes/preview-ws';
 import { websocket, wsRoute } from './routes/ws';
 import { VERSION } from './version';
@@ -92,5 +92,6 @@ export default {
 
 if (import.meta.main) {
   logger.info({ port: PORT, version: VERSION }, 'orchestrator.boot');
+  void reconcileSessionsOnBoot(); // mark prior-process sessions ended (STORY-51)
   startIdleSweep();
 }
