@@ -85,6 +85,13 @@
       "when": 1780862180856,
       "tag": "0011_mighty_mentallo",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780863734898,
+      "tag": "0012_swift_adam_warlock",
+      "breakpoints": true
     }
   ]
 }
