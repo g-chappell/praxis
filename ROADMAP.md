@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 30 / 49 (61%)
 - **Total tasks:** 150
-- **Done:** 109 (73%)
-- **Ready:** 41
+- **Done:** 110 (73%)
+- **Ready:** 40
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1262,7 +1262,7 @@ that closes the POC.
   **Out of scope:**
   - In-house authored learning content (post-POC).
   - Progress tracking on link interactions (post-POC).
-  - :black_circle: **TASK-047** — Auto-commit guidance in template AGENTS.md + a /commit skill  `high` `small` _(templates/react-threejs-scene)_  
+  - :white_check_mark: **TASK-047** — Auto-commit guidance in template AGENTS.md + a /commit skill  `high` `small` _(templates/react-threejs-scene)_ · [PR](https://github.com/g-chappell/praxis/pull/314)  
     _depends on: TASK-040_
     > AGENTS.md section: when to commit (task complete; before
     > destructive op; on user ask) and how (imperative mood,

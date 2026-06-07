@@ -1996,7 +1996,7 @@ epics:
         tasks:
           - id: TASK-047
             title: "Auto-commit guidance in template AGENTS.md + a /commit skill"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["templates/react-threejs-scene"]
@@ -2007,6 +2007,8 @@ epics:
               .claude/skills/commit-checkpoint/SKILL.md.
             depends_on: [TASK-040]
             attempt_count: 0
+            completed: '2026-06-07T07:47:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/314
             task_acceptance:
               - "Agent in a dogfood session commits at the expected moments without explicit prompting."
           - id: TASK-048
