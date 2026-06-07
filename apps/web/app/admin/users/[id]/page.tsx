@@ -111,9 +111,17 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-          Recent activity ({user.recentActivity.length})
-        </h2>
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+            Recent activity ({user.recentActivity.length})
+          </h2>
+          <Link
+            href={`/admin/activity?actor=${user.id}`}
+            className="text-sm text-muted-foreground hover:underline"
+          >
+            View all →
+          </Link>
+        </div>
         {user.recentActivity.length === 0 ? (
           <p className="text-sm text-muted-foreground">No audited activity.</p>
         ) : (
