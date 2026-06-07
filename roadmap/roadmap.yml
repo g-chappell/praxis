@@ -2165,7 +2165,7 @@ epics:
         tasks:
           - id: TASK-154
             title: "Defense-in-depth preview routing: re-resolve + verify the container per request"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -2180,12 +2180,14 @@ epics:
               whose container is gone → no serve; live entry → correct IP; cache
               hit avoids re-inspect within TTL.
             attempt_count: 0
+            completed: '2026-06-07T17:17:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/322
             task_acceptance:
               - "proxyToSandbox/preview resolution re-resolves the container's current IP per request (cached ≤ a few seconds) instead of trusting a stored IP; a registry entry whose container is gone/stopped is never served."
               - "Unit tests cover stale-container (no serve), live-container (correct IP), and cache reuse."
           - id: TASK-155
             title: "Reliable teardown on every path + boot reconciliation"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -2200,12 +2202,14 @@ epics:
               removes the container only; files persist on praxis-project-<id>.
             depends_on: [TASK-154]
             attempt_count: 0
+            completed: '2026-06-07T17:17:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/322
             task_acceptance:
               - "Idle-sweep stop and last-tab endSession both clear the preview registry entry, set sessions.ended_at, and close the agent; the project volume is preserved."
               - "On boot, orphaned containers/sessions from a prior run are reconciled (no orphan serves preview; DB ended_at consistent)."
           - id: TASK-156
             title: "Full-readiness workspace loading screen"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator", "apps/web"]
@@ -2220,6 +2224,8 @@ epics:
               (node_modules cached on the volume).
             depends_on: [TASK-155]
             attempt_count: 0
+            completed: '2026-06-07T17:17:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/322
             is_terminal: true
             task_acceptance:
               - "Opening a project shows a loading screen until WS connected + file tree listed + dev server healthy; the workspace then renders with a populated file panel and a live (own-project) preview."

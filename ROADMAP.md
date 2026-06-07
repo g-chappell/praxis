@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 30 / 50 (60%)
 - **Total tasks:** 155
-- **Done:** 115 (74%)
-- **Ready:** 40
+- **Done:** 118 (76%)
+- **Ready:** 37
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1371,7 +1371,7 @@ that closes the POC.
   **Out of scope:**
   - Deleting project files or volumes (idle-stop must preserve them).
   - Non-Docker sandbox backends / multi-region.
-  - :black_circle: **TASK-154** — Defense-in-depth preview routing: re-resolve + verify the container per request  `high` `medium` _(services/orchestrator)_
+  - :white_check_mark: **TASK-154** — Defense-in-depth preview routing: re-resolve + verify the container per request  `high` `medium` _(services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/322)
     > Stop trusting a write-once registered IP. Store the container id in
     > the registry target and resolve the live IP per preview request via
     > the existing Sandbox.exposePort(handle, port) (short TTL cache, e.g.
@@ -1384,7 +1384,7 @@ that closes the POC.
     _Task AC:_
     - proxyToSandbox/preview resolution re-resolves the container's current IP per request (cached ≤ a few seconds) instead of trusting a stored IP; a registry entry whose container is gone/stopped is never served.
     - Unit tests cover stale-container (no serve), live-container (correct IP), and cache reuse.
-  - :black_circle: **TASK-155** — Reliable teardown on every path + boot reconciliation  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-155** — Reliable teardown on every path + boot reconciliation  `high` `medium` _(services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/322)  
     _depends on: TASK-154_
     > Make teardown consistent across endSession AND the idle sweep:
     > removePreview(projectId), mark sessions.ended_at, and close the shared
@@ -1397,7 +1397,7 @@ that closes the POC.
     _Task AC:_
     - Idle-sweep stop and last-tab endSession both clear the preview registry entry, set sessions.ended_at, and close the agent; the project volume is preserved.
     - On boot, orphaned containers/sessions from a prior run are reconciled (no orphan serves preview; DB ended_at consistent).
-  - :black_circle: **TASK-156** :checkered_flag: — Full-readiness workspace loading screen  `high` `medium` _(services/orchestrator, apps/web)_  
+  - :white_check_mark: **TASK-156** :checkered_flag: — Full-readiness workspace loading screen  `high` `medium` _(services/orchestrator, apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/322)  
     _depends on: TASK-155_
     > Gate the workspace UI behind real readiness. Orchestrator probes the
     > dev-server preview target until it returns healthy and emits a
