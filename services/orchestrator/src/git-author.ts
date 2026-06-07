@@ -80,17 +80,39 @@ export async function applyTurnGitAuthor(
   return identity;
 }
 
-/** Safety-net commit (STORY-17 AC#1): after a turn, commit any work the agent
- *  left uncommitted so the git panel always reflects what was built — even if the
- *  agent didn't commit it itself. Uses the repo identity set by applyTurnGitAuthor,
- *  so it's attributed to the prompter. No-op when the tree is clean (the agent
- *  already committed, ideally with a descriptive message). The agent's store dir
- *  is in .git/info/exclude, so `git add -A` never stages it. Best-effort — the
+/** A concise commit subject from the user's prompt: first non-empty line,
+ *  trimmed, capitalized, and truncated — so the turn-end commit describes what was
+ *  asked rather than a generic placeholder. Falls back when the prompt is empty.
+ *  Auto-commit-by-agent-guidance is unreliable (the adapter loads CLAUDE.md, but
+ *  the model won't reliably commit on its own), so the host-side commit is the
+ *  source of truth and owns the message. */
+export function commitMessageFromPrompt(prompt: string): string {
+  const firstLine =
+    prompt
+      .split('\n')
+      .map((l) => l.trim())
+      .find((l) => l.length > 0) ?? '';
+  if (!firstLine) return 'Checkpoint: save changes from this turn';
+  const capped = firstLine.length > 72 ? `${firstLine.slice(0, 71)}…` : firstLine;
+  return capped.charAt(0).toUpperCase() + capped.slice(1);
+}
+
+/** Safety-net commit (STORY-17 AC#1): after a turn, commit any work left
+ *  uncommitted so the git panel always reflects what was built. Uses the repo
+ *  identity set by applyTurnGitAuthor, so it's attributed to the prompter, and
+ *  `message` (derived from the prompt) so the history reads as the build story.
+ *  No-op when the tree is clean (the agent already committed). The agent's store
+ *  dir is in .git/info/exclude, so `git add -A` never stages it. The message is
+ *  passed via env so it can't break or inject into the shell. Best-effort — the
  *  caller logs failures and never fails the turn on a commit error. */
-export async function commitTurnWork(sandbox: Sandbox, handle: SandboxHandle): Promise<void> {
+export async function commitTurnWork(
+  sandbox: Sandbox,
+  handle: SandboxHandle,
+  message: string,
+): Promise<void> {
   await sandbox.exec(
     handle,
-    'cd /workspace && git add -A && ' +
-      '{ git diff --cached --quiet || git commit -q -m "Checkpoint: save changes from this turn"; }',
+    'cd /workspace && git add -A && { git diff --cached --quiet || git commit -q -m "$CM"; }',
+    { env: { CM: message } },
   );
 }

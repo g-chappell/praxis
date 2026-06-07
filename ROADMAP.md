@@ -9,9 +9,9 @@ _Created: 2026-05-31_
 ## Summary
 
 - **Features verified:** 30 / 49 (61%)
-- **Total tasks:** 151
+- **Total tasks:** 152
 - **Done:** 114 (75%)
-- **Ready:** 37
+- **Ready:** 38
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1300,7 +1300,7 @@ that closes the POC.
     _Task AC:_
     - A commit made during user A's turn has author = user A; a commit during user B's turn has author = user B.
     - When the prompter can't be resolved, the commit author defaults to the project owner.
-  - :white_check_mark: **TASK-152** :checkered_flag: — Auto-commit fix: load guidance + turn-end safety commit  `high` `medium` _(templates/react-threejs-scene, services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/318)  
+  - :white_check_mark: **TASK-152** — Auto-commit fix: load guidance + turn-end safety commit  `high` `medium` _(templates/react-threejs-scene, services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/318)  
     _depends on: TASK-047, TASK-151_
     > TASK-047 shipped commit guidance into the template AGENTS.md, but the
     > in-sandbox Claude Code agent reads CLAUDE.md (not AGENTS.md) and the
@@ -1322,6 +1322,23 @@ that closes the POC.
     _Task AC:_
     - A new project's agent commits during a dogfood session without explicit prompting; if it leaves changes uncommitted, the orchestrator commits them at turn end.
     - Commits are authored by the prompting user; a session of ≥3 turns yields ≥3 commits.
+  - :black_circle: **TASK-153** :checkered_flag: — Descriptive turn-end commit messages from the user's prompt  `high` `small` _(services/orchestrator, templates/react-threejs-scene)_  
+    _depends on: TASK-152_
+    > Live test of TASK-152 showed: the safety-net commits ≥3 times,
+    > correctly authored by the prompter — but all messages were the
+    > generic "Checkpoint: save changes from this turn", failing the AC's
+    > "imperative messages". Root cause confirmed: the claude-agent-acp
+    > adapter already sets settingSources=[user,project,local], so CLAUDE.md
+    > IS loaded — but guidance-based auto-commit is inherently unreliable
+    > (the model just doesn't commit on its own). So the host-side commit is
+    > the source of truth; make ITS message descriptive by deriving it from
+    > the user's prompt (first line, trimmed/truncated). Also drop the no-op
+    > `.claude/settings.json` settingSources from the template (settingSources
+    > is a programmatic/CLI option, not a settings-file key — it did nothing).
+    > Keep the CLAUDE.md bridge (correct + gives the agent project context).
+    _Task AC:_
+    - Each turn that changes files produces one commit whose message is derived from that turn's prompt, authored by the prompter.
+    - A ≥3-turn dogfood session yields ≥3 commits with prompt-descriptive messages.
 
 - **STORY-18** — Internal dogfood + first university pair
   > Validate the POC by using it. Founders pair to build a small
