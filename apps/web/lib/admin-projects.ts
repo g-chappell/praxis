@@ -3,7 +3,7 @@
 // must never be reachable without an isUserAdmin gate at the route. They do not
 // touch (or widen) userOwnsProject / the owner-scoped helpers (STORY-44 AC#3).
 
-import { eq, sql } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 
 import { projects, sessions, teamMemberships, users } from '@praxis/db';
 import { type Database, db } from '@praxis/db/client';
@@ -106,6 +106,95 @@ export async function adminListProjects(
   });
 
   return rows;
+}
+
+/** A team member shown on the admin project detail. */
+export interface AdminProjectMember {
+  userId: string;
+  name: string | null;
+  email: string;
+  joinedAt: Date | null;
+}
+
+/** A recent session shown on the admin project detail. */
+export interface AdminProjectSession {
+  id: string;
+  startedAt: Date | null;
+  endedAt: Date | null;
+}
+
+/** Full admin view of one project: the project + owner, its team members, and its
+ *  most recent sessions (activity). Returns null when the project doesn't exist.
+ *  Admin-only — gate on isUserAdmin at the route/page. */
+export interface AdminProjectDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  templateId: string;
+  createdAt: Date | null;
+  archivedAt: Date | null;
+  ownerId: string | null;
+  ownerName: string | null;
+  ownerEmail: string | null;
+  members: AdminProjectMember[];
+  recentSessions: AdminProjectSession[];
+}
+
+export async function adminGetProjectDetail(
+  projectId: string,
+  database: Database = db,
+): Promise<AdminProjectDetail | null> {
+  const [project] = await database
+    .select({
+      id: projects.id,
+      name: projects.name,
+      description: projects.description,
+      templateId: projects.templateId,
+      createdAt: projects.createdAt,
+      archivedAt: projects.archivedAt,
+      teamId: projects.teamId,
+      ownerId: users.id,
+      ownerName: users.displayName,
+      ownerEmail: users.email,
+    })
+    .from(projects)
+    .leftJoin(users, eq(users.id, projects.createdBy))
+    .where(eq(projects.id, projectId))
+    .limit(1);
+  if (!project) return null;
+
+  const members = await database
+    .select({
+      userId: users.id,
+      name: users.displayName,
+      email: users.email,
+      joinedAt: teamMemberships.joinedAt,
+    })
+    .from(teamMemberships)
+    .innerJoin(users, eq(users.id, teamMemberships.userId))
+    .where(eq(teamMemberships.teamId, project.teamId))
+    .orderBy(teamMemberships.joinedAt);
+
+  const recentSessions = await database
+    .select({ id: sessions.id, startedAt: sessions.startedAt, endedAt: sessions.endedAt })
+    .from(sessions)
+    .where(eq(sessions.projectId, projectId))
+    .orderBy(desc(sessions.startedAt))
+    .limit(10);
+
+  return {
+    id: project.id,
+    name: project.name,
+    description: project.description,
+    templateId: project.templateId,
+    createdAt: project.createdAt,
+    archivedAt: project.archivedAt,
+    ownerId: project.ownerId,
+    ownerName: project.ownerName,
+    ownerEmail: project.ownerEmail,
+    members,
+    recentSessions,
+  };
 }
 
 /** Archive/restore ANY project by id (admin moderation, STORY-44). No ownership
