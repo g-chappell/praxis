@@ -74,7 +74,11 @@ async function createProjectRoom(
   let previewUrl: string | null = null;
   try {
     const addr = await getSandbox().exposePort(handle, previewPort); // http://<ip>:<port>
-    registerPreview(projectId, { ip: new URL(addr).hostname, port: previewPort });
+    registerPreview(projectId, {
+      ip: new URL(addr).hostname,
+      port: previewPort,
+      containerId: handle.containerId,
+    });
     previewUrl = previewUrlFor(projectId);
   } catch (err) {
     logger.warn(

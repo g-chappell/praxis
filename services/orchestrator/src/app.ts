@@ -6,7 +6,7 @@
 import { Hono } from 'hono';
 
 import { httpLogger } from './logger';
-import { caddyAsk, getPreview, proxyToSandbox, slugForHost } from './preview';
+import { caddyAsk, proxyToSandbox, resolvePreviewTarget, slugForHost } from './preview';
 import { gitRoute } from './routes/git';
 import { healthRoute } from './routes/health';
 import { mcpRoute } from './routes/mcp';
@@ -27,7 +27,10 @@ app.use('*', async (c, next) => {
   const host = c.req.header('host') ?? new URL(c.req.url).host;
   const slug = slugForHost(host);
   if (slug === null) return next();
-  const target = getPreview(slug);
+  // Re-resolve the bound container's live IP per request: a stale entry whose
+  // container is gone (so its IP may now belong to another project) returns null
+  // and is never served (STORY-51 cross-project isolation).
+  const target = await resolvePreviewTarget(slug);
   if (!target) return c.text('no such preview', 404);
   return proxyToSandbox(c.req.raw, target);
 });

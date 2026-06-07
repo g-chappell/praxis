@@ -11,20 +11,64 @@ export interface PreviewTarget {
   /** Sandbox container IP on praxis-net (reachable from the orchestrator). */
   ip: string;
   port: number;
+  /** The exact container this preview belongs to. Bound at registration so the
+   *  proxy can re-resolve the live IP per request and refuse to serve once that
+   *  container is gone — container IDs are unique and never reused by Docker, so
+   *  this is the project-identity guarantee against IP reuse (STORY-51). */
+  containerId: string;
 }
 
 const registry = new Map<string, PreviewTarget>();
 
+/** Resolve a registered target's CURRENT IP (or null if its container is gone or
+ *  stopped). Injected at boot from the Bun side (docker-backed); the default
+ *  trusts the stored IP so the Node test path needs no Docker. */
+export type PreviewIpResolver = (target: PreviewTarget) => Promise<string | null>;
+let resolveLiveIp: PreviewIpResolver = async (t) => t.ip;
+export function setPreviewIpResolver(fn: PreviewIpResolver): void {
+  resolveLiveIp = fn;
+}
+
+/** Short-lived per-slug cache of the resolved IP, so a burst of preview requests
+ *  (assets, HMR polls) doesn't inspect Docker on every hit. */
+const RESOLVE_TTL_MS = 5_000;
+const ipCache = new Map<string, { ip: string | null; expiry: number }>();
+
 export function registerPreview(slug: string, target: PreviewTarget): void {
   registry.set(slug, target);
+  ipCache.delete(slug); // a fresh container → drop any stale resolved IP
 }
 
 export function removePreview(slug: string): void {
   registry.delete(slug);
+  ipCache.delete(slug);
 }
 
 export function getPreview(slug: string): PreviewTarget | undefined {
   return registry.get(slug);
+}
+
+/** Resolve a slug to a serveable target, re-checking that the bound container is
+ *  still live and reading its current IP (TTL-cached). Returns null when the slug
+ *  isn't registered OR its container is gone/stopped — so a stale registry entry
+ *  whose IP Docker has since handed to another project is NEVER served (STORY-51).
+ */
+export async function resolvePreviewTarget(
+  slug: string,
+  now: number = Date.now(),
+): Promise<PreviewTarget | null> {
+  const target = registry.get(slug);
+  if (!target) return null;
+  const cached = ipCache.get(slug);
+  let ip: string | null;
+  if (cached && cached.expiry > now) {
+    ip = cached.ip;
+  } else {
+    ip = await resolveLiveIp(target);
+    ipCache.set(slug, { ip, expiry: now + RESOLVE_TTL_MS });
+  }
+  if (!ip) return null;
+  return { ...target, ip };
 }
 
 /** The preview zone. Defaults to the prod domain so previews work without extra

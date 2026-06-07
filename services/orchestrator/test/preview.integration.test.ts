@@ -32,7 +32,11 @@ describeDocker('preview proxy (real sandbox)', () => {
     await sandbox.writeFile(handle, 'index.html', '<h1>hello from sandbox</h1>');
     server = await sandbox.spawn(handle, `python3 -m http.server ${PORT} --directory /workspace`);
     const addr = await sandbox.exposePort(handle, PORT);
-    registerPreview(projectId, { ip: new URL(addr).hostname, port: PORT });
+    registerPreview(projectId, {
+      ip: new URL(addr).hostname,
+      port: PORT,
+      containerId: handle.containerId,
+    });
   }, T);
 
   afterAll(async () => {
