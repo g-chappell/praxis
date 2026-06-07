@@ -2129,6 +2129,102 @@ epics:
               - "Each turn that changes files produces one commit whose message is derived from that turn's prompt, authored by the prompter."
               - "A ≥3-turn dogfood session yields ≥3 commits with prompt-descriptive messages."
 
+      - id: STORY-51
+        title: "Reliable preview isolation, workspace readiness gate, and session teardown"
+        description: |
+          Dogfood-surfaced platform bug class (found 2026-06-07, evidence on the
+          VPS): a freshly-opened project showed ANOTHER project's preview, and the
+          file panel didn't load until the first turn finished. Root cause is three
+          pre-existing defects (NOT the turn-end commit work):
+            1. Cross-project preview bleed — the preview registry maps
+               projectId→{ip,port}; port is fixed at 5173 for all projects of a
+               template, sandboxes share praxis-net with Docker IP reuse, and
+               removePreview runs ONLY in endSession. Idle sweep + orchestrator
+               restart never clear the registry, so a stale entry + a reused IP
+               make proxyToSandbox serve the wrong project. The proxy blindly
+               trusts the registered IP.
+            2. No readiness gate — the dev server is fire-and-forget (~1 min npm
+               install, preview 502s) yet the workspace renders immediately; the
+               file tree loads via a file_list WS message that races rapid project
+               switching.
+            3. Stale-artifact buildup — idle sweep stops containers but never marks
+               sessions.ended_at or clears the registry; restarts orphan containers
+               + DB rows (live proof: an orphaned sandbox outlived a restart;
+               sessions sat ended_at NULL for hours).
+        acceptance_criteria:
+          - "Opening any project never shows another project's preview: the preview proxy serves only the container that currently carries that project's identity, re-resolved per request (stale/reused IPs are never served)."
+          - "On opening a project the user sees a loading screen that holds until the workspace is fully ready — WS connected, file tree listed, and the dev server responding — so the file panel is never empty and the preview is never a 502/stale frame on entry."
+          - "When the last tab/user leaves (after the reconnect grace) or a sandbox is idle-swept, the container is removed, the preview registry entry is cleared, the session is marked ended in the DB, and the shared agent is closed — and the project volume (praxis-project-<id>) is preserved so files survive."
+          - "Orphaned containers/sessions from a prior orchestrator run are reconciled at boot: no orphan serves preview traffic and DB ended_at is consistent."
+        user_flow:
+          - "User opens their newest project; a loading screen shows until files + preview are live; the preview is THEIR project."
+          - "User closes all tabs; after the grace window the sandbox + preview + session tear down cleanly; reopening restores their files from the volume."
+        out_of_scope:
+          - "Deleting project files or volumes (idle-stop must preserve them)."
+          - "Non-Docker sandbox backends / multi-region."
+        tasks:
+          - id: TASK-154
+            title: "Defense-in-depth preview routing: re-resolve + verify the container per request"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              Stop trusting a write-once registered IP. Store the container id in
+              the registry target and resolve the live IP per preview request via
+              the existing Sandbox.exposePort(handle, port) (short TTL cache, e.g.
+              5s, keyed by projectId). If the container is gone or stopped,
+              exposePort throws/returns no IP → do NOT serve (404/503), never a
+              reused IP. This eliminates the cross-project bleed without a Sandbox
+              interface change (no ADR needed). Cover with unit tests: stale entry
+              whose container is gone → no serve; live entry → correct IP; cache
+              hit avoids re-inspect within TTL.
+            attempt_count: 0
+            task_acceptance:
+              - "proxyToSandbox/preview resolution re-resolves the container's current IP per request (cached ≤ a few seconds) instead of trusting a stored IP; a registry entry whose container is gone/stopped is never served."
+              - "Unit tests cover stale-container (no serve), live-container (correct IP), and cache reuse."
+          - id: TASK-155
+            title: "Reliable teardown on every path + boot reconciliation"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator"]
+            description: |
+              Make teardown consistent across endSession AND the idle sweep:
+              removePreview(projectId), mark sessions.ended_at, and close the shared
+              agent on BOTH paths (wire the idle-sweep onStop in sandbox-sweep.ts to
+              do registry + DB + agent cleanup). Add a boot-time reconciliation: on
+              orchestrator start, list running praxis sandboxes with no room and
+              mark their open DB sessions ended (and either adopt or stop+clean
+              orphans). NEVER remove the project volume — idle-stop snapshots +
+              removes the container only; files persist on praxis-project-<id>.
+            depends_on: [TASK-154]
+            attempt_count: 0
+            task_acceptance:
+              - "Idle-sweep stop and last-tab endSession both clear the preview registry entry, set sessions.ended_at, and close the agent; the project volume is preserved."
+              - "On boot, orphaned containers/sessions from a prior run are reconciled (no orphan serves preview; DB ended_at consistent)."
+          - id: TASK-156
+            title: "Full-readiness workspace loading screen"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator", "apps/web"]
+            description: |
+              Gate the workspace UI behind real readiness. Orchestrator probes the
+              dev-server preview target until it returns healthy and emits a
+              workspace_ready signal (WS frame or readiness field). The web client
+              shows a loading screen on project open until: WS connected AND the
+              file tree (file_list) has arrived AND workspace_ready (dev server
+              live). Only then render the workspace, so the file panel is never
+              empty and the preview is never a 502 on entry. Resume is fast
+              (node_modules cached on the volume).
+            depends_on: [TASK-155]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Opening a project shows a loading screen until WS connected + file tree listed + dev server healthy; the workspace then renders with a populated file panel and a live (own-project) preview."
+              - "STORY-51 acceptance_criteria satisfied (cross-project isolation verified live on the VPS)."
+
       - id: STORY-18
         title: "Internal dogfood + first university pair"
         description: |
