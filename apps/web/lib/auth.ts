@@ -11,12 +11,14 @@
 // project-`sessions` table from STORY-03).
 
 import { betterAuth } from 'better-auth';
+import { APIError } from 'better-auth/api';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { magicLink } from 'better-auth/plugins';
 
 import { authSession, users, verification } from '@praxis/db';
 import { db } from '@praxis/db/client';
 
+import { signInBlockMessage, signInBlockReason } from './blocklist';
 import { sendMagicLinkEmail } from './mailer';
 
 // Lazy singleton — Next.js's build-time page-data collection imports
@@ -86,6 +88,12 @@ function buildAuth() {
         // "abandoned email in a coffee shop is now a security risk".
         expiresIn: 60 * 5,
         sendMagicLink: async ({ email, url }) => {
+          // Gate sign-in before sending (STORY-46): banned users and
+          // blocklisted emails/domains get a friendly error and no email.
+          const blocked = await signInBlockReason(email);
+          if (blocked) {
+            throw new APIError('FORBIDDEN', { message: signInBlockMessage(blocked) });
+          }
           await sendMagicLinkEmail({ to: email, url });
         },
       }),
