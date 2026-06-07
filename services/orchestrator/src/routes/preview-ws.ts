@@ -12,7 +12,7 @@
 import type { ServerWebSocket } from 'bun';
 
 import { logger } from '../logger';
-import { getPreview, previewWsSlug, upstreamWsUrl } from '../preview';
+import { previewWsSlug, resolvePreviewTarget, upstreamWsUrl } from '../preview';
 
 /** Just the slice of Bun's Server we use — sidesteps the Server<T> generic. */
 interface UpgradableServer {
@@ -42,10 +42,16 @@ export type PreviewUpgrade = 'upgraded' | 'failed' | 'pass';
  *  completes the 101 handshake; frames then flow through previewWebsocket).
  *  Returns 'failed' when the preview isn't live (caller answers 502), or 'pass'
  *  for any non-preview / non-upgrade request (caller falls through to the app). */
-export function tryPreviewUpgrade(req: Request, server: UpgradableServer): PreviewUpgrade {
+export async function tryPreviewUpgrade(
+  req: Request,
+  server: UpgradableServer,
+): Promise<PreviewUpgrade> {
   const slug = previewWsSlug(req.headers.get('host'), req.headers.get('upgrade'));
   if (slug === null) return 'pass';
-  const target = getPreview(slug);
+  // Re-resolve the bound container's live IP (STORY-51) — a stale entry whose
+  // container is gone returns null and we refuse the tunnel rather than relaying
+  // HMR into a reused IP that may now be another project's dev server.
+  const target = await resolvePreviewTarget(slug);
   if (!target) return 'failed';
 
   const protocol = req.headers.get('sec-websocket-protocol');

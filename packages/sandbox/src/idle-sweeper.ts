@@ -7,13 +7,14 @@ import type { DockerSandbox } from './docker-sandbox.js';
 export interface IdleSweeperOptions {
   /** Idle threshold in ms. Default 30 minutes. */
   idleMs?: number;
-  /** Called after a sandbox is stopped by the sweep. */
-  onStop?: (projectId: string) => void;
+  /** Called (and awaited) after a sandbox is stopped by the sweep, so consumers
+   *  can do async teardown — clear the preview registry, mark the session ended. */
+  onStop?: (projectId: string) => void | Promise<void>;
 }
 
 export class IdleSweeper {
   private readonly idleMs: number;
-  private readonly onStop?: (projectId: string) => void;
+  private readonly onStop?: (projectId: string) => void | Promise<void>;
   private timer?: ReturnType<typeof setInterval>;
 
   constructor(
@@ -32,7 +33,7 @@ export class IdleSweeper {
       try {
         await this.sandbox.stop(handle);
         stopped.push(handle.projectId);
-        this.onStop?.(handle.projectId);
+        await this.onStop?.(handle.projectId);
       } catch {
         // Leave it for the next sweep rather than aborting the whole pass.
       }

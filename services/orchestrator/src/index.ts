@@ -8,12 +8,30 @@ import type { ServerWebSocket } from 'bun';
 
 import { app } from './app';
 import { logger } from './logger';
-import { startIdleSweep } from './sandbox-sweep';
+import { setPreviewIpResolver } from './preview';
+import { getSandbox } from './runtime';
+import { reconcileSessionsOnBoot, startIdleSweep } from './sandbox-sweep';
 import { isPreviewSocket, previewWebsocket, tryPreviewUpgrade } from './routes/preview-ws';
 import { websocket, wsRoute } from './routes/ws';
 import { VERSION } from './version';
 
 app.route('/ws', wsRoute);
+
+// Resolve a preview's live container IP from Docker per request (STORY-51).
+// exposePort inspects by the bound containerId — if the container is gone or
+// stopped it throws, so we return null and the proxy refuses to serve a reused
+// IP. Container IDs are unique and never reused, so this is the identity check.
+setPreviewIpResolver(async (target) => {
+  try {
+    const addr = await getSandbox().exposePort(
+      { projectId: '', containerId: target.containerId },
+      target.port,
+    );
+    return new URL(addr).hostname || null;
+  } catch {
+    return null;
+  }
+});
 
 // Roadmap text said :4000 but the autodev-mcp dashboard owns :4000
 // on this VPS. See ADR-0004 port-allocation note.
@@ -49,7 +67,7 @@ const combinedWebsocket = {
 };
 
 export default {
-  fetch(
+  async fetch(
     req: Request,
     server: {
       upgrade(req: Request, options: { data: unknown; headers?: Record<string, string> }): boolean;
@@ -58,7 +76,7 @@ export default {
     // Tunnel Vite HMR WebSocket upgrades on a preview host to the sandbox dev
     // server (STORY-30). Non-preview / non-upgrade requests fall through to the
     // Hono app (HTTP previews, the /ws session socket, the API).
-    const upgrade = tryPreviewUpgrade(req, server);
+    const upgrade = await tryPreviewUpgrade(req, server);
     if (upgrade === 'upgraded') return undefined;
     if (upgrade === 'failed') {
       return new Response('preview starting…', {
@@ -74,5 +92,6 @@ export default {
 
 if (import.meta.main) {
   logger.info({ port: PORT, version: VERSION }, 'orchestrator.boot');
+  void reconcileSessionsOnBoot(); // mark prior-process sessions ended (STORY-51)
   startIdleSweep();
 }

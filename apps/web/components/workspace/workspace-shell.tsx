@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
   Group,
   type LayoutStorage,
@@ -22,8 +22,12 @@ import { PreviewPane } from '@/components/workspace/preview-pane';
 import { cn } from '@/lib/utils';
 import { WorkspaceFilesProvider } from '@/components/workspace/workspace-files';
 import { WorkspaceControlProvider } from '@/components/workspace/workspace-control';
+import { WorkspaceLoadingOverlay } from '@/components/workspace/workspace-loading';
 import { WorkspacePresenceProvider } from '@/components/workspace/workspace-presence';
-import { WorkspaceSocketProvider } from '@/components/workspace/workspace-socket';
+import {
+  WorkspaceSocketProvider,
+  useWorkspaceSocket,
+} from '@/components/workspace/workspace-socket';
 
 // Three-panel workspace shell (STORY-10): file tree | editor | chat, hosted on a
 // single shared session socket. Pane sizes persist via `useDefaultLayout` so a
@@ -51,11 +55,26 @@ export function WorkspaceShell({
       <WorkspaceFilesProvider>
         <WorkspacePresenceProvider>
           <WorkspaceControlProvider>
-            <ResizablePanels projectId={projectId} currentUser={currentUser} />
+            <WorkspaceReadyGate>
+              <ResizablePanels projectId={projectId} currentUser={currentUser} />
+            </WorkspaceReadyGate>
           </WorkspaceControlProvider>
         </WorkspacePresenceProvider>
       </WorkspaceFilesProvider>
     </WorkspaceSocketProvider>
+  );
+}
+
+// Keep the workspace mounted (so the socket connects, the file list is requested,
+// and the readiness probe runs) but cover it with a loading overlay until the
+// session is fully ready — connected + files listed + dev server up (STORY-51).
+function WorkspaceReadyGate({ children }: { children: ReactNode }) {
+  const { ready } = useWorkspaceSocket();
+  return (
+    <div className="relative h-full">
+      {children}
+      {!ready && <WorkspaceLoadingOverlay />}
+    </div>
   );
 }
 

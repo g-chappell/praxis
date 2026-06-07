@@ -33,6 +33,13 @@ interface WorkspaceSocket {
   subscribe: (fn: (frame: ServerFrame) => void) => () => void;
   /** The project's preview URL (the sandbox dev server), or null until minted. */
   previewUrl: string | null;
+  /** The dev server has answered (`workspace_ready`), so the preview is serveable. */
+  previewReady: boolean;
+  /** The file tree has arrived (`file_tree`). */
+  filesLoaded: boolean;
+  /** Everything the workspace needs is up: connected + files + preview (STORY-51).
+   *  The shell holds its loading screen until this is true. */
+  ready: boolean;
 }
 
 const WorkspaceSocketContext = createContext<WorkspaceSocket | null>(null);
@@ -56,6 +63,11 @@ export function WorkspaceSocketProvider({
 }) {
   const [status, setStatus] = useState<WorkspaceStatus>('idle');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  // Readiness gate (STORY-51): the shell shows a loading screen until the file
+  // tree has arrived AND the dev server is up. Reset on project change so opening
+  // a new project always re-gates.
+  const [previewReady, setPreviewReady] = useState(false);
+  const [filesLoaded, setFilesLoaded] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const subscribers = useRef(new Set<(frame: ServerFrame) => void>());
   // Connect resilience: a fresh session occasionally fails its first WS open
@@ -154,6 +166,9 @@ export function WorkspaceSocketProvider({
       } catch {
         return; // ignore malformed frames
       }
+      // Drive the readiness gate (STORY-51) before fanning out to subscribers.
+      if (frame.type === 'workspace_ready' && frame.previewReady === true) setPreviewReady(true);
+      else if (frame.type === 'file_tree') setFilesLoaded(true);
       for (const fn of subscribers.current) fn(frame);
     };
     ws.onerror = () => {}; // onclose drives state + retry
@@ -186,14 +201,33 @@ export function WorkspaceSocketProvider({
   useEffect(() => {
     closingRef.current = false;
     retriesRef.current = 0;
+    // Re-gate on project change so a switch never shows the previous project's
+    // preview/files before the new ones load (STORY-51).
+    setPreviewUrl(null);
+    setPreviewReady(false);
+    setFilesLoaded(false);
     if (autoStart) void start();
     return () => close();
     // Keyed on projectId only: re-running on every status change would thrash
     // the connection. start/close read the latest values via refs/state.
   }, [projectId]);
 
+  const ready = status === 'connected' && filesLoaded && previewReady;
+
   return (
-    <WorkspaceSocketContext.Provider value={{ status, start, close, send, subscribe, previewUrl }}>
+    <WorkspaceSocketContext.Provider
+      value={{
+        status,
+        start,
+        close,
+        send,
+        subscribe,
+        previewUrl,
+        previewReady,
+        filesLoaded,
+        ready,
+      }}
+    >
       {children}
     </WorkspaceSocketContext.Provider>
   );
