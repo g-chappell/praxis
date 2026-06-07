@@ -1,0 +1,98 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`LearningLinksList > renders links grouped by topic, each opening in a new tab 1`] = `
+<DocumentFragment>
+  <div
+    class="flex flex-col gap-3 p-3"
+  >
+    <section>
+      <h3
+        class="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+      >
+        ACP
+      </h3>
+      <ul
+        class="flex flex-col gap-1"
+      >
+        <li>
+          <a
+            class="block rounded px-2 py-1 text-sm text-foreground hover:bg-accent"
+            href="https://acp.example/intro"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            Agent Client Protocol
+            <span
+              class="ml-1 text-xs text-muted-foreground"
+            >
+              · ACP
+            </span>
+          </a>
+        </li>
+      </ul>
+    </section>
+    <section>
+      <h3
+        class="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+      >
+        MCP
+      </h3>
+      <ul
+        class="flex flex-col gap-1"
+      >
+        <li>
+          <a
+            class="block rounded px-2 py-1 text-sm text-foreground hover:bg-accent"
+            href="https://mcp.example/intro"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            MCP introduction
+            <span
+              class="ml-1 text-xs text-muted-foreground"
+            >
+              · Anthropic
+            </span>
+          </a>
+        </li>
+        <li>
+          <a
+            class="block rounded px-2 py-1 text-sm text-foreground hover:bg-accent"
+            href="https://mcp.example/servers"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            MCP servers
+          </a>
+        </li>
+      </ul>
+    </section>
+    <section>
+      <h3
+        class="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+      >
+        Three.js
+      </h3>
+      <ul
+        class="flex flex-col gap-1"
+      >
+        <li>
+          <a
+            class="block rounded px-2 py-1 text-sm text-foreground hover:bg-accent"
+            href="https://threejs.example/docs"
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            three.js docs
+            <span
+              class="ml-1 text-xs text-muted-foreground"
+            >
+              · three.js
+            </span>
+          </a>
+        </li>
+      </ul>
+    </section>
+  </div>
+</DocumentFragment>
+`;

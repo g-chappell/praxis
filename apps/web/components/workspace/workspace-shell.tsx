@@ -15,6 +15,7 @@ import { CodeEditor } from '@/components/workspace/code-editor';
 import { FileTree } from '@/components/workspace/file-tree';
 import { GitPanel } from '@/components/workspace/git-panel';
 import { InviteButton } from '@/components/workspace/invite-button';
+import { LearningPanel } from '@/components/workspace/learning-panel';
 import { ControlBar } from '@/components/workspace/control-bar';
 import { PresenceBar } from '@/components/workspace/presence-bar';
 import { PreviewPane } from '@/components/workspace/preview-pane';
@@ -202,6 +203,7 @@ function ChatPane({ currentUser }: { currentUser: ChatAuthor }) {
       <div className="min-h-0 flex-1 p-4">
         <ChatPanel currentUser={currentUser} />
       </div>
+      <LearningPanel />
     </>
   );
 }
