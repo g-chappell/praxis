@@ -2151,6 +2151,8 @@ epics:
                sessions.ended_at or clears the registry; restarts orphan containers
                + DB rows (live proof: an orphaned sandbox outlived a restart;
                sessions sat ended_at NULL for hours).
+        verified_at: '2026-06-07T18:35:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Opening any project never shows another project's preview: the preview proxy serves only the container that currently carries that project's identity, re-resolved per request (stale/reused IPs are never served)."
           - "On opening a project the user sees a loading screen that holds until the workspace is fully ready — WS connected, file tree listed, and the dev server responding — so the file panel is never empty and the preview is never a 502/stale frame on entry."
