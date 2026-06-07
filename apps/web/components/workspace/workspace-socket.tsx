@@ -40,6 +40,10 @@ interface WorkspaceSocket {
   /** Everything the workspace needs is up: connected + files + preview (STORY-51).
    *  The shell holds its loading screen until this is true. */
   ready: boolean;
+  /** True once the socket has connected at least once this session. Lets the
+   *  loading screen tell "still connecting" apart from "dropped after being in"
+   *  so a drop shows a reconnect prompt instead of an eternal spinner. */
+  everConnected: boolean;
 }
 
 const WorkspaceSocketContext = createContext<WorkspaceSocket | null>(null);
@@ -68,6 +72,7 @@ export function WorkspaceSocketProvider({
   // a new project always re-gates.
   const [previewReady, setPreviewReady] = useState(false);
   const [filesLoaded, setFilesLoaded] = useState(false);
+  const [everConnected, setEverConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const subscribers = useRef(new Set<(frame: ServerFrame) => void>());
   // Connect resilience: a fresh session occasionally fails its first WS open
@@ -158,6 +163,7 @@ export function WorkspaceSocketProvider({
       connectingRef.current = false;
       retriesRef.current = 0;
       setStatus('connected');
+      setEverConnected(true);
     };
     ws.onmessage = (e) => {
       let frame: ServerFrame;
@@ -206,6 +212,7 @@ export function WorkspaceSocketProvider({
     setPreviewUrl(null);
     setPreviewReady(false);
     setFilesLoaded(false);
+    setEverConnected(false);
     if (autoStart) void start();
     return () => close();
     // Keyed on projectId only: re-running on every status change would thrash
@@ -226,6 +233,7 @@ export function WorkspaceSocketProvider({
         previewReady,
         filesLoaded,
         ready,
+        everConnected,
       }}
     >
       {children}

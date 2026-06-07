@@ -11,10 +11,12 @@ function emit(frame: Record<string, unknown>) {
   });
 }
 
+let previewReady = true;
 vi.mock('@/components/workspace/workspace-socket', () => ({
   useWorkspaceSocket: () => ({
     status: 'connected',
     previewUrl: 'https://p.preview.test',
+    previewReady,
     subscribe: (fn: (f: Record<string, unknown>) => void) => {
       subscribers.add(fn);
       return () => subscribers.delete(fn);
@@ -26,7 +28,23 @@ import { PreviewPane } from './preview-pane';
 
 afterEach(() => {
   subscribers.clear();
+  previewReady = true;
   cleanup();
+});
+
+describe('PreviewPane readiness gating (STORY-51)', () => {
+  it('does not mount the iframe until the dev server is ready', () => {
+    previewReady = false;
+    render(<PreviewPane />);
+    expect(screen.queryByTitle('Preview')).toBeNull();
+    expect(screen.getByText('Starting the preview…')).toBeTruthy();
+  });
+
+  it('mounts the iframe once ready', () => {
+    previewReady = true;
+    render(<PreviewPane />);
+    expect(screen.getByTitle('Preview')).toBeTruthy();
+  });
 });
 
 describe('PreviewPane turn-gated reload', () => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import { type ServerFrame, useWorkspaceSocket } from '@/components/workspace/wor
 // tool permissions yet (auto-allowed).
 export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
   const { status: socketStatus, start, close, send, subscribe } = useWorkspaceSocket();
+  const router = useRouter();
   // Prompt-control gating (STORY-34): in turn-based mode only the control holder
   // may prompt; serialised mode lets anyone (their prompt queues).
   const { canPrompt } = useWorkspaceControl();
@@ -189,8 +191,12 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
           <Button
             variant="outline"
             onClick={() => {
+              // End the session, then leave the workspace for the dashboard —
+              // staying would just show the readiness overlay with nothing to
+              // connect to.
               close();
               setErrored(false);
+              router.push('/dashboard');
             }}
           >
             End session

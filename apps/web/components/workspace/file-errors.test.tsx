@@ -9,6 +9,9 @@ function emit(frame: Record<string, unknown>) {
     for (const s of subscribers) s(frame);
   });
 }
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 vi.mock('@/components/workspace/workspace-socket', () => ({
   useWorkspaceSocket: () => ({
     status: 'connected',
