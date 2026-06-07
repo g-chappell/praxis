@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 32 / 50 (64%)
+- **Features verified:** 33 / 50 (66%)
 - **Total tasks:** 155
 - **Done:** 126 (81%)
 - **Ready:** 29
@@ -2128,7 +2128,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     - e2e passes the admin archive-with-reason flow.
     - STORY-44 acceptance_criteria satisfied.
 
-- **STORY-45** — Admin users directory + role management
+- **STORY-45** — Admin users directory + role management  [:white_check_mark: verified]
   > List/search all users, view a user's detail, and manage admin roles
   > with safety guards.
   **Acceptance criteria:**

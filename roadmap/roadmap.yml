@@ -3456,6 +3456,8 @@ epics:
         description: |
           List/search all users, view a user's detail, and manage admin roles
           with safety guards.
+        verified_at: '2026-06-07T20:19:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "An admin lists and searches all users (email, role, created, project count, banned status) and opens a user detail showing their teams/projects, sessions, and recent activity."
           - "An admin promotes/demotes a user's role; the system blocks self-demotion and blocks removing the last remaining admin; every role change is audit-logged."
