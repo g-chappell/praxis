@@ -3364,6 +3364,8 @@ epics:
         description: |
           An admin sees every project (any owner) and can archive/delete any of
           them, audit-logged with a reason.
+        verified_at: '2026-06-07T19:41:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "An admin sees every project regardless of ownership with owner, members, status (active/archived), created, and last activity; the list is searchable by name/owner and sortable."
           - "An admin can archive or delete ANY project from the admin UI with a required reason; it performs the same cleanup as the owner path (delete destroys the sandbox) and writes an audit_log row."
@@ -3380,7 +3382,7 @@ epics:
         tasks:
           - id: TASK-125
             title: "lib + API: GET /api/admin/projects (all projects + owner + members + status)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3391,12 +3393,14 @@ epics:
               ?sort.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-07T19:37:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/329
             is_terminal: false
             task_acceptance:
               - "200 for admin returns all projects with owner+members+status; 403 for non-admin; covered by tests."
           - id: TASK-126
             title: "lib + API: admin archive/delete any project (audit-logged, reason)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3407,12 +3411,14 @@ epics:
               destroy; require a reason; recordAudit.
             depends_on: [TASK-123, TASK-125]
             attempt_count: 0
+            completed: '2026-06-07T19:37:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/329
             is_terminal: false
             task_acceptance:
               - "Admin archives/deletes a non-owned project; reason required; audit row written; 403 for non-admin; tests."
           - id: TASK-127
             title: "UI: /admin/projects table + project detail"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3422,12 +3428,14 @@ epics:
               actions (confirm + reason).
             depends_on: [TASK-125]
             attempt_count: 0
+            completed: '2026-06-07T19:37:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/329
             is_terminal: false
             task_acceptance:
               - "Table lists all projects, search+sort work; detail shows members+activity; actions call the admin endpoints; component tests."
           - id: TASK-128
             title: "e2e: admin lists all projects + archives one"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -3437,6 +3445,8 @@ epics:
               archived + an audit entry exists.
             depends_on: [TASK-126, TASK-127]
             attempt_count: 0
+            completed: '2026-06-07T19:37:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/329
             is_terminal: true
             task_acceptance:
               - "e2e passes the admin archive-with-reason flow."

@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 31 / 50 (62%)
+- **Features verified:** 32 / 50 (64%)
 - **Total tasks:** 155
-- **Done:** 118 (76%)
-- **Ready:** 37
+- **Done:** 122 (79%)
+- **Ready:** 33
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2081,7 +2081,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     - Integration test asserts persistence + the three query dimensions.
     - STORY-43 acceptance_criteria satisfied.
 
-- **STORY-44** — Admin projects directory + moderation
+- **STORY-44** — Admin projects directory + moderation  [:white_check_mark: verified]
   > An admin sees every project (any owner) and can archive/delete any of
   > them, audit-logged with a reason.
   **Acceptance criteria:**
@@ -2097,14 +2097,14 @@ ownership helpers; destructive actions require a reason and are audit-logged.
   - Editing project content/files as admin.
   - Transferring ownership between teams.
   - Bulk actions / multi-select.
-  - :black_circle: **TASK-125** — lib + API: GET /api/admin/projects (all projects + owner + members + status)  `high` `medium` _(apps/web)_
+  - :white_check_mark: **TASK-125** — lib + API: GET /api/admin/projects (all projects + owner + members + status)  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/329)
     > adminListProjects() joins projects -> teams (owner via createdBy)
     > -> teamMemberships (members) -> latest activity (sessions/events).
     > GET /api/admin/projects role-gated via isUserAdmin; supports ?q and
     > ?sort.
     _Task AC:_
     - 200 for admin returns all projects with owner+members+status; 403 for non-admin; covered by tests.
-  - :black_circle: **TASK-126** — lib + API: admin archive/delete any project (audit-logged, reason)  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-126** — lib + API: admin archive/delete any project (audit-logged, reason)  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/329)  
     _depends on: TASK-123, TASK-125_
     > New role-authorized PATCH+DELETE /api/admin/projects/[id] that
     > bypass ownership (admin authz, NOT userOwnsProject) and reuse
@@ -2112,14 +2112,14 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     > destroy; require a reason; recordAudit.
     _Task AC:_
     - Admin archives/deletes a non-owned project; reason required; audit row written; 403 for non-admin; tests.
-  - :black_circle: **TASK-127** — UI: /admin/projects table + project detail  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-127** — UI: /admin/projects table + project detail  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/329)  
     _depends on: TASK-125_
     > /admin/projects searchable/sortable table; /admin/projects/[id]
     > detail (members, sessions, recent activity) with archive/delete
     > actions (confirm + reason).
     _Task AC:_
     - Table lists all projects, search+sort work; detail shows members+activity; actions call the admin endpoints; component tests.
-  - :black_circle: **TASK-128** :checkered_flag: — e2e: admin lists all projects + archives one  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-128** :checkered_flag: — e2e: admin lists all projects + archives one  `med` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/329)  
     _depends on: TASK-126, TASK-127_
     > Admin signs in, opens /admin/projects, sees a project owned by
     > another user, archives it with a reason; asserts it moves to

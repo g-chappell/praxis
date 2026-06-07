@@ -19,6 +19,11 @@ const SECTIONS: ReadonlyArray<{ title: string; description: string; href?: strin
     href: '/admin/api-keys',
   },
   {
+    title: 'Projects',
+    description: 'Every project across the platform — search, inspect, archive, or delete.',
+    href: '/admin/projects',
+  },
+  {
     title: 'Usage',
     description: 'Per-project token usage and cost across the platform.',
   },
