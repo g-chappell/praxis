@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 33 / 50 (66%)
+- **Features verified:** 34 / 50 (68%)
 - **Total tasks:** 155
 - **Done:** 131 (85%)
 - **Ready:** 24
@@ -2169,7 +2169,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     - e2e passes promote + guard.
     - STORY-45 acceptance_criteria satisfied.
 
-- **STORY-46** — Ban users + email/domain blocklist
+- **STORY-46** — Ban users + email/domain blocklist  [:white_check_mark: verified]
   > Soft-ban abusive users (revoke sessions + block sign-in) and block
   > emails/domains at the magic-link gate.
   **Acceptance criteria:**

@@ -63,7 +63,10 @@ catching up the ledger, reconcile the _whole_ `0000…latest` range against
 prod's `\d`, not just the newest migration. 0011 (STORY-45 `audit_action`
 enum value `user.role_changed` + `users.banned_at`) — applied 2026-06-07,
 right after the #330 merge (additive, so applied before the web deploy to
-avoid a missing-column window on `/admin/users`).
+avoid a missing-column window on `/admin/users`). 0012 (STORY-46
+`users.ban_reason` + `email_blocklist` table + `audit_action` values
+`user.banned`/`user.unbanned`/`blocklist.added`/`blocklist.removed`) —
+applied 2026-06-07 around the #332 merge (additive).
 
 ## Two import surfaces from `@praxis/db`
 
