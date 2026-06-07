@@ -24,6 +24,11 @@ const SECTIONS: ReadonlyArray<{ title: string; description: string; href?: strin
     href: '/admin/projects',
   },
   {
+    title: 'Users',
+    description: 'Everyone on the platform — search, inspect, and manage admin roles.',
+    href: '/admin/users',
+  },
+  {
     title: 'Usage',
     description: 'Per-project token usage and cost across the platform.',
   },
