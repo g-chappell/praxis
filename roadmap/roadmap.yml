@@ -2103,7 +2103,7 @@ epics:
               - "Commits are authored by the prompting user; a session of ≥3 turns yields ≥3 commits."
           - id: TASK-153
             title: "Descriptive turn-end commit messages from the user's prompt"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["services/orchestrator", "templates/react-threejs-scene"]
@@ -2122,6 +2122,8 @@ epics:
               Keep the CLAUDE.md bridge (correct + gives the agent project context).
             depends_on: [TASK-152]
             attempt_count: 0
+            completed: '2026-06-07T16:19:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/320
             is_terminal: true
             task_acceptance:
               - "Each turn that changes files produces one commit whose message is derived from that turn's prompt, authored by the prompter."

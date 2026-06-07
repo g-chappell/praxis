@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 30 / 49 (61%)
 - **Total tasks:** 152
-- **Done:** 114 (75%)
-- **Ready:** 38
+- **Done:** 115 (76%)
+- **Ready:** 37
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1322,7 +1322,7 @@ that closes the POC.
     _Task AC:_
     - A new project's agent commits during a dogfood session without explicit prompting; if it leaves changes uncommitted, the orchestrator commits them at turn end.
     - Commits are authored by the prompting user; a session of ≥3 turns yields ≥3 commits.
-  - :black_circle: **TASK-153** :checkered_flag: — Descriptive turn-end commit messages from the user's prompt  `high` `small` _(services/orchestrator, templates/react-threejs-scene)_  
+  - :white_check_mark: **TASK-153** :checkered_flag: — Descriptive turn-end commit messages from the user's prompt  `high` `small` _(services/orchestrator, templates/react-threejs-scene)_ · [PR](https://github.com/g-chappell/praxis/pull/320)  
     _depends on: TASK-152_
     > Live test of TASK-152 showed: the safety-net commits ≥3 times,
     > correctly authored by the prompter — but all messages were the
