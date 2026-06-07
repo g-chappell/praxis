@@ -15,7 +15,7 @@ import { db } from '@praxis/db/client';
 import type { FileEvent } from '@praxis/sandbox';
 
 import { loadChatHistory, persistChatEvent } from '../chat-history';
-import { applyTurnGitAuthor, commitTurnWork } from '../git-author';
+import { applyTurnGitAuthor, commitMessageFromPrompt, commitTurnWork } from '../git-author';
 import {
   controlStateFrame,
   declineControl,
@@ -425,9 +425,10 @@ async function runAgentTurn(
     }
     // Safety-net: commit anything the agent left uncommitted this turn so the git
     // panel reflects the work (STORY-17 AC#1), attributed to the per-turn identity
-    // set above. No-op when the agent already committed. Best-effort.
+    // set above and described by the prompt. No-op when the agent already
+    // committed. Best-effort.
     try {
-      await commitTurnWork(getSandbox(), room.handle);
+      await commitTurnWork(getSandbox(), room.handle, commitMessageFromPrompt(text));
     } catch (err) {
       logger.warn(
         { sessionId: room.sessionId, err: err instanceof Error ? err.message : String(err) },
