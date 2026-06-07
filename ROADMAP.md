@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 30 / 50 (60%)
+- **Features verified:** 31 / 50 (62%)
 - **Total tasks:** 155
 - **Done:** 118 (76%)
 - **Ready:** 37
@@ -1340,7 +1340,7 @@ that closes the POC.
     - Each turn that changes files produces one commit whose message is derived from that turn's prompt, authored by the prompter.
     - A ≥3-turn dogfood session yields ≥3 commits with prompt-descriptive messages.
 
-- **STORY-51** — Reliable preview isolation, workspace readiness gate, and session teardown
+- **STORY-51** — Reliable preview isolation, workspace readiness gate, and session teardown  [:white_check_mark: verified]
   > Dogfood-surfaced platform bug class (found 2026-06-07, evidence on the
   > VPS): a freshly-opened project showed ANOTHER project's preview, and the
   > file panel didn't load until the first turn finished. Root cause is three
