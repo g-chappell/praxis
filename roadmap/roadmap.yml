@@ -2067,10 +2067,39 @@ epics:
             attempt_count: 0
             completed: '2026-06-07T08:15:00Z'
             pr: https://github.com/g-chappell/praxis/pull/316
-            is_terminal: true
             task_acceptance:
               - "A commit made during user A's turn has author = user A; a commit during user B's turn has author = user B."
               - "When the prompter can't be resolved, the commit author defaults to the project owner."
+          - id: TASK-152
+            title: "Auto-commit fix: load guidance + turn-end safety commit"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["templates/react-threejs-scene", "services/orchestrator"]
+            description: |
+              TASK-047 shipped commit guidance into the template AGENTS.md, but the
+              in-sandbox Claude Code agent reads CLAUDE.md (not AGENTS.md) and the
+              template has no CLAUDE.md bridge, so the guidance + commit-checkpoint
+              skill never reach the model — verified live: an agent turn made edits
+              but no commit. Two fixes:
+              1. Loading fix: add a template CLAUDE.md (`@AGENTS.md`) and a
+                 `.claude/settings.json` with `settingSources: ["project"]` so the
+                 agent loads the guidance + skill every turn (settings merge with
+                 mcp-seed's enableAllProjectMcpServers).
+              2. Deterministic safety-net: at turn-complete the orchestrator commits
+                 any uncommitted /workspace changes via sandbox.exec, authored by
+                 the per-turn identity from TASK-151. Done orchestrator-side (not a
+                 settings.json Stop hook) because the claude-agent-acp adapter does
+                 not expose hooks (ADR-0009) — a Stop hook could silently never fire.
+              Together: ≥3 commits per dogfood session (count guaranteed by the
+              safety-net) with imperative messages (agent follows loaded guidance)
+              attributed to the prompter — satisfies STORY-17 AC#1.
+            depends_on: [TASK-047, TASK-151]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "A new project's agent commits during a dogfood session without explicit prompting; if it leaves changes uncommitted, the orchestrator commits them at turn end."
+              - "Commits are authored by the prompting user; a session of ≥3 turns yields ≥3 commits."
 
       - id: STORY-18
         title: "Internal dogfood + first university pair"
