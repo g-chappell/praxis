@@ -3,7 +3,7 @@
 // must never be reachable without an isUserAdmin gate at the route. They do not
 // touch (or widen) userOwnsProject / the owner-scoped helpers (STORY-44 AC#3).
 
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 import { projects, sessions, teamMemberships, users } from '@praxis/db';
 import { type Database, db } from '@praxis/db/client';
@@ -106,4 +106,37 @@ export async function adminListProjects(
   });
 
   return rows;
+}
+
+/** Archive/restore ANY project by id (admin moderation, STORY-44). No ownership
+ *  check — the route gates on isUserAdmin; this must never be called unguarded.
+ *  Mirrors setProjectArchived's effect (sets/clears archived_at, leaves the
+ *  volume to the idle sweep) without the owner constraint. Returns false when the
+ *  project doesn't exist. */
+export async function adminSetProjectArchived(
+  projectId: string,
+  archive: boolean,
+  database: Database = db,
+): Promise<boolean> {
+  const [row] = await database
+    .update(projects)
+    .set({ archivedAt: archive ? new Date() : null })
+    .where(eq(projects.id, projectId))
+    .returning({ id: projects.id });
+  return Boolean(row);
+}
+
+/** Delete ANY project by id (admin moderation, STORY-44), cascading its sessions.
+ *  No ownership check — the route gates on isUserAdmin. Sandbox teardown is the
+ *  caller's job via the orchestrator (same as the owner path); this removes the DB
+ *  rows only. Returns false when the project doesn't exist. */
+export async function adminDeleteProject(
+  projectId: string,
+  database: Database = db,
+): Promise<boolean> {
+  const [row] = await database
+    .delete(projects)
+    .where(eq(projects.id, projectId))
+    .returning({ id: projects.id });
+  return Boolean(row);
 }
