@@ -60,7 +60,10 @@ ledger:** 0008 (STORY-43 audit_log), 0009 (STORY-38 multi-provider),
 broke the dashboard/login projects query until a later redeploy first
 exercised it — the same silent-failure trap as 0009). **Lesson:** when
 catching up the ledger, reconcile the _whole_ `0000…latest` range against
-prod's `\d`, not just the newest migration.
+prod's `\d`, not just the newest migration. 0011 (STORY-45 `audit_action`
+enum value `user.role_changed` + `users.banned_at`) — applied 2026-06-07,
+right after the #330 merge (additive, so applied before the web deploy to
+avoid a missing-column window on `/admin/users`).
 
 ## Two import surfaces from `@praxis/db`
 
