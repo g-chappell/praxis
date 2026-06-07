@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 30 / 49 (61%)
 - **Total tasks:** 151
-- **Done:** 113 (75%)
-- **Ready:** 38
+- **Done:** 114 (75%)
+- **Ready:** 37
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1300,7 +1300,7 @@ that closes the POC.
     _Task AC:_
     - A commit made during user A's turn has author = user A; a commit during user B's turn has author = user B.
     - When the prompter can't be resolved, the commit author defaults to the project owner.
-  - :black_circle: **TASK-152** :checkered_flag: — Auto-commit fix: load guidance + turn-end safety commit  `high` `medium` _(templates/react-threejs-scene, services/orchestrator)_  
+  - :white_check_mark: **TASK-152** :checkered_flag: — Auto-commit fix: load guidance + turn-end safety commit  `high` `medium` _(templates/react-threejs-scene, services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/318)  
     _depends on: TASK-047, TASK-151_
     > TASK-047 shipped commit guidance into the template AGENTS.md, but the
     > in-sandbox Claude Code agent reads CLAUDE.md (not AGENTS.md) and the

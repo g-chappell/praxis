@@ -2072,7 +2072,7 @@ epics:
               - "When the prompter can't be resolved, the commit author defaults to the project owner."
           - id: TASK-152
             title: "Auto-commit fix: load guidance + turn-end safety commit"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["templates/react-threejs-scene", "services/orchestrator"]
@@ -2096,6 +2096,8 @@ epics:
               attributed to the prompter — satisfies STORY-17 AC#1.
             depends_on: [TASK-047, TASK-151]
             attempt_count: 0
+            completed: '2026-06-07T11:14:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/318
             is_terminal: true
             task_acceptance:
               - "A new project's agent commits during a dogfood session without explicit prompting; if it leaves changes uncommitted, the orchestrator commits them at turn end."
