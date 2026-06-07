@@ -111,6 +111,7 @@ export interface AdminUserDetail {
   name: string | null;
   role: 'user' | 'admin';
   bannedAt: Date | null;
+  banReason: string | null;
   createdAt: Date | null;
   projects: AdminUserProject[];
   recentSessions: AdminUserSession[];
@@ -131,6 +132,7 @@ export async function adminGetUser(
       name: users.displayName,
       role: users.role,
       bannedAt: users.bannedAt,
+      banReason: users.banReason,
       createdAt: users.createdAt,
     })
     .from(users)
@@ -185,6 +187,7 @@ export async function adminGetUser(
     name: user.name,
     role: user.role,
     bannedAt: user.bannedAt,
+    banReason: user.banReason,
     createdAt: user.createdAt,
     projects: userProjects,
     recentSessions,
