@@ -48,6 +48,9 @@ export const users = pgTable('users', {
   displayName: text('display_name'),
   image: text('image'),
   role: userRole('role').notNull().default('user'),
+  // Set when an admin bans the user; null = active. STORY-45 shows this status in
+  // the admin users directory; STORY-46 wires the ban action + magic-link-gate.
+  bannedAt: timestamp('banned_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
@@ -236,6 +239,7 @@ export const auditAction = pgEnum('audit_action', [
   'project.updated',
   'project.duplicated',
   'api_key.rotated',
+  'user.role_changed',
 ]);
 
 // ─── audit_log ────────────────────────────────────────────────────────
