@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 30 / 49 (61%)
 - **Total tasks:** 150
-- **Done:** 110 (73%)
-- **Ready:** 40
+- **Done:** 113 (75%)
+- **Ready:** 37
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1244,7 +1244,7 @@ that closes the POC.
     - Manual test: revert a known commit, working tree state matches.
     - STORY-16 acceptance_criteria satisfied.
 
-- **STORY-17** — Agent auto-commit policy + curated learning links
+- **STORY-17** — Agent auto-commit policy + curated learning links  [:hourglass: pending]
   > The agent's system prompt and the template AGENTS.md guide
   > Claude Code to commit at meaningful stages with imperative-mood
   > messages, attributed to the prompting user via git author. The
@@ -1270,7 +1270,7 @@ that closes the POC.
     > .claude/skills/commit-checkpoint/SKILL.md.
     _Task AC:_
     - Agent in a dogfood session commits at the expected moments without explicit prompting.
-  - :black_circle: **TASK-048** — Seed learning_links with ≥10 curated entries  `med` `small` _(packages/db, apps/web)_  
+  - :white_check_mark: **TASK-048** — Seed learning_links with ≥10 curated entries  `med` `small` _(packages/db, apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/316)  
     _depends on: TASK-011_
     > Seed file in packages/db/seeds/learning-links.ts. Entries
     > cover ACP overview, MCP overview, Three.js + drei,
@@ -1279,14 +1279,14 @@ that closes the POC.
     > on-demand TLS, Better Auth.
     _Task AC:_
     - Seed runs idempotently; SELECT COUNT(*) FROM learning_links ≥10.
-  - :black_circle: **TASK-049** — Workspace learning panel grouped by topic  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-049** — Workspace learning panel grouped by topic  `med` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/316)  
     _depends on: TASK-048, TASK-032_
     > Collapsible panel near the chat panel grouping links by topic
     > tag. Cards: title + source. External links open in a new tab.
     _Task AC:_
     - Snapshot test of the panel rendering grouped links.
     - STORY-17 acceptance_criteria satisfied.
-  - :black_circle: **TASK-151** :checkered_flag: — Attribute agent git commits to the initiating user (fallback: project owner)  `med` `medium` _(services/orchestrator, packages/acp-host)_  
+  - :white_check_mark: **TASK-151** :checkered_flag: — Attribute agent git commits to the initiating user (fallback: project owner)  `med` `medium` _(services/orchestrator, packages/acp-host)_ · [PR](https://github.com/g-chappell/praxis/pull/316)  
     _depends on: TASK-047_
     > Configure the sandbox git author so commits the agent makes are
     > attributed to the user who sent the prompt for that turn, defaulting
