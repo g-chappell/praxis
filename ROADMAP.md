@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 33 / 50 (66%)
 - **Total tasks:** 155
-- **Done:** 126 (81%)
-- **Ready:** 29
+- **Done:** 131 (85%)
+- **Ready:** 24
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2185,14 +2185,14 @@ ownership helpers; destructive actions require a reason and are audit-logged.
   - Appeals workflow / user-facing ban notices beyond the sign-in message.
   - Timed/temporary bans; IP-based blocking.
   - Rate-limiting (separate concern).
-  - :black_circle: **TASK-133** — db: users.banned_at + ban_reason; email_blocklist table + migration + codegen  `high` `small` _(packages/db)_
+  - :white_check_mark: **TASK-133** — db: users.banned_at + ban_reason; email_blocklist table + migration + codegen  `high` `small` _(packages/db)_ · [PR](https://github.com/g-chappell/praxis/pull/332)
     > ALTER users ADD banned_at timestamptz, ban_reason text; new
     > email_blocklist (id, value text unique [email or domain], is_domain
     > boolean, reason text, added_by uuid fk users, created_at).
     > migration + codegen.
     _Task AC:_
     - Columns + table added (nullable/clean); codegen; existing rows unaffected.
-  - :black_circle: **TASK-134** — auth: enforce ban + blocklist at the magic-link gate + revoke sessions on ban  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-134** — auth: enforce ban + blocklist at the magic-link gate + revoke sessions on ban  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/332)  
     _depends on: TASK-133_
     > In sendMagicLink (auth.ts) reject blocklisted email/domain + banned
     > users before sending (friendly error, no email). On ban, delete the
@@ -2200,19 +2200,19 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     > so a live session can't act post-ban.
     _Task AC:_
     - Blocklisted email -> no link sent + friendly error; banned user's sessions deleted and sign-in rejected; covered by tests.
-  - :black_circle: **TASK-135** — lib + API: ban/unban + blocklist CRUD (guards, audit-logged)  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-135** — lib + API: ban/unban + blocklist CRUD (guards, audit-logged)  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/332)  
     _depends on: TASK-133, TASK-123_
     > PATCH /api/admin/users/[id] {banned, reason} with self/last-admin
     > guards; /api/admin/blocklist GET/POST/DELETE. recordAudit on all.
     _Task AC:_
     - Ban/unban + blocklist CRUD work; self/last-admin ban 4xx; audit rows; 403 non-admin; tests.
-  - :black_circle: **TASK-136** — UI: ban/unban on user detail + /admin/blocklist CRUD  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-136** — UI: ban/unban on user detail + /admin/blocklist CRUD  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/332)  
     _depends on: TASK-135_
     > Ban/unban control (reason) on the user detail; /admin/blocklist
     > page to list/add/remove entries.
     _Task AC:_
     - Ban control calls the endpoint w/ reason; blocklist page CRUD works; component tests.
-  - :black_circle: **TASK-137** :checkered_flag: — e2e: banned user can't sign in; blocklisted email can't request a link  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-137** :checkered_flag: — e2e: banned user can't sign in; blocklisted email can't request a link  `med` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/332)  
     _depends on: TASK-134, TASK-135, TASK-136_
     > Admin bans a user -> that user's new magic-link sign-in is
     > rejected; admin blocklists an email -> requesting a link for it

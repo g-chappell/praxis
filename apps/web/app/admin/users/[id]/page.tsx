@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { AdminUserBanControl } from '@/components/admin/admin-user-ban-control';
 import { AdminUserRoleControl } from '@/components/admin/admin-user-role-control';
 import { adminGetUser } from '@/lib/admin-users';
 import { getAuth } from '@/lib/auth';
@@ -50,6 +51,20 @@ export default async function AdminUserDetailPage({ params }: { params: { id: st
           role={user.role}
           isSelf={user.id === session?.user.id}
         />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
+          Access
+        </h2>
+        <AdminUserBanControl
+          userId={user.id}
+          banned={user.bannedAt !== null}
+          isSelf={user.id === session?.user.id}
+        />
+        {user.bannedAt && user.banReason && (
+          <p className="text-xs text-muted-foreground">Reason: {user.banReason}</p>
+        )}
       </section>
 
       <section className="space-y-2">

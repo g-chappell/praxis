@@ -14,6 +14,9 @@ export type NewAuditLog = InferInsertModel<typeof schema.auditLog>;
 export type AuthSession = InferSelectModel<typeof schema.authSession>;
 export type NewAuthSession = InferInsertModel<typeof schema.authSession>;
 
+export type EmailBlocklist = InferSelectModel<typeof schema.emailBlocklist>;
+export type NewEmailBlocklist = InferInsertModel<typeof schema.emailBlocklist>;
+
 export type Event = InferSelectModel<typeof schema.events>;
 export type NewEvent = InferInsertModel<typeof schema.events>;
 

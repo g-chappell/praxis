@@ -29,6 +29,11 @@ const SECTIONS: ReadonlyArray<{ title: string; description: string; href?: strin
     href: '/admin/users',
   },
   {
+    title: 'Sign-in blocklist',
+    description: 'Block an email or domain from requesting a magic link.',
+    href: '/admin/blocklist',
+  },
+  {
     title: 'Usage',
     description: 'Per-project token usage and cost across the platform.',
   },

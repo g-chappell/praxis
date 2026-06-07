@@ -51,6 +51,8 @@ export const users = pgTable('users', {
   // Set when an admin bans the user; null = active. STORY-45 shows this status in
   // the admin users directory; STORY-46 wires the ban action + magic-link-gate.
   bannedAt: timestamp('banned_at', { withTimezone: true }),
+  // The reason captured when the user was banned (STORY-46); null when not banned.
+  banReason: text('ban_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 });
@@ -240,6 +242,10 @@ export const auditAction = pgEnum('audit_action', [
   'project.duplicated',
   'api_key.rotated',
   'user.role_changed',
+  'user.banned',
+  'user.unbanned',
+  'blocklist.added',
+  'blocklist.removed',
 ]);
 
 // ─── audit_log ────────────────────────────────────────────────────────
@@ -267,6 +273,19 @@ export const auditLog = pgTable(
     index('idx_audit_log_created').on(table.createdAt),
   ],
 );
+
+// ─── email_blocklist ──────────────────────────────────────────────────
+// Emails/domains barred at the magic-link gate (STORY-46). `value` is the
+// lowercased address (is_domain=false) or bare domain like "spam.test"
+// (is_domain=true); the gate matches an address against both forms.
+export const emailBlocklist = pgTable('email_blocklist', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  value: text('value').notNull().unique(),
+  isDomain: boolean('is_domain').notNull().default(false),
+  reason: text('reason'),
+  addedBy: uuid('added_by').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
 
 // ─── agent_turns ──────────────────────────────────────────────────────
 export const agentTurns = pgTable('agent_turns', {

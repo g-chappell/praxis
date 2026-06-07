@@ -3558,7 +3558,7 @@ epics:
         tasks:
           - id: TASK-133
             title: "db: users.banned_at + ban_reason; email_blocklist table + migration + codegen"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -3569,12 +3569,14 @@ epics:
               migration + codegen.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-07T20:40:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/332
             is_terminal: false
             task_acceptance:
               - "Columns + table added (nullable/clean); codegen; existing rows unaffected."
           - id: TASK-134
             title: "auth: enforce ban + blocklist at the magic-link gate + revoke sessions on ban"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3585,12 +3587,14 @@ epics:
               so a live session can't act post-ban.
             depends_on: [TASK-133]
             attempt_count: 0
+            completed: '2026-06-07T20:40:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/332
             is_terminal: false
             task_acceptance:
               - "Blocklisted email -> no link sent + friendly error; banned user's sessions deleted and sign-in rejected; covered by tests."
           - id: TASK-135
             title: "lib + API: ban/unban + blocklist CRUD (guards, audit-logged)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3599,12 +3603,14 @@ epics:
               guards; /api/admin/blocklist GET/POST/DELETE. recordAudit on all.
             depends_on: [TASK-133, TASK-123]
             attempt_count: 0
+            completed: '2026-06-07T20:40:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/332
             is_terminal: false
             task_acceptance:
               - "Ban/unban + blocklist CRUD work; self/last-admin ban 4xx; audit rows; 403 non-admin; tests."
           - id: TASK-136
             title: "UI: ban/unban on user detail + /admin/blocklist CRUD"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3613,12 +3619,14 @@ epics:
               page to list/add/remove entries.
             depends_on: [TASK-135]
             attempt_count: 0
+            completed: '2026-06-07T20:40:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/332
             is_terminal: false
             task_acceptance:
               - "Ban control calls the endpoint w/ reason; blocklist page CRUD works; component tests."
           - id: TASK-137
             title: "e2e: banned user can't sign in; blocklisted email can't request a link"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -3628,6 +3636,8 @@ epics:
               sends nothing and shows the friendly message.
             depends_on: [TASK-134, TASK-135, TASK-136]
             attempt_count: 0
+            completed: '2026-06-07T20:40:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/332
             is_terminal: true
             task_acceptance:
               - "e2e passes both enforcement paths."

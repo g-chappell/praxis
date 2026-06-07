@@ -111,6 +111,7 @@ export interface AdminUserDetail {
   name: string | null;
   role: 'user' | 'admin';
   bannedAt: Date | null;
+  banReason: string | null;
   createdAt: Date | null;
   projects: AdminUserProject[];
   recentSessions: AdminUserSession[];
@@ -131,6 +132,7 @@ export async function adminGetUser(
       name: users.displayName,
       role: users.role,
       bannedAt: users.bannedAt,
+      banReason: users.banReason,
       createdAt: users.createdAt,
     })
     .from(users)
@@ -185,11 +187,29 @@ export async function adminGetUser(
     name: user.name,
     role: user.role,
     bannedAt: user.bannedAt,
+    banReason: user.banReason,
     createdAt: user.createdAt,
     projects: userProjects,
     recentSessions,
     recentActivity,
   };
+}
+
+/** Ban (set bannedAt + banReason) or unban (clear both) a user by id (STORY-46).
+ *  No self/last-admin guard here — the route enforces those. Returns false when
+ *  the user doesn't exist. */
+export async function adminSetUserBanned(
+  userId: string,
+  banned: boolean,
+  reason: string | null,
+  database: Database = db,
+): Promise<boolean> {
+  const [row] = await database
+    .update(users)
+    .set({ bannedAt: banned ? new Date() : null, banReason: banned ? reason : null })
+    .where(eq(users.id, userId))
+    .returning({ id: users.id });
+  return Boolean(row);
 }
 
 /** A user's current role, or null when they don't exist — for the role-change

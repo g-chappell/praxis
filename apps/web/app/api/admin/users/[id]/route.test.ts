@@ -8,6 +8,8 @@ const adminGetUser = vi.fn();
 const getUserRole = vi.fn();
 const countAdmins = vi.fn();
 const adminSetUserRole = vi.fn();
+const adminSetUserBanned = vi.fn();
+const revokeUserSessions = vi.fn();
 const recordAudit = vi.fn();
 
 vi.mock('next/headers', () => ({ headers: vi.fn(async () => new Headers()) }));
@@ -18,6 +20,10 @@ vi.mock('@/lib/admin-users', () => ({
   getUserRole: (...a: unknown[]) => getUserRole(...a),
   countAdmins: (...a: unknown[]) => countAdmins(...a),
   adminSetUserRole: (...a: unknown[]) => adminSetUserRole(...a),
+  adminSetUserBanned: (...a: unknown[]) => adminSetUserBanned(...a),
+}));
+vi.mock('@/lib/blocklist', () => ({
+  revokeUserSessions: (...a: unknown[]) => revokeUserSessions(...a),
 }));
 vi.mock('@/lib/audit', () => ({
   recordAudit: (...a: unknown[]) => recordAudit(...a),
@@ -47,6 +53,8 @@ beforeEach(() => {
   getUserRole.mockResolvedValue('user');
   countAdmins.mockResolvedValue(2);
   adminSetUserRole.mockResolvedValue(true);
+  adminSetUserBanned.mockResolvedValue(true);
+  revokeUserSessions.mockResolvedValue(undefined);
 });
 
 describe('GET /api/admin/users/[id]', () => {
@@ -127,5 +135,54 @@ describe('PATCH /api/admin/users/[id] (role management)', () => {
     expect(res.status).toBe(200);
     expect(adminSetUserRole).not.toHaveBeenCalled();
     expect(recordAudit).not.toHaveBeenCalled();
+  });
+});
+
+describe('PATCH /api/admin/users/[id] (ban / unban)', () => {
+  it('400 when banning without a reason', async () => {
+    const res = await callPatch({ banned: true }, 'u2');
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'reason_required' });
+    expect(adminSetUserBanned).not.toHaveBeenCalled();
+  });
+
+  it('blocks an admin from banning themselves', async () => {
+    const res = await callPatch({ banned: true, reason: 'x' }, 'admin-1');
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'self_ban' });
+    expect(adminSetUserBanned).not.toHaveBeenCalled();
+  });
+
+  it('blocks banning the last remaining admin', async () => {
+    getUserRole.mockResolvedValue('admin');
+    countAdmins.mockResolvedValue(1);
+    const res = await callPatch({ banned: true, reason: 'x' }, 'u2');
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'last_admin' });
+    expect(adminSetUserBanned).not.toHaveBeenCalled();
+  });
+
+  it('bans a user: sets banned, revokes sessions, audits with reason', async () => {
+    const res = await callPatch({ banned: true, reason: 'abuse' }, 'u2');
+    expect(res.status).toBe(200);
+    expect(adminSetUserBanned).toHaveBeenCalledWith('u2', true, 'abuse');
+    expect(revokeUserSessions).toHaveBeenCalledWith('u2');
+    expect(recordAudit).toHaveBeenCalledWith(
+      'admin-1',
+      'user.banned',
+      expect.objectContaining({ targetId: 'u2', metadata: { reason: 'abuse' } }),
+    );
+  });
+
+  it('unbans a user and audits (no reason required)', async () => {
+    const res = await callPatch({ banned: false }, 'u2');
+    expect(res.status).toBe(200);
+    expect(adminSetUserBanned).toHaveBeenCalledWith('u2', false, null);
+    expect(revokeUserSessions).not.toHaveBeenCalled();
+    expect(recordAudit).toHaveBeenCalledWith(
+      'admin-1',
+      'user.unbanned',
+      expect.objectContaining({ targetId: 'u2' }),
+    );
   });
 });
