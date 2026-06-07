@@ -3646,6 +3646,8 @@ epics:
         title: "Audit log viewer"
         description: |
           The logging UI — a queryable, filterable view over audit_log.
+        verified_at: '2026-06-07T22:01:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "/admin/activity lists audit entries newest-first with filters for actor, target type/id, action, and time range, plus pagination."
           - "Project and user detail pages (STORY-44/45) link to their scoped audit view (pre-filtered by target)."

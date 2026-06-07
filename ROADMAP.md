@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 33 / 50 (66%)
+- **Features verified:** 34 / 50 (68%)
 - **Total tasks:** 155
 - **Done:** 133 (86%)
 - **Ready:** 22
@@ -2221,7 +2221,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     - e2e passes both enforcement paths.
     - STORY-46 acceptance_criteria satisfied.
 
-- **STORY-47** — Audit log viewer
+- **STORY-47** — Audit log viewer  [:white_check_mark: verified]
   > The logging UI — a queryable, filterable view over audit_log.
   **Acceptance criteria:**
   - /admin/activity lists audit entries newest-first with filters for actor, target type/id, action, and time range, plus pagination.
