@@ -192,6 +192,20 @@ export async function adminGetUser(
   };
 }
 
+/** A user's current role, or null when they don't exist — for the role-change
+ *  guards (self-demotion / last-admin) before mutating. */
+export async function getUserRole(
+  userId: string,
+  database: Database = db,
+): Promise<'user' | 'admin' | null> {
+  const [row] = await database
+    .select({ role: users.role })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return row?.role ?? null;
+}
+
 /** Number of admins — used to block removing the last one (STORY-45 / TASK-130). */
 export async function countAdmins(database: Database = db): Promise<number> {
   const [row] = await database
