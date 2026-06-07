@@ -15,6 +15,7 @@ import { db } from '@praxis/db/client';
 import type { FileEvent } from '@praxis/sandbox';
 
 import { loadChatHistory, persistChatEvent } from '../chat-history';
+import { applyTurnGitAuthor } from '../git-author';
 import {
   controlStateFrame,
   declineControl,
@@ -365,6 +366,17 @@ async function runAgentTurn(
   const agent = turn.agent!;
   if (turn.opened) persistAgentSession(room);
   if (turn.resumeFailed) broadcast(room, { type: 'agent_restarted' });
+
+  // Attribute any commits the agent makes this turn to the prompting user
+  // (STORY-17). Non-fatal: a failure just leaves the previous identity in place.
+  try {
+    await applyTurnGitAuthor(getSandbox(), room.handle, room.projectId, userId);
+  } catch (err) {
+    logger.warn(
+      { sessionId: room.sessionId, err: err instanceof Error ? err.message : String(err) },
+      'ws.git_author_failed',
+    );
+  }
 
   let pendingText = '';
   const flushText = async (): Promise<void> => {

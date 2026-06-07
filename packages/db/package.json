@@ -16,6 +16,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:codegen": "tsx scripts/codegen.ts",
     "db:seed:admins": "tsx scripts/seed-admins.ts",
+    "db:seed:learning-links": "tsx scripts/seed-learning-links.ts",
     "db:studio": "drizzle-kit studio",
     "typecheck": "tsc --noEmit"
   },

@@ -1982,6 +1982,8 @@ epics:
           learning_links table is seeded with curated entries from
           Anthropic Cookbook, OpenAI Codex docs, git tutorials, and
           agentic-prompting guides; the workspace surfaces them.
+        verified_at: '2026-06-07T08:16:00Z'
+        feature_complete: pending
         acceptance_criteria:
           - "After completing one of the dogfood tasks in STORY-18, the project has ≥3 git commits with imperative messages and the prompting user as author."
           - "learning_links has ≥10 entries spanning ACP, MCP, Three.js, git, and agentic-prompting topics; the workspace learning panel renders them grouped by topic."
@@ -2013,7 +2015,7 @@ epics:
               - "Agent in a dogfood session commits at the expected moments without explicit prompting."
           - id: TASK-048
             title: "Seed learning_links with ≥10 curated entries"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["packages/db", "apps/web"]
@@ -2025,11 +2027,13 @@ epics:
               on-demand TLS, Better Auth.
             depends_on: [TASK-011]
             attempt_count: 0
+            completed: '2026-06-07T08:15:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/316
             task_acceptance:
               - "Seed runs idempotently; SELECT COUNT(*) FROM learning_links ≥10."
           - id: TASK-049
             title: "Workspace learning panel grouped by topic"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -2038,12 +2042,14 @@ epics:
               tag. Cards: title + source. External links open in a new tab.
             depends_on: [TASK-048, TASK-032]
             attempt_count: 0
+            completed: '2026-06-07T08:15:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/316
             task_acceptance:
               - "Snapshot test of the panel rendering grouped links."
               - "STORY-17 acceptance_criteria satisfied."
           - id: TASK-151
             title: "Attribute agent git commits to the initiating user (fallback: project owner)"
-            status: ready
+            status: done
             priority: med
             complexity: medium
             workspaces: ["services/orchestrator", "packages/acp-host"]
@@ -2059,6 +2065,8 @@ epics:
               timing/messages only, not authorship.
             depends_on: [TASK-047]
             attempt_count: 0
+            completed: '2026-06-07T08:15:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/316
             is_terminal: true
             task_acceptance:
               - "A commit made during user A's turn has author = user A; a commit during user B's turn has author = user B."
