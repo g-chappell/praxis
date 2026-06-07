@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 31 / 50 (62%)
+- **Features verified:** 32 / 50 (64%)
 - **Total tasks:** 155
 - **Done:** 122 (79%)
 - **Ready:** 33
@@ -2081,7 +2081,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     - Integration test asserts persistence + the three query dimensions.
     - STORY-43 acceptance_criteria satisfied.
 
-- **STORY-44** — Admin projects directory + moderation
+- **STORY-44** — Admin projects directory + moderation  [:white_check_mark: verified]
   > An admin sees every project (any owner) and can archive/delete any of
   > them, audit-logged with a reason.
   **Acceptance criteria:**

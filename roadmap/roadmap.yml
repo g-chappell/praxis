@@ -3364,6 +3364,8 @@ epics:
         description: |
           An admin sees every project (any owner) and can archive/delete any of
           them, audit-logged with a reason.
+        verified_at: '2026-06-07T19:41:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "An admin sees every project regardless of ownership with owner, members, status (active/archived), created, and last activity; the list is searchable by name/owner and sortable."
           - "An admin can archive or delete ANY project from the admin UI with a required reason; it performs the same cleanup as the owner path (delete destroys the sandbox) and writes an audit_log row."
