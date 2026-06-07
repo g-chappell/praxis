@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 32 / 50 (64%)
 - **Total tasks:** 155
-- **Done:** 122 (79%)
-- **Ready:** 33
+- **Done:** 126 (81%)
+- **Ready:** 29
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2143,25 +2143,25 @@ ownership helpers; destructive actions require a reason and are audit-logged.
   **Out of scope:**
   - Creating users / editing profile fields (name, email).
   - Ban/unban (STORY-46).
-  - :black_circle: **TASK-129** — lib + API: GET /api/admin/users + GET /api/admin/users/[id] detail  `high` `medium` _(apps/web)_
+  - :white_check_mark: **TASK-129** — lib + API: GET /api/admin/users + GET /api/admin/users/[id] detail  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/330)
     > adminListUsers() (email, role, createdAt, project count, bannedAt)
     > with ?q; adminGetUser(id) detail (teams/projects, sessions, recent
     > audit/activity). Role-gated.
     _Task AC:_
     - List returns all users w/ counts; detail returns the user's projects+activity; 403 non-admin; tests.
-  - :black_circle: **TASK-130** — lib + API: role promote/demote with guards (audit-logged)  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-130** — lib + API: role promote/demote with guards (audit-logged)  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/330)  
     _depends on: TASK-123, TASK-129_
     > PATCH /api/admin/users/[id] {role}; reject self-demotion and
     > last-admin removal (count admins); recordAudit.
     _Task AC:_
     - Promote/demote works; self-demote 4xx; demoting the last admin 4xx; audit row; tests.
-  - :black_circle: **TASK-131** — UI: /admin/users list + user detail  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-131** — UI: /admin/users list + user detail  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/330)  
     _depends on: TASK-129_
     > /admin/users searchable list; /admin/users/[id] detail with role
     > control (guarded) + sections for projects/sessions/activity.
     _Task AC:_
     - List searches; detail renders sections; role control calls the endpoint and reflects guards; component tests.
-  - :black_circle: **TASK-132** :checkered_flag: — e2e: list users + promote/demote with guard  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-132** :checkered_flag: — e2e: list users + promote/demote with guard  `med` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/330)  
     _depends on: TASK-130, TASK-131_
     > Admin lists users, promotes a user to admin, then is blocked from
     > demoting themselves / the last admin.

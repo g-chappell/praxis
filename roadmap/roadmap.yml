@@ -3471,7 +3471,7 @@ epics:
         tasks:
           - id: TASK-129
             title: "lib + API: GET /api/admin/users + GET /api/admin/users/[id] detail"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3481,12 +3481,14 @@ epics:
               audit/activity). Role-gated.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-07T20:10:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/330
             is_terminal: false
             task_acceptance:
               - "List returns all users w/ counts; detail returns the user's projects+activity; 403 non-admin; tests."
           - id: TASK-130
             title: "lib + API: role promote/demote with guards (audit-logged)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3495,12 +3497,14 @@ epics:
               last-admin removal (count admins); recordAudit.
             depends_on: [TASK-123, TASK-129]
             attempt_count: 0
+            completed: '2026-06-07T20:10:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/330
             is_terminal: false
             task_acceptance:
               - "Promote/demote works; self-demote 4xx; demoting the last admin 4xx; audit row; tests."
           - id: TASK-131
             title: "UI: /admin/users list + user detail"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3509,12 +3513,14 @@ epics:
               control (guarded) + sections for projects/sessions/activity.
             depends_on: [TASK-129]
             attempt_count: 0
+            completed: '2026-06-07T20:10:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/330
             is_terminal: false
             task_acceptance:
               - "List searches; detail renders sections; role control calls the endpoint and reflects guards; component tests."
           - id: TASK-132
             title: "e2e: list users + promote/demote with guard"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -3523,6 +3529,8 @@ epics:
               demoting themselves / the last admin.
             depends_on: [TASK-130, TASK-131]
             attempt_count: 0
+            completed: '2026-06-07T20:10:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/330
             is_terminal: true
             task_acceptance:
               - "e2e passes promote + guard."
