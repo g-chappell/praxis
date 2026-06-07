@@ -9,8 +9,8 @@ _Created: 2026-05-31_
 ## Summary
 
 - **Features verified:** 30 / 49 (61%)
-- **Total tasks:** 150
-- **Done:** 113 (75%)
+- **Total tasks:** 151
+- **Done:** 114 (75%)
 - **Ready:** 37
 - **In progress:** 0
 - **Blocked:** 0
@@ -1286,7 +1286,7 @@ that closes the POC.
     _Task AC:_
     - Snapshot test of the panel rendering grouped links.
     - STORY-17 acceptance_criteria satisfied.
-  - :white_check_mark: **TASK-151** :checkered_flag: — Attribute agent git commits to the initiating user (fallback: project owner)  `med` `medium` _(services/orchestrator, packages/acp-host)_ · [PR](https://github.com/g-chappell/praxis/pull/316)  
+  - :white_check_mark: **TASK-151** — Attribute agent git commits to the initiating user (fallback: project owner)  `med` `medium` _(services/orchestrator, packages/acp-host)_ · [PR](https://github.com/g-chappell/praxis/pull/316)  
     _depends on: TASK-047_
     > Configure the sandbox git author so commits the agent makes are
     > attributed to the user who sent the prompt for that turn, defaulting
@@ -1300,6 +1300,28 @@ that closes the POC.
     _Task AC:_
     - A commit made during user A's turn has author = user A; a commit during user B's turn has author = user B.
     - When the prompter can't be resolved, the commit author defaults to the project owner.
+  - :white_check_mark: **TASK-152** :checkered_flag: — Auto-commit fix: load guidance + turn-end safety commit  `high` `medium` _(templates/react-threejs-scene, services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/318)  
+    _depends on: TASK-047, TASK-151_
+    > TASK-047 shipped commit guidance into the template AGENTS.md, but the
+    > in-sandbox Claude Code agent reads CLAUDE.md (not AGENTS.md) and the
+    > template has no CLAUDE.md bridge, so the guidance + commit-checkpoint
+    > skill never reach the model — verified live: an agent turn made edits
+    > but no commit. Two fixes:
+    > 1. Loading fix: add a template CLAUDE.md (`@AGENTS.md`) and a
+    >    `.claude/settings.json` with `settingSources: ["project"]` so the
+    >    agent loads the guidance + skill every turn (settings merge with
+    >    mcp-seed's enableAllProjectMcpServers).
+    > 2. Deterministic safety-net: at turn-complete the orchestrator commits
+    >    any uncommitted /workspace changes via sandbox.exec, authored by
+    >    the per-turn identity from TASK-151. Done orchestrator-side (not a
+    >    settings.json Stop hook) because the claude-agent-acp adapter does
+    >    not expose hooks (ADR-0009) — a Stop hook could silently never fire.
+    > Together: ≥3 commits per dogfood session (count guaranteed by the
+    > safety-net) with imperative messages (agent follows loaded guidance)
+    > attributed to the prompter — satisfies STORY-17 AC#1.
+    _Task AC:_
+    - A new project's agent commits during a dogfood session without explicit prompting; if it leaves changes uncommitted, the orchestrator commits them at turn end.
+    - Commits are authored by the prompting user; a session of ≥3 turns yields ≥3 commits.
 
 - **STORY-18** — Internal dogfood + first university pair
   > Validate the POC by using it. Founders pair to build a small

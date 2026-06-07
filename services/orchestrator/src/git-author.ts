@@ -79,3 +79,18 @@ export async function applyTurnGitAuthor(
   );
   return identity;
 }
+
+/** Safety-net commit (STORY-17 AC#1): after a turn, commit any work the agent
+ *  left uncommitted so the git panel always reflects what was built — even if the
+ *  agent didn't commit it itself. Uses the repo identity set by applyTurnGitAuthor,
+ *  so it's attributed to the prompter. No-op when the tree is clean (the agent
+ *  already committed, ideally with a descriptive message). The agent's store dir
+ *  is in .git/info/exclude, so `git add -A` never stages it. Best-effort — the
+ *  caller logs failures and never fails the turn on a commit error. */
+export async function commitTurnWork(sandbox: Sandbox, handle: SandboxHandle): Promise<void> {
+  await sandbox.exec(
+    handle,
+    'cd /workspace && git add -A && ' +
+      '{ git diff --cached --quiet || git commit -q -m "Checkpoint: save changes from this turn"; }',
+  );
+}

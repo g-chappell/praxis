@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { DEFAULT_GIT_IDENTITY, gitIdentity } from './git-author';
+import type { Sandbox, SandboxHandle } from '@praxis/sandbox';
+
+import { DEFAULT_GIT_IDENTITY, commitTurnWork, gitIdentity } from './git-author';
 
 describe('gitIdentity', () => {
   const prompter = { displayName: 'Ada Lovelace', email: 'ada@example.com' };
@@ -36,5 +38,22 @@ describe('gitIdentity', () => {
       name: 'solo@example.com',
       email: 'solo@example.com',
     });
+  });
+});
+
+describe('commitTurnWork', () => {
+  const handle = { projectId: 'p1', containerId: 'c1' } as SandboxHandle;
+
+  it('stages all changes and commits only when something is staged', async () => {
+    const exec = vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
+    const sandbox = { exec } as unknown as Sandbox;
+
+    await commitTurnWork(sandbox, handle);
+
+    expect(exec).toHaveBeenCalledTimes(1);
+    const cmd = String(exec.mock.calls[0]?.[1] ?? '');
+    expect(cmd).toContain('git add -A');
+    // Conditional commit: only commit when there ARE staged changes.
+    expect(cmd).toContain('git diff --cached --quiet || git commit');
   });
 });
