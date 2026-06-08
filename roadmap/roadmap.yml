@@ -3542,6 +3542,8 @@ epics:
         description: |
           Soft-ban abusive users (revoke sessions + block sign-in) and block
           emails/domains at the magic-link gate.
+        verified_at: '2026-06-07T21:45:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "An admin bans a user with a reason; their active sessions are revoked (authSession rows deleted) and any future magic-link sign-in is rejected with a clear message; unban restores access."
           - "An admin adds an email or domain to a blocklist; a matching address cannot request a magic link or sign up (blocked at the sendMagicLink gate, apps/web/lib/auth.ts), with a friendly message; admins can manage (list/add/remove) entries."
