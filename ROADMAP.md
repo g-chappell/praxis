@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 40 / 50 (80%)
-- **Total tasks:** 155
-- **Done:** 149 (96%)
-- **Ready:** 6
+- **Features verified:** 46 / 51 (90%)
+- **Total tasks:** 158
+- **Done:** 149 (94%)
+- **Ready:** 9
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -613,7 +613,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Reloading a workspace that had prior turns renders those turns in the chat panel with correct per-user attribution.
     - STORY-25 acceptance_criteria satisfied.
 
-- **STORY-30** — Live-reload the preview pane (proxy Vite HMR WebSocket)
+- **STORY-30** — Live-reload the preview pane (proxy Vite HMR WebSocket)  [:white_check_mark: verified]
   > Follow-up to STORY-13/14. The orchestrator preview proxy (ADR-0015)
   > forwards plain HTTP only, so Vite's HMR WebSocket never connects
   > through <slug>.preview.<domain> — the preview renders but updates
@@ -652,7 +652,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Live on the VPS: editing a file in a running 3js project reloads the preview pane with no manual refresh.
     - STORY-30 acceptance_criteria satisfied.
 
-- **STORY-31** — Share a project via invite link
+- **STORY-31** — Share a project via invite link  [:white_check_mark: verified]
   > A project owner generates a single-use, 7-day invite link from the
   > workspace header. Whoever opens it (signing in via magic-link if
   > needed) joins the project's team and lands in the shared workspace.
@@ -867,7 +867,7 @@ URLs surfaced through a wildcard Caddy domain.
     - Chat panel renders agent_busy without disabling input and shows the restarted notice.
     - STORY-33 acceptance_criteria satisfied.
 
-- **STORY-34** — Prompt-control modes: serialised queue + turn-based handoff
+- **STORY-34** — Prompt-control modes: serialised queue + turn-based handoff  [:white_check_mark: verified]
   > STORY-33 gives a project room ONE shared persistent agent, but the only
   > coordination today is a blunt agent_busy reject when two users prompt at
   > once. This adds two toggleable control modes (the operator's requirement)
@@ -1171,7 +1171,7 @@ that closes the POC.
     - End-to-end Playwright test creates a project and asserts the preview iframe renders the cube.
     - STORY-14 acceptance_criteria satisfied.
 
-- **STORY-15** — Image-generation MCP server (textures for Three.js)
+- **STORY-15** — Image-generation MCP server (textures for Three.js)  [:white_check_mark: verified]
   > infrastructure/mcp-servers/image-gen exposes a `generate_image`
   > tool backed by the OpenAI Image API. Claude Code discovers it
   > via the template's mcp-servers.json and calls it for texture
@@ -1212,7 +1212,7 @@ that closes the POC.
     - End-to-end: Claude Code is asked to add a stone texture; sees it appear in the preview.
     - STORY-15 acceptance_criteria satisfied.
 
-- **STORY-16** — Git panel — branch, log, diff, revert
+- **STORY-16** — Git panel — branch, log, diff, revert  [:white_check_mark: verified]
   > A panel in the workspace shows the project's current branch,
   > recent commits with author + message + timestamp, working tree
   > status, and per-file diffs in Monaco's diff editor. Revert
@@ -1244,7 +1244,7 @@ that closes the POC.
     - Manual test: revert a known commit, working tree state matches.
     - STORY-16 acceptance_criteria satisfied.
 
-- **STORY-17** — Agent auto-commit policy + curated learning links  [:hourglass: pending]
+- **STORY-17** — Agent auto-commit policy + curated learning links  [:white_check_mark: verified]
   > The agent's system prompt and the template AGENTS.md guide
   > Claude Code to commit at meaningful stages with imperative-mood
   > messages, attributed to the prompting user via git author. The
@@ -2030,6 +2030,57 @@ addition to the Sandbox interface (ADR + sign-off).
     _Task AC:_
     - e2e passes asserting the copy has the source's files and is independent of the original.
     - STORY-42 acceptance_criteria satisfied.
+
+- **STORY-52** — Archived projects are read-only cold storage
+  > STORY-40 made archive/restore a reversible STATE change but left an
+  > archived project fully interactive: it only sets archived_at (the
+  > sandbox/volume are untouched, container left to the idle sweep), so a
+  > user can still open an archived project, prompt the agent, and edit
+  > files. Intended behaviour: an archived project is READ-ONLY and lives
+  > in COLD STORAGE — its container is torn down on archive and its files
+  > are preserved as a snapshot to rebuild from; restore rebuilds the
+  > sandbox and makes it interactive again. This story makes that real.
+  > SUPERSEDES STORY-40's out_of_scope item "Forcibly destroying the
+  > sandbox container on archive (idle sweep handles it)".
+  **Acceptance criteria:**
+  - Opening an archived project is read-only: POST /sessions is refused for an archived project (no agent prompts run, no file saves), and the UI clearly shows the project is archived / read-only with a Restore path.
+  - On archive the project's sandbox container is torn down (not left to the idle sweep) and its files are preserved in cold storage (MinIO snapshot, ADR-0008) it can be rebuilt from.
+  - On restore the sandbox is rebuilt from the snapshot and the project becomes interactive again with files intact (reuses the start()-restores-from-MinIO path).
+  - STORY-40's archive/restore state transitions + status-filtered dashboard listing continue to work; delete-with-cleanup (STORY-28) remains available.
+  **User flow:**
+  1. Owner archives a project → its container is torn down; files snapshot to cold storage
+  2. Owner opens the archived project → a read-only/archived view; the agent + file edits are disabled, with a Restore action
+  3. Owner clicks Restore → the sandbox rebuilds from the snapshot, files intact, fully interactive again
+  **Out of scope:**
+  - Auto-archiving by inactivity (still manual).
+  - A read-only file BROWSER beyond what the existing workspace renders (this pass blocks interaction; a polished archived viewer can come later).
+  - Changing the snapshot/restore mechanism itself (ADR-0008 MinIO) beyond tearing down on archive + refusing to start while archived.
+  - :black_circle: **TASK-157** — Guard: refuse sessions + prompts + file saves for archived projects (read-only)  `high` `medium` _(apps/web, services/orchestrator)_
+    > Block interaction with an archived project. Web: POST /api/sessions
+    > returns a clear 'archived' error when projects.archived_at is set;
+    > the workspace surfaces a read-only/archived state with a Restore
+    > path. Orchestrator: defense-in-depth — refuse session creation (and
+    > reject prompts / file_save frames) for an archived project.
+    _Task AC:_
+    - Archived project: POST /sessions refused; prompt + file-save rejected; UI shows read-only + Restore; tests.
+  - :black_circle: **TASK-158** — Archive tears down the container to cold storage; restore rebuilds  `high` `medium` _(services/orchestrator, packages/sandbox)_  
+    _depends on: TASK-157_
+    > On archive, snapshot the sandbox to MinIO (ADR-0008) and destroy the
+    > running container (cold storage — no live container for an archived
+    > project). On restore, the existing start() path rebuilds from the
+    > snapshot when the volume is empty. Wire archive/restore (apps/web
+    > archiveProject/restoreProject) to an orchestrator endpoint that
+    > performs the snapshot + teardown / rebuild.
+    _Task AC:_
+    - After archive: no running container; files snapshotted. After restore: container rebuilt, files intact. Integration test (Docker-gated).
+  - :black_circle: **TASK-159** :checkered_flag: — e2e/integration: archived is read-only; restore rebuilds with files intact  `med` `small` _(apps/web)_  
+    _depends on: TASK-157, TASK-158_
+    > Archive a seeded project → opening it is read-only (no agent, no
+    > edits) and the container is gone → restore → interactive again with
+    > files intact.
+    _Task AC:_
+    - e2e/integration proves archived read-only + cold-storage teardown + restore-rebuilds-with-files.
+    - STORY-52 acceptance_criteria satisfied.
 
 ## EPIC-08 — Admin console: accountability & moderation
 
