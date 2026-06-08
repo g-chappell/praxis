@@ -16,6 +16,7 @@ import type { FileEvent } from '@praxis/sandbox';
 
 import { loadChatHistory, persistChatEvent } from '../chat-history';
 import { applyTurnGitAuthor, commitMessageFromPrompt, commitTurnWork } from '../git-author';
+import { recordTurnUsage } from '../usage';
 import {
   controlStateFrame,
   declineControl,
@@ -422,6 +423,10 @@ async function runAgentTurn(
           break;
         case 'turn-complete':
           await flushText();
+          // Meter the turn's token usage (STORY-22). Best-effort.
+          if (event.usage) {
+            await recordTurnUsage(room.projectId, room.sessionId, event.usage);
+          }
           break;
         // tool-result isn't rendered in chat — nothing to persist.
       }
