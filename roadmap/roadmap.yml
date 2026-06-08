@@ -3715,7 +3715,7 @@ epics:
         tasks:
           - id: TASK-140
             title: "orchestrator: internal endpoint for running-sandbox count + health"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -3725,12 +3725,14 @@ epics:
               gitSha/uptime.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-08T07:08:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/335
             is_terminal: false
             task_acceptance:
               - "Endpoint returns the running-sandbox count behind the internal secret; unit/integration test."
           - id: TASK-141
             title: "lib + API: GET /api/admin/overview (counts + key status + recent actions)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3740,12 +3742,14 @@ epics:
               failure).
             depends_on: [TASK-140, TASK-122]
             attempt_count: 0
+            completed: '2026-06-08T07:08:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/335
             is_terminal: false
             task_acceptance:
               - "Returns counts+key status+recent actions; orchestrator-down yields a degraded field not a 500; 403 non-admin; tests."
           - id: TASK-142
             title: "UI: replace /admin landing with the overview dashboard"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3755,6 +3759,8 @@ epics:
               linking to sections; graceful 'unavailable' tiles.
             depends_on: [TASK-141]
             attempt_count: 0
+            completed: '2026-06-08T07:08:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/335
             is_terminal: true
             task_acceptance:
               - "Landing renders live tiles; degrades gracefully when orchestrator stats absent; component test."
