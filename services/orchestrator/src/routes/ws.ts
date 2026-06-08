@@ -16,7 +16,7 @@ import type { FileEvent } from '@praxis/sandbox';
 
 import { loadChatHistory, persistChatEvent } from '../chat-history';
 import { applyTurnGitAuthor, commitMessageFromPrompt, commitTurnWork } from '../git-author';
-import { recordTurnUsage } from '../usage';
+import { projectBudgetStatus, recordTurnUsage } from '../usage';
 import {
   controlStateFrame,
   declineControl,
@@ -296,6 +296,15 @@ async function runPrompt(
   // input, so this is a guard). The handoff messages live in handleControl.
   if (room.mode === 'turn_based' && room.controlHolder !== state.userId) {
     send(ws, { type: 'not_in_control', holder: room.controlHolder ?? null });
+    return;
+  }
+
+  // Budget gate (STORY-23): pause prompting once the project is over budget. No
+  // silent drop — the prompter gets an over_budget frame and the prompt isn't
+  // accepted. Raising the budget resumes (the status is read fresh each prompt).
+  const budget = await projectBudgetStatus(room.projectId);
+  if (budget.over) {
+    send(ws, { type: 'over_budget', usedUsd: budget.usedUsd, budgetUsd: budget.budgetUsd });
     return;
   }
 

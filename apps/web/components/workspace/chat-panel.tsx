@@ -144,6 +144,12 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
         setNotice(
           'The agent restarted — your files are intact, but earlier chat context was reset.',
         );
+      } else if (frame.type === 'over_budget') {
+        // The project hit its budget cap (STORY-23) — the prompt wasn't run. The
+        // input stays live; raising the budget in the Usage tab resumes.
+        setNotice(
+          'This project is over budget — your message wasn’t sent. Raise the budget in the Usage tab to resume.',
+        );
       } else if (frame.type === 'error' && frame.path === undefined) {
         // Only session-scoped errors (no `path`) touch the chat. File read/save
         // errors carry a `path` and are surfaced in the editor instead, so a

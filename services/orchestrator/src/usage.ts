@@ -1,9 +1,12 @@
-// Per-turn usage metering (STORY-22). Records a usage_events row from each
-// completed agent turn (the token usage AcpHost surfaces on turn-complete,
-// ADR-0009), attributed to project + session. Best-effort: a metering failure
+// Per-turn usage metering (STORY-22) + budget enforcement (STORY-23). Records a
+// usage_events row from each completed agent turn (the token usage AcpHost
+// surfaces on turn-complete, ADR-0009), and exposes the project's budget status
+// so prompts can be paused when over. Best-effort recording: a metering failure
 // must never break the turn.
 
-import { usageEvents } from '@praxis/db';
+import { eq, sql } from 'drizzle-orm';
+
+import { projects, usageEvents } from '@praxis/db';
 import { type Database, db } from '@praxis/db/client';
 
 import { logger } from './logger';
@@ -46,4 +49,34 @@ export async function recordTurnUsage(
       'usage.record_failed',
     );
   }
+}
+
+export interface BudgetStatus {
+  over: boolean;
+  usedUsd: number;
+  budgetUsd: number;
+}
+
+/** Whether a project has reached its budget cap (STORY-23). Compares cumulative
+ *  estimated cost (sum of usage_events) to projects.budget_usd, read fresh so a
+ *  raised budget resumes prompting immediately. A missing project never blocks. */
+export async function projectBudgetStatus(
+  projectId: string,
+  database: Database = db,
+): Promise<BudgetStatus> {
+  const [project] = await database
+    .select({ budgetUsd: projects.budgetUsd })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+  if (!project) return { over: false, usedUsd: 0, budgetUsd: 0 };
+
+  const [row] = await database
+    .select({ used: sql<string>`coalesce(sum(${usageEvents.estimatedCostUsd}), 0)` })
+    .from(usageEvents)
+    .where(eq(usageEvents.projectId, projectId));
+
+  const budgetUsd = Number(project.budgetUsd);
+  const usedUsd = Number(row?.used ?? 0);
+  return { over: usedUsd >= budgetUsd, usedUsd, budgetUsd };
 }

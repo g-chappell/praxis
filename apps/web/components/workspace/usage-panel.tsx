@@ -54,7 +54,6 @@ export function UsagePanel({ projectId }: { projectId: string }) {
 
   useEffect(() => {
     void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
   async function saveBudget() {
