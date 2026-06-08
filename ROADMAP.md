@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 39 / 50 (78%)
 - **Total tasks:** 155
-- **Done:** 145 (94%)
-- **Ready:** 10
+- **Done:** 147 (95%)
+- **Ready:** 8
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2356,7 +2356,7 @@ requiring both-contributor sign-off before implementation.
     > off. (Docs-only change under docs/decisions/.)
     _Task AC:_
     - ADR committed under docs/decisions/ as Proposed, covering registry + creds + rendering + caps.
-  - :black_circle: **TASK-147** — db: mcp_connectors table + migration + codegen  `high` `small` _(packages/db)_  
+  - :white_check_mark: **TASK-147** — db: mcp_connectors table + migration + codegen  `high` `small` _(packages/db)_ · [PR](https://github.com/g-chappell/praxis/pull/344)  
     _depends on: TASK-146_
     > Per ADR-0020 (per-template), TWO tables: mcp_connectors catalog
     > (id, name unique, command_ref text, args jsonb,
@@ -2375,7 +2375,7 @@ requiring both-contributor sign-off before implementation.
     > /workspace (orchestrator-runtime.md).
     _Task AC:_
     - A fresh sandbox gets .mcp.json from the enabled registry; creds delivered outside /workspace; integration test.
-  - :black_circle: **TASK-149** — lib + API + UI: /admin/connectors CRUD (creds via crypto, caps, audit-logged)  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-149** — lib + API + UI: /admin/connectors CRUD (creds via crypto, caps, audit-logged)  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/344)  
     _depends on: TASK-147, TASK-123_
     > Admin CRUD for connectors — enable/disable, set credentials
     > (encrypt via @praxis/crypto), set usage cap; role-gated;
