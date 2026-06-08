@@ -2523,6 +2523,8 @@ epics:
           exceeded, pauses the project — new prompts are blocked with a clear
           message until the budget is raised (by the owner or an admin). Builds
           on usage metering (STORY-22) and the platform-key model (ADR-0009).
+        verified_at: '2026-06-08T08:39:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "A project has a configurable budget; when cumulative usage exceeds it, new prompts are blocked with a clear, actionable message."
           - "Raising the budget (owner or admin) resumes prompting without losing session context."

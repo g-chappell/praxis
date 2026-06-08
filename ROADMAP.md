@@ -1583,7 +1583,7 @@ flags, observability) mount into.
     - Owner sees real cumulative usage + cost estimate for a project.
     - STORY-22 acceptance_criteria satisfied.
 
-- **STORY-23** — Per-project budget caps that pause sessions
+- **STORY-23** — Per-project budget caps that pause sessions  [:white_check_mark: verified]
   > Bound real spend: a configurable per-project budget that, when
   > exceeded, pauses the project — new prompts are blocked with a clear
   > message until the budget is raised (by the owner or an admin). Builds
