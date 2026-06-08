@@ -2467,7 +2467,7 @@ epics:
         tasks:
           - id: TASK-060
             title: "usage_events table (project, session, tokens, cost estimate) + migration"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["packages/db"]
@@ -2476,11 +2476,13 @@ epics:
               output_tokens, estimated_cost, created_at. Migration + codegen.
             depends_on: [TASK-011]
             attempt_count: 0
+            completed: '2026-06-08T07:38:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/337
             task_acceptance:
               - "Table + migration exist; codegen clean."
           - id: TASK-061
             title: "Orchestrator records usage from turn-complete events"
-            status: ready
+            status: done
             priority: med
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -2490,11 +2492,13 @@ epics:
               project + session.
             depends_on: [TASK-060, TASK-025, TASK-027]
             attempt_count: 0
+            completed: '2026-06-08T07:38:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/337
             task_acceptance:
               - "An integration/unit test shows a completed turn writes a usage row with the reported tokens."
           - id: TASK-062
             title: "Owner usage view (cumulative tokens + cost estimate)"
-            status: ready
+            status: done
             priority: med
             complexity: medium
             workspaces: ["apps/web"]
@@ -2504,6 +2508,8 @@ epics:
               no placeholders.
             depends_on: [TASK-061]
             attempt_count: 0
+            completed: '2026-06-08T07:38:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/337
             is_terminal: true
             task_acceptance:
               - "Owner sees real cumulative usage + cost estimate for a project."

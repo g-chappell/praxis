@@ -19,6 +19,7 @@ import { LearningPanel } from '@/components/workspace/learning-panel';
 import { ControlBar } from '@/components/workspace/control-bar';
 import { PresenceBar } from '@/components/workspace/presence-bar';
 import { PreviewPane } from '@/components/workspace/preview-pane';
+import { UsagePanel } from '@/components/workspace/usage-panel';
 import { cn } from '@/lib/utils';
 import { WorkspaceFilesProvider } from '@/components/workspace/workspace-files';
 import { WorkspaceControlProvider } from '@/components/workspace/workspace-control';
@@ -160,7 +161,7 @@ function FilesPane({ projectId }: { projectId: string }) {
 }
 
 function EditorPane({ projectId }: { projectId: string }) {
-  const [tab, setTab] = useState<'editor' | 'preview' | 'git'>('editor');
+  const [tab, setTab] = useState<'editor' | 'preview' | 'git' | 'usage'>('editor');
   return (
     <>
       <div className="flex items-center gap-1 border-b px-2 py-1">
@@ -173,10 +174,13 @@ function EditorPane({ projectId }: { projectId: string }) {
         <PaneTab active={tab === 'git'} onClick={() => setTab('git')}>
           Git
         </PaneTab>
+        <PaneTab active={tab === 'usage'} onClick={() => setTab('usage')}>
+          Usage
+        </PaneTab>
       </div>
       {/* Keep editor + preview mounted (hide the inactive one) so the preview's
-          running app isn't reloaded on every tab switch. The Git panel mounts
-          on demand so it fetches fresh history each time it's opened. */}
+          running app isn't reloaded on every tab switch. The Git + Usage panels
+          mount on demand so they fetch fresh data each time they're opened. */}
       <div className={cn('min-h-0 flex-1', tab !== 'editor' && 'hidden')}>
         <CodeEditor />
       </div>
@@ -186,6 +190,11 @@ function EditorPane({ projectId }: { projectId: string }) {
       {tab === 'git' && (
         <div className="relative min-h-0 flex-1">
           <GitPanel projectId={projectId} />
+        </div>
+      )}
+      {tab === 'usage' && (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <UsagePanel projectId={projectId} />
         </div>
       )}
     </>
