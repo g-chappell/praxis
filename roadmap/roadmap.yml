@@ -2530,7 +2530,7 @@ epics:
         tasks:
           - id: TASK-063
             title: "Project budget configuration (limit) + owner/admin setting"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["packages/db", "apps/web"]
@@ -2539,11 +2539,13 @@ epics:
               UI for the owner (and admin override). Sensible default.
             depends_on: [TASK-060, TASK-055]
             attempt_count: 0
+            completed: '2026-06-08T08:14:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/339
             task_acceptance:
               - "A project budget can be set and read; migration + codegen clean."
           - id: TASK-064
             title: "Enforce budget: block prompts over budget, resume on raise"
-            status: ready
+            status: done
             priority: med
             complexity: large
             workspaces: ["services/orchestrator", "apps/web"]
@@ -2553,6 +2555,8 @@ epics:
               UI and allow resume once the budget is raised. No silent drops.
             depends_on: [TASK-063, TASK-061, TASK-028]
             attempt_count: 0
+            completed: '2026-06-08T08:14:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/339
             is_terminal: true
             task_acceptance:
               - "Over-budget prompts are blocked with a clear message; raising the budget resumes prompting."

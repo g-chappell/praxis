@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 36 / 50 (72%)
 - **Total tasks:** 155
-- **Done:** 139 (90%)
-- **Ready:** 16
+- **Done:** 141 (91%)
+- **Ready:** 14
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1594,13 +1594,13 @@ flags, observability) mount into.
   **Out of scope:**
   - Invoicing / payment (Stripe) — a later epic.
   - Org-level or cross-project pooled budgets.
-  - :black_circle: **TASK-063** — Project budget configuration (limit) + owner/admin setting  `med` `small` _(packages/db, apps/web)_  
+  - :white_check_mark: **TASK-063** — Project budget configuration (limit) + owner/admin setting  `med` `small` _(packages/db, apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/339)  
     _depends on: TASK-060, TASK-055_
     > Add a per-project budget limit (schema + migration) and a setting
     > UI for the owner (and admin override). Sensible default.
     _Task AC:_
     - A project budget can be set and read; migration + codegen clean.
-  - :black_circle: **TASK-064** :checkered_flag: — Enforce budget: block prompts over budget, resume on raise  `med` `large` _(services/orchestrator, apps/web)_  
+  - :white_check_mark: **TASK-064** :checkered_flag: — Enforce budget: block prompts over budget, resume on raise  `med` `large` _(services/orchestrator, apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/339)  
     _depends on: TASK-063, TASK-061, TASK-028_
     > Before accepting a prompt, compare cumulative usage to the budget;
     > when over, reject/pause with a clear message surfaced in the chat
