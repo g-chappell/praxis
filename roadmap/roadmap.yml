@@ -3885,7 +3885,7 @@ epics:
         tasks:
           - id: TASK-146
             title: "ADR: admin-managed MCP connector registry (Proposed — both-contributor sign-off)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["packages/db"]
@@ -3898,6 +3898,8 @@ epics:
               off. (Docs-only change under docs/decisions/.)
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-08T09:32:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/342
             is_terminal: false
             task_acceptance:
               - "ADR committed under docs/decisions/ as Proposed, covering registry + creds + rendering + caps."
