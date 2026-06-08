@@ -7,6 +7,7 @@ import { Hono } from 'hono';
 
 import { httpLogger } from './logger';
 import { caddyAsk, proxyToSandbox, resolvePreviewTarget, slugForHost } from './preview';
+import { adminStatsRoute } from './routes/admin-stats';
 import { gitRoute } from './routes/git';
 import { healthRoute } from './routes/health';
 import { mcpRoute } from './routes/mcp';
@@ -40,6 +41,7 @@ app.get('/caddy/ask', (c) => (caddyAsk(c.req.query('domain')) ? c.text('ok') : c
 
 app.get('/', (c) => c.text(`praxis-orchestrator ${VERSION}`));
 app.route('/health', healthRoute);
+app.route('/admin', adminStatsRoute);
 app.route('/sessions', sessionsRoute);
 app.route('/projects', projectsRoute);
 app.route('/projects', gitRoute);

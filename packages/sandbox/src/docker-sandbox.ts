@@ -558,6 +558,16 @@ export class DockerSandbox implements Sandbox {
     }
     return idle;
   }
+
+  /** Count of currently-running sandbox containers (praxis.projectId label) — for
+   *  the admin overview's "running sandboxes" tile (STORY-48). Unary dockerode
+   *  call, Bun-safe. */
+  async runningCount(): Promise<number> {
+    const list = await this.docker.listContainers({
+      filters: { label: ['praxis.projectId'], status: ['running'] },
+    });
+    return list.length;
+  }
 }
 
 /** True for dockerode errors meaning the container is already gone or being
