@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 35 / 50 (70%)
 - **Total tasks:** 155
-- **Done:** 133 (86%)
-- **Ready:** 22
+- **Done:** 136 (88%)
+- **Ready:** 19
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2263,20 +2263,20 @@ ownership helpers; destructive actions require a reason and are audit-logged.
   **Out of scope:**
   - Historical charts / time-series.
   - Alerting / notifications / paging.
-  - :black_circle: **TASK-140** — orchestrator: internal endpoint for running-sandbox count + health  `high` `medium` _(services/orchestrator)_
+  - :white_check_mark: **TASK-140** — orchestrator: internal endpoint for running-sandbox count + health  `high` `medium` _(services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/335)
     > Internal-secret-gated GET /admin/stats (or extend health)
     > returning running sandbox count (DockerSandbox label listing) +
     > gitSha/uptime.
     _Task AC:_
     - Endpoint returns the running-sandbox count behind the internal secret; unit/integration test.
-  - :black_circle: **TASK-141** — lib + API: GET /api/admin/overview (counts + key status + recent actions)  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-141** — lib + API: GET /api/admin/overview (counts + key status + recent actions)  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/335)  
     _depends on: TASK-140, TASK-122_
     > Aggregate user/project counts, platform-key meta per provider,
     > recent audit rows; call the orchestrator stats endpoint (tolerate
     > failure).
     _Task AC:_
     - Returns counts+key status+recent actions; orchestrator-down yields a degraded field not a 500; 403 non-admin; tests.
-  - :black_circle: **TASK-142** :checkered_flag: — UI: replace /admin landing with the overview dashboard  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-142** :checkered_flag: — UI: replace /admin landing with the overview dashboard  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/335)  
     _depends on: TASK-141_
     > Replace the placeholder SECTIONS landing with tiles (counts,
     > running sandboxes, key status per provider, recent admin actions)
