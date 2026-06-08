@@ -1016,6 +1016,8 @@ epics:
           (operator-confirmed live 2026-06-03, "preview updated after refresh").
           Tunnel the HMR WebSocket upgrade through the preview proxy to the
           sandbox dev server so the preview hot-reloads automatically.
+        verified_at: '2026-06-08T15:32:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "The orchestrator preview proxy forwards WebSocket upgrade requests (Vite's HMR ws endpoint) through to the sandbox dev server, so the Vite HMR client connects successfully through https://<slug>.preview.<domain>."
           - "Editing a file in a running react-threejs-scene project hot-reloads (or full-reloads) the preview pane automatically with no manual refresh — verified live on the VPS."
@@ -1075,6 +1077,8 @@ epics:
           acceptedBy) — no schema change; access is team-scoped, matching
           userOwnsProject(). This is the on-ramp that makes STORY-11's
           presence / cursors / locks usable by two real people.
+        verified_at: '2026-06-08T15:32:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "From the workspace header, the owner can generate a copyable invite link encoding a single-use code valid for 7 days."
           - "A signed-out person opening a valid link is routed through magic-link sign-in and, on return, is added to the project's team and lands in the shared project's workspace."
@@ -1383,6 +1387,8 @@ epics:
           serialised queue is visible + author-cancelable (FIFO); if the holder
           disconnects, control auto-releases and a remaining user can claim it;
           interactive tool-permission routing stays auto-allow (deferred).
+        verified_at: '2026-06-08T15:32:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "The active mode (serialised | turn-based) shows in the workspace header, persists per project across sessions, and is editable by the project owner only (others see it read-only)."
           - "Serialised mode (default): while a turn runs, further prompts from any user are QUEUED (not rejected); the pending queue is visible to all with author + text; a user can cancel their own queued prompt; queued prompts run FIFO as turns complete."
@@ -1854,6 +1860,8 @@ epics:
           via the template's mcp-servers.json and calls it for texture
           generation; outputs land in /public/textures/ and become
           loadable in the running scene.
+        verified_at: '2026-06-08T15:32:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Claude Code in a react-threejs-scene project, prompted to add a stone texture, calls `generate_image` and writes a PNG into /public/textures/; the scene loads it within the same turn."
           - "Per-project per-day usage cap is enforced (default 50 calls); the 51st call returns an error response from the MCP server."
@@ -1926,6 +1934,8 @@ epics:
           recent commits with author + message + timestamp, working tree
           status, and per-file diffs in Monaco's diff editor. Revert
           rewinds the working tree to a chosen commit with a confirm step.
+        verified_at: '2026-06-08T15:32:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "After at least one auto-commit, the git panel lists it with author = prompting user and the commit message the agent wrote."
           - "Revert to a chosen commit restores the working tree; subsequent diff view confirms the change."
@@ -1982,8 +1992,8 @@ epics:
           learning_links table is seeded with curated entries from
           Anthropic Cookbook, OpenAI Codex docs, git tutorials, and
           agentic-prompting guides; the workspace surfaces them.
-        verified_at: '2026-06-07T08:16:00Z'
-        feature_complete: pending
+        verified_at: '2026-06-08T15:32:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "After completing one of the dogfood tasks in STORY-18, the project has ≥3 git commits with imperative messages and the prompting user as author."
           - "learning_links has ≥10 entries spanning ACP, MCP, Three.js, git, and agentic-prompting topics; the workspace learning panel renders them grouped by topic."
@@ -3287,6 +3297,84 @@ epics:
             task_acceptance:
               - "e2e passes asserting the copy has the source's files and is independent of the original."
               - "STORY-42 acceptance_criteria satisfied."
+      - id: STORY-52
+        title: "Archived projects are read-only cold storage"
+        description: |
+          STORY-40 made archive/restore a reversible STATE change but left an
+          archived project fully interactive: it only sets archived_at (the
+          sandbox/volume are untouched, container left to the idle sweep), so a
+          user can still open an archived project, prompt the agent, and edit
+          files. Intended behaviour: an archived project is READ-ONLY and lives
+          in COLD STORAGE — its container is torn down on archive and its files
+          are preserved as a snapshot to rebuild from; restore rebuilds the
+          sandbox and makes it interactive again. This story makes that real.
+          SUPERSEDES STORY-40's out_of_scope item "Forcibly destroying the
+          sandbox container on archive (idle sweep handles it)".
+        acceptance_criteria:
+          - "Opening an archived project is read-only: POST /sessions is refused for an archived project (no agent prompts run, no file saves), and the UI clearly shows the project is archived / read-only with a Restore path."
+          - "On archive the project's sandbox container is torn down (not left to the idle sweep) and its files are preserved in cold storage (MinIO snapshot, ADR-0008) it can be rebuilt from."
+          - "On restore the sandbox is rebuilt from the snapshot and the project becomes interactive again with files intact (reuses the start()-restores-from-MinIO path)."
+          - "STORY-40's archive/restore state transitions + status-filtered dashboard listing continue to work; delete-with-cleanup (STORY-28) remains available."
+        user_flow:
+          - "Owner archives a project → its container is torn down; files snapshot to cold storage"
+          - "Owner opens the archived project → a read-only/archived view; the agent + file edits are disabled, with a Restore action"
+          - "Owner clicks Restore → the sandbox rebuilds from the snapshot, files intact, fully interactive again"
+        out_of_scope:
+          - "Auto-archiving by inactivity (still manual)."
+          - "A read-only file BROWSER beyond what the existing workspace renders (this pass blocks interaction; a polished archived viewer can come later)."
+          - "Changing the snapshot/restore mechanism itself (ADR-0008 MinIO) beyond tearing down on archive + refusing to start while archived."
+        tasks:
+          - id: TASK-157
+            title: "Guard: refuse sessions + prompts + file saves for archived projects (read-only)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web", "services/orchestrator"]
+            description: |
+              Block interaction with an archived project. Web: POST /api/sessions
+              returns a clear 'archived' error when projects.archived_at is set;
+              the workspace surfaces a read-only/archived state with a Restore
+              path. Orchestrator: defense-in-depth — refuse session creation (and
+              reject prompts / file_save frames) for an archived project.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Archived project: POST /sessions refused; prompt + file-save rejected; UI shows read-only + Restore; tests."
+          - id: TASK-158
+            title: "Archive tears down the container to cold storage; restore rebuilds"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["services/orchestrator", "packages/sandbox"]
+            description: |
+              On archive, snapshot the sandbox to MinIO (ADR-0008) and destroy the
+              running container (cold storage — no live container for an archived
+              project). On restore, the existing start() path rebuilds from the
+              snapshot when the volume is empty. Wire archive/restore (apps/web
+              archiveProject/restoreProject) to an orchestrator endpoint that
+              performs the snapshot + teardown / rebuild.
+            depends_on: [TASK-157]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "After archive: no running container; files snapshotted. After restore: container rebuilt, files intact. Integration test (Docker-gated)."
+          - id: TASK-159
+            title: "e2e/integration: archived is read-only; restore rebuilds with files intact"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Archive a seeded project → opening it is read-only (no agent, no
+              edits) and the container is gone → restore → interactive again with
+              files intact.
+            depends_on: [TASK-157, TASK-158]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "e2e/integration proves archived read-only + cold-storage teardown + restore-rebuilds-with-files."
+              - "STORY-52 acceptance_criteria satisfied."
 
   - id: EPIC-08
     title: "Admin console: accountability & moderation"
