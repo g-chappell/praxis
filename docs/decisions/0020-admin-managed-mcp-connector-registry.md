@@ -2,9 +2,9 @@
 
 **Date:** 2026-06-08 (revised 2026-06-08 — **per-template** scoping, per
 contributor direction; was platform-wide in the first draft)
-**Status:** **Proposed** — MCP is a load-bearing open standard (AGENTS.md), so
-this change **requires both-contributor sign-off before any implementation
-task (TASK-147 onward) starts.** TASK-146 (this ADR) is docs-only.
+**Status:** **Accepted** (both contributors signed off 2026-06-08). MCP is a
+load-bearing open standard (AGENTS.md); with sign-off in hand, the implementation
+tasks (TASK-147–150) may proceed per the decisions below.
 
 **Story:** STORY-50 (EPIC-09). Builds on ADR-0018 (image-gen MCP server + the
 "Path A" sandbox MCP wiring) and the platform-key crypto posture (ADR-0009,
@@ -168,18 +168,19 @@ keep the encrypted-at-rest + never-in-`/workspace` posture.
 - **Native-ACP `mcpServers` param (Path B).** Rejected: would change
   `packages/acp-host` (sacred) for no functional gain over Path A (ADR-0018).
 
-## Sign-off required (both contributors) before implementation
+## Sign-off (both contributors) — Accepted 2026-06-08
 
 Per AGENTS.md ("Anything ACP- or MCP-related changes only with an ADR and
-confirmation from both contributors"), TASK-147–150 (table, orchestrator
-rendering, admin CRUD, integration) **must not start** until both contributors
-approve this ADR and it moves to **Accepted**. Open questions for sign-off:
+confirmation from both contributors"), this ADR required both-contributor
+sign-off before TASK-147–150 (tables, orchestrator rendering, admin CRUD,
+integration). **Both contributors signed off on 2026-06-08**, resolving the open
+questions as decided above:
 
-- The `command_ref` allow-list + the "bake-then-register" onboarding flow — is
-  this the right bound on "admin-curated"?
-- **Per-template enablement is now the model** (catalog + `template_mcp_connectors`
-  map, with per-template `allowed_commands`) — confirmed by contributor
-  direction. Confirm the table split + that `allowed_commands` is enforced via
-  Claude tool-permission settings (`mcp__<name>__<command>`), not a server fork.
-- Reusing `mcp_usage` for per-connector daily caps (vs a dedicated cap field
-  engine).
+- `command_ref` allow-list + "bake-then-register" onboarding — confirmed as the
+  bound on "admin-curated".
+- **Per-template enablement** (catalog + `template_mcp_connectors` map, with
+  per-template `allowed_commands` enforced via Claude tool-permission settings,
+  `mcp__<name>__<command>` — no server fork) — confirmed.
+- Reusing `mcp_usage` for per-connector daily caps — confirmed.
+
+Implementation may proceed.
