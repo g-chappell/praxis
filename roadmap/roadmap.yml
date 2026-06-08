@@ -3869,6 +3869,8 @@ epics:
           An admin-managed registry of MCP connectors (enable/disable, encrypted
           credentials, usage caps) replacing static config. ADR-GATED — the first
           task is the ADR; implementation waits on both-contributor sign-off.
+        verified_at: '2026-06-08T12:56:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "An ADR proposes the admin-managed MCP connector model (registry shape, credential storage via @praxis/crypto, enable/disable, usage caps, orchestrator rendering) — Status Proposed, requiring both-contributor sign-off before implementation."
           - "An admin manages connectors (list, enable/disable, set per-connector credentials encrypted at rest, set usage caps); changes are audit-logged."
@@ -3926,7 +3928,7 @@ epics:
               - "Table added; codegen; clean."
           - id: TASK-148
             title: "orchestrator: render .mcp.json + settings from the enabled registry"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -3937,6 +3939,8 @@ epics:
               /workspace (orchestrator-runtime.md).
             depends_on: [TASK-147]
             attempt_count: 0
+            completed: '2026-06-08T12:56:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/345
             is_terminal: false
             task_acceptance:
               - "A fresh sandbox gets .mcp.json from the enabled registry; creds delivered outside /workspace; integration test."
@@ -3959,7 +3963,7 @@ epics:
               - "CRUD works; credentials encrypted at rest + never returned plaintext; audit rows; 403 non-admin; tests."
           - id: TASK-150
             title: "integration: a configured connector reaches the sandbox agent"
-            status: ready
+            status: done
             priority: med
             complexity: medium
             workspaces: ["services/orchestrator"]
@@ -3968,6 +3972,8 @@ epics:
               agent sees it (.mcp.json present + server resolvable).
             depends_on: [TASK-148, TASK-149]
             attempt_count: 0
+            completed: '2026-06-08T12:56:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/345
             is_terminal: true
             task_acceptance:
               - "Docker-gated integration confirms the enabled connector is wired into the sandbox."

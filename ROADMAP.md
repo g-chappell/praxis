@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 39 / 50 (78%)
+- **Features verified:** 40 / 50 (80%)
 - **Total tasks:** 155
-- **Done:** 147 (95%)
-- **Ready:** 8
+- **Done:** 149 (96%)
+- **Ready:** 6
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2330,7 +2330,7 @@ requiring both-contributor sign-off before implementation.
     _Task AC:_
     - Integration asserts correct aggregates by project/user/window.
 
-- **STORY-50** — MCP connector configuration
+- **STORY-50** — MCP connector configuration  [:white_check_mark: verified]
   > An admin-managed registry of MCP connectors (enable/disable, encrypted
   > credentials, usage caps) replacing static config. ADR-GATED — the first
   > task is the ADR; implementation waits on both-contributor sign-off.
@@ -2367,7 +2367,7 @@ requiring both-contributor sign-off before implementation.
     > connector_id)). migration + codegen.
     _Task AC:_
     - Table added; codegen; clean.
-  - :black_circle: **TASK-148** — orchestrator: render .mcp.json + settings from the enabled registry  `high` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-148** — orchestrator: render .mcp.json + settings from the enabled registry  `high` `medium` _(services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/345)  
     _depends on: TASK-147_
     > At sandbox start, read enabled connectors and write the project's
     > .mcp.json + Claude settings (enableAllProjectMcpServers / list) and
@@ -2382,7 +2382,7 @@ requiring both-contributor sign-off before implementation.
     > recordAudit. /admin/connectors UI.
     _Task AC:_
     - CRUD works; credentials encrypted at rest + never returned plaintext; audit rows; 403 non-admin; tests.
-  - :black_circle: **TASK-150** :checkered_flag: — integration: a configured connector reaches the sandbox agent  `med` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-150** :checkered_flag: — integration: a configured connector reaches the sandbox agent  `med` `medium` _(services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/345)  
     _depends on: TASK-148, TASK-149_
     > Docker-gated — enable a connector, start a sandbox, assert the
     > agent sees it (.mcp.json present + server resolvable).
