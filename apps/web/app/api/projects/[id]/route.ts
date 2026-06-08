@@ -11,8 +11,10 @@ import { clientIp, recordAudit } from '@/lib/audit';
 import { getAuth } from '@/lib/auth';
 import {
   deleteProject,
+  parseBudgetUsd,
   parseProjectPatch,
   setProjectArchived,
+  setProjectBudget,
   updateProject,
   userOwnsProject,
 } from '@/lib/projects';
@@ -38,7 +40,25 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     name?: unknown;
     description?: unknown;
     archived?: unknown;
+    budgetUsd?: unknown;
   } | null;
+
+  // Budget change (STORY-23) — its own directive; owner-gated above.
+  if (body?.budgetUsd !== undefined) {
+    const budget = parseBudgetUsd(body.budgetUsd);
+    if (budget === null) {
+      return NextResponse.json({ error: 'invalid_budget' }, { status: 400 });
+    }
+    const ok = await setProjectBudget(session.user.id, projectId, budget);
+    if (!ok) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    await recordAudit(session.user.id, 'project.updated', {
+      targetType: 'project',
+      targetId: projectId,
+      metadata: { budgetUsd: budget },
+      ip: clientIp(hdrs),
+    });
+    return NextResponse.json({ id: projectId, budgetUsd: budget });
+  }
 
   // Archive / restore is a distinct directive from rename — handle it first.
   if (typeof body?.archived === 'boolean') {

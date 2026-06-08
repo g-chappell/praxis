@@ -199,6 +199,10 @@ export const projects = pgTable('projects', {
   // Soft-archive flag (STORY-40): null = active, set = hidden from the default
   // dashboard list. Reversible; distinct from destructive delete (STORY-28).
   archivedAt: timestamp('archived_at', { withTimezone: true }),
+  // Per-project spend cap in USD (STORY-23). When cumulative estimated cost
+  // (sum of usage_events) reaches this, new prompts are paused until it's raised
+  // by the owner or an admin. Default is a sensible POC cap.
+  budgetUsd: numeric('budget_usd', { precision: 12, scale: 2 }).notNull().default('10.00'),
 });
 
 // ─── sessions ─────────────────────────────────────────────────────────

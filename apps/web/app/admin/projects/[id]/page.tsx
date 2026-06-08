@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { AdminProjectActions } from '@/components/admin/admin-project-actions';
+import { AdminProjectBudget } from '@/components/admin/admin-project-budget';
 import { adminGetProjectDetail } from '@/lib/admin-projects';
 
 export const dynamic = 'force-dynamic';
@@ -83,6 +84,9 @@ export default async function AdminProjectDetailPage({ params }: { params: { id:
           Moderation
         </h2>
         <AdminProjectActions projectId={project.id} archived={project.archivedAt !== null} />
+        <div className="pt-2">
+          <AdminProjectBudget projectId={project.id} budgetUsd={project.budgetUsd} />
+        </div>
         <Link
           href={`/admin/activity?targetType=project&targetId=${project.id}`}
           className="inline-block text-sm text-muted-foreground hover:underline"

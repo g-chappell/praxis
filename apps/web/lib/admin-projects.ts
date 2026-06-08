@@ -133,6 +133,7 @@ export interface AdminProjectDetail {
   templateId: string;
   createdAt: Date | null;
   archivedAt: Date | null;
+  budgetUsd: number;
   ownerId: string | null;
   ownerName: string | null;
   ownerEmail: string | null;
@@ -152,6 +153,7 @@ export async function adminGetProjectDetail(
       templateId: projects.templateId,
       createdAt: projects.createdAt,
       archivedAt: projects.archivedAt,
+      budgetUsd: projects.budgetUsd,
       teamId: projects.teamId,
       ownerId: users.id,
       ownerName: users.displayName,
@@ -189,6 +191,7 @@ export async function adminGetProjectDetail(
     templateId: project.templateId,
     createdAt: project.createdAt,
     archivedAt: project.archivedAt,
+    budgetUsd: Number(project.budgetUsd),
     ownerId: project.ownerId,
     ownerName: project.ownerName,
     ownerEmail: project.ownerEmail,
@@ -210,6 +213,22 @@ export async function adminSetProjectArchived(
   const [row] = await database
     .update(projects)
     .set({ archivedAt: archive ? new Date() : null })
+    .where(eq(projects.id, projectId))
+    .returning({ id: projects.id });
+  return Boolean(row);
+}
+
+/** Set ANY project's budget (USD) by id — admin override (STORY-23). No ownership
+ *  check (route gates on isUserAdmin). Returns false when the project doesn't
+ *  exist. The caller validates the value via parseBudgetUsd. */
+export async function adminSetProjectBudget(
+  projectId: string,
+  budgetUsd: string,
+  database: Database = db,
+): Promise<boolean> {
+  const [row] = await database
+    .update(projects)
+    .set({ budgetUsd })
     .where(eq(projects.id, projectId))
     .returning({ id: projects.id });
   return Boolean(row);
