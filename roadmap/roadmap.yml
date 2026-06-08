@@ -3703,6 +3703,8 @@ epics:
         description: |
           Replace the placeholder admin landing with a live health + activity
           overview.
+        verified_at: '2026-06-08T07:24:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "/admin landing shows live counts: users, projects (active/archived), running sandboxes (from the orchestrator), platform-key status per provider, and the most recent admin actions."
           - "If the orchestrator is unreachable, the sandbox/health tiles degrade gracefully (show 'unavailable') without breaking the page."

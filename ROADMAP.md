@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 35 / 50 (70%)
+- **Features verified:** 36 / 50 (72%)
 - **Total tasks:** 155
 - **Done:** 136 (88%)
 - **Ready:** 19
@@ -2251,7 +2251,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     - Filters narrow the list; scoped deep-links work; both empty states render; component test.
     - STORY-47 acceptance_criteria satisfied.
 
-- **STORY-48** — Admin overview / platform health
+- **STORY-48** — Admin overview / platform health  [:white_check_mark: verified]
   > Replace the placeholder admin landing with a live health + activity
   > overview.
   **Acceptance criteria:**
