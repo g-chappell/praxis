@@ -2347,7 +2347,7 @@ requiring both-contributor sign-off before implementation.
   - A public connector marketplace.
   - Arbitrary user-supplied MCP servers (admin-curated only).
   - Changing the ACP host or Path-A wiring beyond what the ADR approves.
-  - :white_check_mark: **TASK-146** — ADR: admin-managed MCP connector registry (Proposed — both-contributor sign-off)  `high` `medium` _(packages/db)_ · [PR](PENDING)
+  - :white_check_mark: **TASK-146** — ADR: admin-managed MCP connector registry (Proposed — both-contributor sign-off)  `high` `medium` _(packages/db)_ · [PR](https://github.com/g-chappell/praxis/pull/342)
     > Write the ADR (Context/Decision/Consequences/Alternatives) for the
     > registry shape, credential storage (@praxis/crypto), enable/disable,
     > usage caps, and orchestrator rendering of .mcp.json/settings from
