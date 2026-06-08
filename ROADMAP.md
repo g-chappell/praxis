@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 34 / 50 (68%)
+- **Features verified:** 35 / 50 (70%)
 - **Total tasks:** 155
-- **Done:** 131 (85%)
-- **Ready:** 24
+- **Done:** 133 (86%)
+- **Ready:** 22
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2221,7 +2221,7 @@ ownership helpers; destructive actions require a reason and are audit-logged.
     - e2e passes both enforcement paths.
     - STORY-46 acceptance_criteria satisfied.
 
-- **STORY-47** — Audit log viewer
+- **STORY-47** — Audit log viewer  [:white_check_mark: verified]
   > The logging UI — a queryable, filterable view over audit_log.
   **Acceptance criteria:**
   - /admin/activity lists audit entries newest-first with filters for actor, target type/id, action, and time range, plus pagination.
@@ -2235,14 +2235,14 @@ ownership helpers; destructive actions require a reason and are audit-logged.
   - CSV/JSON export.
   - Real-time streaming / live tail.
   - Editing or deleting audit entries (append-only).
-  - :black_circle: **TASK-138** — lib + API: GET /api/admin/audit with filters + pagination  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-138** — lib + API: GET /api/admin/audit with filters + pagination  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/334)  
     _depends on: TASK-122_
     > adminQueryAudit({actor, targetType, targetId, action, from, to,
     > limit, offset}) + GET /api/admin/audit role-gated; joins actor
     > email for display.
     _Task AC:_
     - Filters compose; pagination works; 403 non-admin; tests.
-  - :black_circle: **TASK-139** :checkered_flag: — UI: /admin/activity table + filters + scoped links  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-139** :checkered_flag: — UI: /admin/activity table + filters + scoped links  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/334)  
     _depends on: TASK-138_
     > /admin/activity filterable table; add 'View activity' links on
     > project/user detail pages that deep-link with target filters; empty

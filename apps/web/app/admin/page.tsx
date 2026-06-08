@@ -34,6 +34,11 @@ const SECTIONS: ReadonlyArray<{ title: string; description: string; href?: strin
     href: '/admin/blocklist',
   },
   {
+    title: 'Activity',
+    description: 'The audit log of admin actions — filter by action, target, or time.',
+    href: '/admin/activity',
+  },
+  {
     title: 'Usage',
     description: 'Per-project token usage and cost across the platform.',
   },

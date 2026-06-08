@@ -3648,6 +3648,8 @@ epics:
         title: "Audit log viewer"
         description: |
           The logging UI — a queryable, filterable view over audit_log.
+        verified_at: '2026-06-07T22:01:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "/admin/activity lists audit entries newest-first with filters for actor, target type/id, action, and time range, plus pagination."
           - "Project and user detail pages (STORY-44/45) link to their scoped audit view (pre-filtered by target)."
@@ -3663,7 +3665,7 @@ epics:
         tasks:
           - id: TASK-138
             title: "lib + API: GET /api/admin/audit with filters + pagination"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3673,12 +3675,14 @@ epics:
               email for display.
             depends_on: [TASK-122]
             attempt_count: 0
+            completed: '2026-06-07T21:57:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/334
             is_terminal: false
             task_acceptance:
               - "Filters compose; pagination works; 403 non-admin; tests."
           - id: TASK-139
             title: "UI: /admin/activity table + filters + scoped links"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3688,6 +3692,8 @@ epics:
               vs no-match states.
             depends_on: [TASK-138]
             attempt_count: 0
+            completed: '2026-06-07T21:57:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/334
             is_terminal: true
             task_acceptance:
               - "Filters narrow the list; scoped deep-links work; both empty states render; component test."

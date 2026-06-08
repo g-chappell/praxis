@@ -83,6 +83,12 @@ export default async function AdminProjectDetailPage({ params }: { params: { id:
           Moderation
         </h2>
         <AdminProjectActions projectId={project.id} archived={project.archivedAt !== null} />
+        <Link
+          href={`/admin/activity?targetType=project&targetId=${project.id}`}
+          className="inline-block text-sm text-muted-foreground hover:underline"
+        >
+          View activity for this project →
+        </Link>
       </section>
     </div>
   );
