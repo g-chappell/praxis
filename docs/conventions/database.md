@@ -66,7 +66,7 @@ right after the #330 merge (additive, so applied before the web deploy to
 avoid a missing-column window on `/admin/users`). 0012 (STORY-46
 `users.ban_reason` + `email_blocklist` table + `audit_action` values
 `user.banned`/`user.unbanned`/`blocklist.added`/`blocklist.removed`) —
-applied 2026-06-07 around the #332 merge (additive).
+applied 2026-06-07 around the #332 merge (additive). 0013 (STORY-22 `usage_events` table) — applied 2026-06-08 around the #337 merge (additive).
 
 ## Two import surfaces from `@praxis/db`
 
