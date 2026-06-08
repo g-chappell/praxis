@@ -129,6 +129,7 @@ export function AdminOverviewDashboard({ overview }: { overview: AdminOverview }
             { href: '/admin/users', label: 'Users' },
             { href: '/admin/blocklist', label: 'Sign-in blocklist' },
             { href: '/admin/activity', label: 'Activity' },
+            { href: '/admin/usage', label: 'Usage & cost' },
             { href: '/admin/api-keys', label: 'Platform API keys' },
           ].map((s) => (
             <Link
