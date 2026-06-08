@@ -2341,8 +2341,8 @@ requiring both-contributor sign-off before implementation.
   - A configured+enabled connector is reachable by the sandbox agent (verified at the Docker/integration layer).
   **User flow:**
   1. Admin opens /admin -> Connectors
-  2. Enables a connector, sets its credential + usage cap
-  3. A new project's sandbox starts with that connector wired; the agent can use it
+  2. Adds a connector to the catalog (credential + usage cap), then enables it per template with the allowed commands (ADR-0020)
+  3. A new project of that template starts with the connector wired; the agent can use the allowed commands
   **Out of scope:**
   - A public connector marketplace.
   - Arbitrary user-supplied MCP servers (admin-curated only).
@@ -2358,10 +2358,13 @@ requiring both-contributor sign-off before implementation.
     - ADR committed under docs/decisions/ as Proposed, covering registry + creds + rendering + caps.
   - :black_circle: **TASK-147** — db: mcp_connectors table + migration + codegen  `high` `small` _(packages/db)_  
     _depends on: TASK-146_
-    > mcp_connectors (id, name unique, command_ref text, args jsonb,
-    > enabled boolean default false, credentials_encrypted text nullable,
-    > usage_cap int nullable, created_by uuid, created_at). migration +
-    > codegen.
+    > Per ADR-0020 (per-template), TWO tables: mcp_connectors catalog
+    > (id, name unique, command_ref text, args jsonb,
+    > credentials_encrypted text nullable, usage_cap int nullable,
+    > created_by uuid, created_at) + template_mcp_connectors
+    > (template_id text, connector_id uuid, enabled boolean default
+    > false, allowed_commands jsonb nullable, pk(template_id,
+    > connector_id)). migration + codegen.
     _Task AC:_
     - Table added; codegen; clean.
   - :black_circle: **TASK-148** — orchestrator: render .mcp.json + settings from the enabled registry  `high` `medium` _(services/orchestrator)_  

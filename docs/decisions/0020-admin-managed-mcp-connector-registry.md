@@ -1,6 +1,7 @@
 # 0020 — Admin-managed MCP connector registry
 
-**Date:** 2026-06-08
+**Date:** 2026-06-08 (revised 2026-06-08 — **per-template** scoping, per
+contributor direction; was platform-wide in the first draft)
 **Status:** **Proposed** — MCP is a load-bearing open standard (AGENTS.md), so
 this change **requires both-contributor sign-off before any implementation
 task (TASK-147 onward) starts.** TASK-146 (this ADR) is docs-only.
@@ -34,7 +35,12 @@ Limitations we want to remove without breaking any of the above:
 STORY-50 asks for an **admin-managed registry** of connectors (enable/disable,
 encrypted credentials, usage caps) that the orchestrator renders into each new
 sandbox — **without** changing the ACP host or the Path-A mechanism beyond what
-this ADR approves.
+this ADR approves. Per contributor direction, the admin both **curates the
+connector catalog** (which MCP servers exist, their credentials/caps, and which
+commands each may expose) **and decides, per template, which connectors and
+which of their commands are allowed** — so a project gets exactly the MCP
+surface its template is configured for (e.g. the Three.js template gets
+image-gen; a blank template gets none).
 
 The load-bearing risks: (1) MCP is an open standard we don't want to fork;
 (2) a registry that let an admin specify an **arbitrary command string** would
@@ -43,14 +49,27 @@ keep the encrypted-at-rest + never-in-`/workspace` posture.
 
 ## Decision
 
-1. **A `mcp_connectors` registry table** (admin-curated, platform-wide):
-   `id`, `name` (unique, the `.mcp.json` server key), `command_ref` (text — see
-   §2), `args` (jsonb, non-secret), `enabled` (boolean, default **false**),
-   `credentials_encrypted` (text, nullable — ciphertext via `@praxis/crypto`),
-   `usage_cap` (int, nullable — per-day cap), `created_by` (uuid), `created_at`.
-   No per-user/per-project columns: connectors are **platform-wide**, applied to
-   every new sandbox when `enabled`. (Template/project scoping is a later,
-   additive concern, explicitly out of scope here.)
+1. **Two tables: a connector catalog + a per-template enablement map.**
+
+   a. **`mcp_connectors` (the catalog, admin-curated):** `id`, `name` (unique —
+   the `.mcp.json` server key), `command_ref` (text — see §2), `args` (jsonb,
+   non-secret), `credentials_encrypted` (text, nullable — ciphertext via
+   `@praxis/crypto`), `usage_cap` (int, nullable — per-day cap), `created_by`
+   (uuid), `created_at`. This is the *definition* of a connector (how to run it,
+   its secret, its cap) — independent of where it's used.
+
+   b. **`template_mcp_connectors` (per-template enablement):** `template_id`
+   (text — the same id used in `template.json`, e.g. `react-threejs-scene`),
+   `connector_id` (uuid → `mcp_connectors`), `enabled` (boolean, default
+   **false**), `allowed_commands` (jsonb/text[], nullable — the subset of the
+   connector's tools permitted for this template; null = all the connector
+   exposes), `created_at`. Primary key `(template_id, connector_id)`.
+
+   So **enablement is per template**: a connector in the catalog only reaches a
+   sandbox if there's an `enabled` row for that project's template, and only the
+   `allowed_commands` for that template are exposed. A connector with no
+   template rows is defined but inert. (Per-*project* overrides remain out of
+   scope — additive later.)
 
 2. **`command_ref` is a key into a fixed allow-list of wrappers baked into
    `praxis-sandbox-base`, NOT a free-form shell command.** The orchestrator maps
@@ -72,20 +91,30 @@ keep the encrypted-at-rest + never-in-`/workspace` posture.
    exactly the ADR-0018 pattern, generalized from one server to N. No secret
    ever enters `/workspace`, `.mcp.json`, MinIO, or the agent's env.
 
-4. **Enable/disable gates rendering.** Only `enabled = true` connectors are
-   rendered into a sandbox's `.mcp.json` + settings. Disabling a connector means
-   new sandboxes don't get it (existing live sandboxes are unaffected until
-   restart — acceptable; documented).
+4. **Per-template enable/disable gates rendering.** A connector reaches a
+   sandbox only if `template_mcp_connectors.enabled = true` for that project's
+   `template_id`. Disabling a connector for a template means new sandboxes of
+   that template don't get it (existing live sandboxes are unaffected until
+   restart — acceptable; documented). Catalog-level changes (rotating a
+   credential, lowering a cap) apply wherever the connector is enabled.
 
 5. **Orchestrator rendering generalizes `mcp-seed.ts` (Path A preserved).** At
-   sandbox start the orchestrator reads the enabled registry, renders the
-   project `.mcp.json` (server key = `name`, `command` = the baked wrapper for
-   `command_ref`, `args`, non-secret `env` pointing at the cred file) and the
-   Claude `settings.json` (`enableAllProjectMcpServers` via `settingSources`).
-   **No `packages/acp-host` change** — this is still Path A (ADR-0018). The
-   existing image-gen path is refactored to read from the registry (image-gen
-   becomes the first registry entry; the template's `mcp_servers` declaration
-   and the OpenAI-key gate are reconciled with the registry, not duplicated).
+   sandbox start the orchestrator reads the project's `template_id`, joins the
+   **enabled** `template_mcp_connectors` rows to the catalog, and renders the
+   project `.mcp.json` (one entry per enabled connector: server key = `name`,
+   `command` = the baked wrapper for `command_ref`, `args`, non-secret `env`
+   pointing at the cred file) plus the Claude `settings.json`. **`allowed_commands`
+   is enforced via Claude Code's tool-permission settings** (the rendered
+   settings permit only `mcp__<name>__<command>` for the template's allowed
+   subset; null = allow the server's full toolset) — so the restriction is
+   declarative in settings, not a fork of the server. Still
+   `enableAllProjectMcpServers` via `settingSources`. **No `packages/acp-host`
+   change** — this is still Path A (ADR-0018). The existing image-gen path is
+   refactored to read from the registry: image-gen becomes the first catalog
+   entry, enabled for `react-threejs-scene`; the template's `mcp_servers`
+   declaration + the OpenAI-key gate are reconciled with the registry, not
+   duplicated (a connector with no usable credential renders nothing — clean
+   degrade, as today).
 
 6. **Usage caps reuse the `mcp_usage` mechanism (ADR-0018/STORY-15).** A
    connector's `usage_cap` is enforced via the existing per-project/per-tool/
@@ -93,16 +122,22 @@ keep the encrypted-at-rest + never-in-`/workspace` posture.
    `name`. No new cap engine.
 
 7. **Admin surface is role-gated + audit-logged.** CRUD lives behind
-   `isUserAdmin` at `/admin/connectors`; every create/enable/disable/credential/
-   cap change writes an `audit_log` row (new `connector.*` audit actions). Fits
-   the EPIC-08 accountability model.
+   `isUserAdmin` at `/admin/connectors`: manage the catalog (create connector,
+   set/rotate credential, set cap) **and** the per-template matrix (enable/
+   disable a connector for a template, choose its allowed commands). Every
+   change writes an `audit_log` row (new `connector.*` audit actions, including
+   the per-template enablement). Fits the EPIC-08 accountability model.
 
 ## Consequences
 
-- **New:** `mcp_connectors` table (+ migration + codegen); `/admin/connectors`
-  CRUD (lib + API + UI); orchestrator registry-driven rendering; `connector.*`
-  audit actions; a Docker-gated integration test proving an enabled connector is
-  reachable by the agent (`.mcp.json` present + server resolvable).
+- **New:** `mcp_connectors` (catalog) **and** `template_mcp_connectors`
+  (per-template enablement + allowed_commands) tables (+ migration + codegen) —
+  this expands roadmap **TASK-147** from one table to two; `/admin/connectors`
+  CRUD over the catalog + the per-template matrix (lib + API + UI); orchestrator
+  registry-driven, template-scoped rendering; `connector.*` audit actions; a
+  Docker-gated integration test proving a connector enabled for a template is
+  reachable by that template's sandbox agent (`.mcp.json` present + server
+  resolvable + only allowed commands permitted).
 - **Security:** no arbitrary command execution (curated `command_ref` →
   allow-listed baked wrapper); credentials encrypted at rest, never returned
   plaintext, delivered only via the ephemeral file outside `/workspace`;
@@ -122,8 +157,11 @@ keep the encrypted-at-rest + never-in-`/workspace` posture.
 - **Free-form admin-supplied command + args.** Rejected: RCE into every sandbox
   via a DB row. The curated `command_ref` allow-list (baked wrappers) gives the
   flexibility we need without that risk.
-- **Per-project or per-user connectors.** Out of scope: admin-curated,
-  platform-wide for now; project scoping can be added later additively.
+- **Platform-wide enablement (every connector on every sandbox).** Rejected per
+  contributor direction: the admin scopes connectors **per template**, so each
+  template gets only the MCP surface it's configured for (the Three.js template
+  gets image-gen; a blank template gets none). Per-*project* overrides remain
+  out of scope — additive later on top of the per-template map.
 - **Credentials in the agent env (`${VAR}` expansion).** Rejected (also rejected
   in ADR-0018): puts secrets in the agent's environment; the ephemeral cred file
   keeps them out of `/workspace` and the agent env.
@@ -139,7 +177,9 @@ approve this ADR and it moves to **Accepted**. Open questions for sign-off:
 
 - The `command_ref` allow-list + the "bake-then-register" onboarding flow — is
   this the right bound on "admin-curated"?
-- Platform-wide application to all new sandboxes (vs template/project scoping) —
-  acceptable for the POC?
+- **Per-template enablement is now the model** (catalog + `template_mcp_connectors`
+  map, with per-template `allowed_commands`) — confirmed by contributor
+  direction. Confirm the table split + that `allowed_commands` is enforced via
+  Claude tool-permission settings (`mcp__<name>__<command>`), not a server fork.
 - Reusing `mcp_usage` for per-connector daily caps (vs a dedicated cap field
   engine).
