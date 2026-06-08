@@ -130,6 +130,7 @@ export function AdminOverviewDashboard({ overview }: { overview: AdminOverview }
             { href: '/admin/blocklist', label: 'Sign-in blocklist' },
             { href: '/admin/activity', label: 'Activity' },
             { href: '/admin/usage', label: 'Usage & cost' },
+            { href: '/admin/connectors', label: 'MCP connectors' },
             { href: '/admin/api-keys', label: 'Platform API keys' },
           ].map((s) => (
             <Link
