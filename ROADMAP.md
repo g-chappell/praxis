@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 34 / 50 (68%)
+- **Features verified:** 35 / 50 (70%)
 - **Total tasks:** 155
 - **Done:** 133 (86%)
 - **Ready:** 22
