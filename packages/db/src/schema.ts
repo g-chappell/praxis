@@ -16,6 +16,7 @@ import {
   index,
   integer,
   jsonb,
+  numeric,
   pgEnum,
   pgTable,
   primaryKey,
@@ -300,6 +301,28 @@ export const agentTurns = pgTable('agent_turns', {
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow(),
   completedAt: timestamp('completed_at', { withTimezone: true }),
 });
+
+// ─── usage_events ─────────────────────────────────────────────────────
+// Per-turn token usage, attributed to project + session (STORY-22). One row per
+// completed agent turn (ADR-0009 surfaces input/output tokens on turn-complete).
+// estimated_cost_usd is an ESTIMATE computed at record time — ACP doesn't expose
+// the model, so the orchestrator applies a documented per-token rate. The data
+// foundation for the owner usage view + budget caps (STORY-23).
+export const usageEvents = pgTable(
+  'usage_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    projectId: uuid('project_id')
+      .references(() => projects.id, { onDelete: 'cascade' })
+      .notNull(),
+    sessionId: uuid('session_id').references(() => sessions.id, { onDelete: 'set null' }),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    estimatedCostUsd: numeric('estimated_cost_usd', { precision: 12, scale: 6 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [index('idx_usage_events_project_time').on(table.projectId, table.createdAt)],
+);
 
 // ─── learning_links ───────────────────────────────────────────────────
 export const learningLinks = pgTable('learning_links', {

@@ -47,6 +47,9 @@ export type NewTeamMembership = InferInsertModel<typeof schema.teamMemberships>;
 export type Team = InferSelectModel<typeof schema.teams>;
 export type NewTeam = InferInsertModel<typeof schema.teams>;
 
+export type UsageEvent = InferSelectModel<typeof schema.usageEvents>;
+export type NewUsageEvent = InferInsertModel<typeof schema.usageEvents>;
+
 export type User = InferSelectModel<typeof schema.users>;
 export type NewUser = InferInsertModel<typeof schema.users>;
 
