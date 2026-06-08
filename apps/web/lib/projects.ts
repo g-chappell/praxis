@@ -188,6 +188,36 @@ export async function updateProject(
   return row ?? null;
 }
 
+/** The widest budget an owner/admin can set, USD (STORY-23). A guardrail, not a
+ *  business rule — keeps a fat-fingered value from disabling the cap entirely. */
+export const BUDGET_MAX_USD = 100_000;
+
+/** Validate an untrusted budget value: a finite number in [0, BUDGET_MAX_USD].
+ *  Returns the normalized 2-decimal string, or null when invalid. */
+export function parseBudgetUsd(value: unknown): string | null {
+  const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN;
+  if (!Number.isFinite(n) || n < 0 || n > BUDGET_MAX_USD) return null;
+  return n.toFixed(2);
+}
+
+/** Set a project's budget (USD) — owner-gated (team membership). Returns false
+ *  when the project isn't the user's or doesn't exist. The caller validates the
+ *  value via parseBudgetUsd. The `database` is injectable for tests. */
+export async function setProjectBudget(
+  userId: string,
+  projectId: string,
+  budgetUsd: string,
+  database: Database = db,
+): Promise<boolean> {
+  if (!(await userOwnsProject(userId, projectId, database))) return false;
+  const [row] = await database
+    .update(projects)
+    .set({ budgetUsd })
+    .where(eq(projects.id, projectId))
+    .returning({ id: projects.id });
+  return Boolean(row);
+}
+
 /** Delete a project the user owns (cascades its sessions). Returns false when the
  *  project doesn't exist or isn't theirs. Sandbox teardown is handled by the
  *  caller via the orchestrator — this only removes the DB rows. */

@@ -8,6 +8,7 @@ const getSession = vi.fn();
 const isUserAdmin = vi.fn();
 const adminSetProjectArchived = vi.fn();
 const adminDeleteProject = vi.fn();
+const adminSetProjectBudget = vi.fn();
 const recordAudit = vi.fn();
 
 vi.mock('next/headers', () => ({ headers: vi.fn(async () => new Headers()) }));
@@ -16,6 +17,7 @@ vi.mock('@/lib/admin', () => ({ isUserAdmin: (...a: unknown[]) => isUserAdmin(..
 vi.mock('@/lib/admin-projects', () => ({
   adminSetProjectArchived: (...a: unknown[]) => adminSetProjectArchived(...a),
   adminDeleteProject: (...a: unknown[]) => adminDeleteProject(...a),
+  adminSetProjectBudget: (...a: unknown[]) => adminSetProjectBudget(...a),
 }));
 vi.mock('@/lib/audit', () => ({
   recordAudit: (...a: unknown[]) => recordAudit(...a),
@@ -52,6 +54,7 @@ beforeEach(() => {
   isUserAdmin.mockResolvedValue(true);
   adminSetProjectArchived.mockResolvedValue(true);
   adminDeleteProject.mockResolvedValue(true);
+  adminSetProjectBudget.mockResolvedValue(true);
   process.env.ORCHESTRATOR_INTERNAL_URL = 'http://orch:4001';
   process.env.ORCHESTRATOR_INTERNAL_SECRET = 'secret';
   vi.stubGlobal(
@@ -61,6 +64,25 @@ beforeEach(() => {
 });
 
 afterEach(() => vi.unstubAllGlobals());
+
+describe('PATCH /api/admin/projects/[id] (admin budget override)', () => {
+  it('sets the budget (no reason required) and audits', async () => {
+    const res = await patch({ budgetUsd: 50 });
+    expect(res.status).toBe(200);
+    expect(adminSetProjectBudget).toHaveBeenCalledWith('proj-1', '50.00');
+    expect(recordAudit).toHaveBeenCalledWith(
+      'admin-1',
+      'project.updated',
+      expect.objectContaining({ metadata: expect.objectContaining({ budgetUsd: '50.00' }) }),
+    );
+  });
+
+  it('400 for an invalid budget', async () => {
+    const res = await patch({ budgetUsd: -5 });
+    expect(res.status).toBe(400);
+    expect(adminSetProjectBudget).not.toHaveBeenCalled();
+  });
+});
 
 describe('PATCH /api/admin/projects/[id] (admin archive)', () => {
   it('403 for a non-admin — never mutates', async () => {

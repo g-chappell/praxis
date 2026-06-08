@@ -8,9 +8,14 @@ import { headers } from 'next/headers';
 import { type NextRequest, NextResponse } from 'next/server';
 
 import { isUserAdmin } from '@/lib/admin';
-import { adminDeleteProject, adminSetProjectArchived } from '@/lib/admin-projects';
+import {
+  adminDeleteProject,
+  adminSetProjectArchived,
+  adminSetProjectBudget,
+} from '@/lib/admin-projects';
 import { clientIp, recordAudit } from '@/lib/audit';
 import { getAuth } from '@/lib/auth';
+import { parseBudgetUsd } from '@/lib/projects';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -46,7 +51,24 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const body = (await req.json().catch(() => null)) as {
     archived?: unknown;
     reason?: unknown;
+    budgetUsd?: unknown;
   } | null;
+
+  // Admin budget override (STORY-23) — no reason required.
+  if (body?.budgetUsd !== undefined) {
+    const budget = parseBudgetUsd(body.budgetUsd);
+    if (budget === null) return NextResponse.json({ error: 'invalid_budget' }, { status: 400 });
+    const ok = await adminSetProjectBudget(params.id, budget);
+    if (!ok) return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    await recordAudit(auth.userId, 'project.updated', {
+      targetType: 'project',
+      targetId: params.id,
+      metadata: { budgetUsd: budget, admin: true },
+      ip: clientIp(hdrs),
+    });
+    return NextResponse.json({ id: params.id, budgetUsd: budget });
+  }
+
   if (typeof body?.archived !== 'boolean') {
     return NextResponse.json({ error: 'invalid_archived' }, { status: 400 });
   }

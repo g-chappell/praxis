@@ -104,6 +104,16 @@ describe('ChatPanel shared-chat attribution (STORY-32)', () => {
     expect(input.disabled).toBe(false);
   });
 
+  it('shows the over-budget notice on over_budget without disabling input (STORY-23)', () => {
+    render(<ChatPanel currentUser={{ name: 'Me', image: null }} />);
+    emit({ type: 'over_budget', usedUsd: 11, budgetUsd: 10 });
+
+    expect(screen.getByText(/over budget/i)).toBeTruthy();
+    expect(screen.getByText(/Usage tab/i)).toBeTruthy();
+    const input = screen.getByPlaceholderText('Message as Me…') as HTMLInputElement;
+    expect(input.disabled).toBe(false);
+  });
+
   it('shows the restarted notice on agent_restarted (STORY-33)', () => {
     render(<ChatPanel currentUser={{ name: 'Me', image: null }} />);
     emit({ type: 'agent_restarted' });

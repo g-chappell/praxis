@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 
 import { projects, sessions, teamMemberships, teams, usageEvents, users } from '@praxis/db';
 import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { projectUsage } from './usage';
@@ -49,6 +50,9 @@ describeDb('projectUsage (real DB)', () => {
       expect(usage!.outputTokens).toBe(100);
       expect(usage!.estimatedCostUsd).toBeCloseTo(0.003, 6);
       expect(usage!.turns).toBe(2);
+      // Default budget (10.00) far exceeds the tiny cost → not over budget.
+      expect(usage!.budgetUsd).toBe(10);
+      expect(usage!.overBudget).toBe(false);
 
       // A stranger (not a team member) gets null.
       const [stranger] = await db
@@ -59,11 +63,36 @@ describeDb('projectUsage (real DB)', () => {
     });
   });
 
-  it('returns zeros for a member with no usage yet', async () => {
+  it('returns zeros (under budget) for a member with no usage yet', async () => {
     await withDb(async (db) => {
       const { ownerId, projectId } = await seedOwnedProject(db);
       const usage = await projectUsage(ownerId, projectId, db);
-      expect(usage).toEqual({ inputTokens: 0, outputTokens: 0, estimatedCostUsd: 0, turns: 0 });
+      expect(usage).toEqual({
+        inputTokens: 0,
+        outputTokens: 0,
+        estimatedCostUsd: 0,
+        turns: 0,
+        budgetUsd: 10,
+        overBudget: false,
+      });
+    });
+  });
+
+  it('flags overBudget once cost reaches the (lowered) budget', async () => {
+    await withDb(async (db) => {
+      const { ownerId, projectId, sessionId } = await seedOwnedProject(db);
+      await db.update(projects).set({ budgetUsd: '0.01' }).where(eq(projects.id, projectId));
+      await db.insert(usageEvents).values({
+        projectId,
+        sessionId,
+        inputTokens: 0,
+        outputTokens: 0,
+        estimatedCostUsd: '0.02',
+      });
+
+      const usage = await projectUsage(ownerId, projectId, db);
+      expect(usage!.budgetUsd).toBe(0.01);
+      expect(usage!.overBudget).toBe(true);
     });
   });
 });

@@ -9,7 +9,7 @@ import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
-import { estimateCostUsd, recordTurnUsage } from '../src/usage';
+import { estimateCostUsd, projectBudgetStatus, recordTurnUsage } from '../src/usage';
 
 describe('estimateCostUsd', () => {
   it('applies the per-million-token rates (3 in / 15 out)', () => {
@@ -54,6 +54,31 @@ describeDb('recordTurnUsage (real DB)', () => {
       expect(rows[0]!.outputTokens).toBe(800);
       expect(rows[0]!.sessionId).toBe(sessionId);
       expect(Number(rows[0]!.estimatedCostUsd)).toBeCloseTo(estimateCostUsd(1200, 800), 6);
+    });
+  });
+});
+
+describeDb('projectBudgetStatus (real DB)', () => {
+  it('is under budget by default, over once cost reaches the cap', async () => {
+    await withDb(async (db) => {
+      const { projectId, sessionId } = await seedSession(db); // default budget 10.00
+
+      const under = await projectBudgetStatus(projectId, db);
+      expect(under.budgetUsd).toBe(10);
+      expect(under.over).toBe(false);
+
+      // Lower the budget under the recorded cost → over.
+      await db.update(projects).set({ budgetUsd: '0.01' }).where(eq(projects.id, projectId));
+      await db.insert(usageEvents).values({
+        projectId,
+        sessionId,
+        inputTokens: 0,
+        outputTokens: 0,
+        estimatedCostUsd: '0.05',
+      });
+      const over = await projectBudgetStatus(projectId, db);
+      expect(over.over).toBe(true);
+      expect(over.usedUsd).toBeCloseTo(0.05, 6);
     });
   });
 });

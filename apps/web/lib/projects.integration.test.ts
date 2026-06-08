@@ -18,10 +18,30 @@ import {
   duplicateProjectRow,
   listUserProjects,
   setProjectArchived,
+  setProjectBudget,
   updateProject,
 } from './projects';
 
 const describeDb = dbTestsEnabled() ? describe : describe.skip;
+
+describeDb('setProjectBudget (real DB)', () => {
+  it('owner sets the budget; a non-owner cannot', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const { projectId } = await seedTeamWithProject(db, owner);
+
+      expect(await setProjectBudget(owner, projectId, '42.50', db)).toBe(true);
+      const [row] = await db
+        .select({ budgetUsd: projects.budgetUsd })
+        .from(projects)
+        .where(eq(projects.id, projectId));
+      expect(row!.budgetUsd).toBe('42.50');
+
+      const stranger = await seedUser(db);
+      expect(await setProjectBudget(stranger, projectId, '1.00', db)).toBe(false);
+    });
+  });
+});
 
 async function seedUser(db: TestDb): Promise<string> {
   const [u] = await db
