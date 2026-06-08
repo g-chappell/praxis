@@ -10,6 +10,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { NoPlatformKeyError, getActivePlatformKey, tryGetActivePlatformKey } from '@praxis/keys';
 
 import { getAuth } from '@/lib/auth';
+import { connectorCredsForProject } from '@/lib/connector-creds';
 import { userOwnsProject } from '@/lib/projects';
 
 export const runtime = 'nodejs';
@@ -58,6 +59,11 @@ export async function POST(req: NextRequest) {
   // MCP server. Absent → omit; the session still runs (image-gen unavailable).
   const openaiKey = await tryGetActivePlatformKey('openai');
 
+  // Decrypt the MCP connector credentials enabled for this project's template
+  // (STORY-50, ADR-0020) and pass them alongside the platform keys — same posture
+  // (the orchestrator never holds the master key). Empty when none are enabled.
+  const connectorCreds = await connectorCredsForProject(projectId);
+
   const res = await fetch(`${orchestratorUrl}/sessions`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-internal-secret': internalSecret },
@@ -68,6 +74,7 @@ export async function POST(req: NextRequest) {
       userImage: session.user.image ?? null,
       apiKey,
       ...(openaiKey ? { openaiKey } : {}),
+      ...(Object.keys(connectorCreds).length ? { connectorCreds } : {}),
     }),
   }).catch(() => null);
 

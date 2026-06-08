@@ -13,7 +13,8 @@ import { projects, sessions } from '@praxis/db';
 import { db } from '@praxis/db/client';
 
 import { logger } from '../logger';
-import { seedImageGenMcp } from '../mcp-seed';
+import { enabledConnectorsForTemplate } from '../mcp-registry';
+import { seedImageGenMcp, seedRegistryConnectors } from '../mcp-seed';
 import { previewUrlFor, registerPreview } from '../preview';
 import { startReadinessProbe } from '../readiness';
 import { createRoom, getRoomByProject, getSandbox, mintTicket, type SessionRoom } from '../runtime';
@@ -34,6 +35,7 @@ async function ensureRoom(
   templateId: string,
   apiKey: string,
   openaiKey: string | undefined,
+  connectorCreds: Record<string, string>,
   seed: RoomSeed,
 ): Promise<SessionRoom> {
   const live = getRoomByProject(projectId);
@@ -43,9 +45,14 @@ async function ensureRoom(
   if (live) return live;
   const inflight = creating.get(projectId);
   if (inflight) return inflight;
-  const create = createProjectRoom(projectId, templateId, apiKey, openaiKey, seed).finally(() =>
-    creating.delete(projectId),
-  );
+  const create = createProjectRoom(
+    projectId,
+    templateId,
+    apiKey,
+    openaiKey,
+    connectorCreds,
+    seed,
+  ).finally(() => creating.delete(projectId));
   creating.set(projectId, create);
   return create;
 }
@@ -64,6 +71,7 @@ async function createProjectRoom(
   templateId: string,
   apiKey: string,
   openaiKey: string | undefined,
+  connectorCreds: Record<string, string>,
   seed: RoomSeed,
 ): Promise<SessionRoom> {
   // start() restores from MinIO if the volume is empty (ADR-0008).
@@ -131,6 +139,24 @@ async function createProjectRoom(
       );
     }
   }
+  // Wire the enabled registry connectors for this template (STORY-50/TASK-148,
+  // ADR-0020). Non-secret config from the DB; credentials were decrypted web-side
+  // and passed in. Best-effort — read-merges with the image-gen config above.
+  try {
+    const connectors = await enabledConnectorsForTemplate(templateId);
+    if (connectors.length > 0) {
+      await seedRegistryConnectors(getSandbox(), handle, connectors, connectorCreds, {
+        usageToken: room.mcpToken,
+        usageUrl:
+          process.env.PRAXIS_MCP_USAGE_URL ?? 'http://praxis-orchestrator:4001/internal/mcp/usage',
+      });
+    }
+  } catch (err) {
+    logger.warn(
+      { projectId, err: err instanceof Error ? err.message : String(err) },
+      'mcp.registry_seed_failed',
+    );
+  }
   // Seed the resume id so the first prompt's openAgent loads the prior
   // conversation via session/load (ADR-0017/STORY-36). Null on a project's first
   // ever session.
@@ -161,6 +187,7 @@ sessionsRoute.post('/', async (c) => {
     userImage?: unknown;
     apiKey?: unknown;
     openaiKey?: unknown;
+    connectorCreds?: unknown;
   } | null;
   const projectId = typeof body?.projectId === 'string' ? body.projectId : '';
   const userId = typeof body?.userId === 'string' ? body.userId : '';
@@ -172,6 +199,18 @@ sessionsRoute.post('/', async (c) => {
   // Optional OpenAI platform key for the image-gen MCP server (STORY-38). Absent
   // when no OpenAI key is configured — sessions still run normally.
   const openaiKey = typeof body?.openaiKey === 'string' ? body.openaiKey : undefined;
+  // Decrypted MCP connector credentials for this project's template (STORY-50,
+  // ADR-0020). The web decrypts them (the orchestrator never holds the master
+  // key) and passes {connectorName: plaintext}; the orchestrator writes them to
+  // the ephemeral cred file. Absent → no registry connectors / no creds.
+  const connectorCreds: Record<string, string> =
+    body?.connectorCreds && typeof body.connectorCreds === 'object'
+      ? Object.fromEntries(
+          Object.entries(body.connectorCreds as Record<string, unknown>).filter(
+            (e): e is [string, string] => typeof e[1] === 'string',
+          ),
+        )
+      : {};
   if (!projectId || !userId || !apiKey) {
     return c.json({ error: 'bad_request' }, 400);
   }
@@ -194,7 +233,7 @@ sessionsRoute.post('/', async (c) => {
   // user joining an active project reuses the same session/sandbox/preview — only
   // their WS ticket is per-user, stamped with their identity for presence + chat.
   // The seed carries cross-session resume (STORY-36) + control mode/owner (STORY-34).
-  const room = await ensureRoom(projectId, project.templateId, apiKey, openaiKey, {
+  const room = await ensureRoom(projectId, project.templateId, apiKey, openaiKey, connectorCreds, {
     agentSessionId: project.agentSessionId,
     controlMode: project.controlMode,
     ownerUserId: project.ownerUserId,
