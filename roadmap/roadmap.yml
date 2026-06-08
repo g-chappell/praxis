@@ -2458,6 +2458,8 @@ epics:
           (ADR-0009), attributed to project and session, and surface cumulative
           usage (with a cost estimate) to the project owner. The data foundation
           for budget enforcement (STORY-23) and any later billing.
+        verified_at: '2026-06-08T07:53:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Each completed turn records input/output token usage attributed to its project and session in Postgres."
           - "A project owner sees cumulative usage and a cost estimate for their project."
