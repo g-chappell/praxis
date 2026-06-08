@@ -3799,6 +3799,8 @@ epics:
         description: |
           An admin-wide view of platform spend + per-project/user usage, on top
           of STORY-22's usage_events. Build STORY-22/23 (EPIC-05) first.
+        verified_at: '2026-06-08T08:52:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "/admin/usage shows aggregate spend against the platform key and per-project and per-user usage (tokens + cost estimate) over a selectable time window, reflecting real recorded usage_events (STORY-22)."
           - "The dashboard surfaces the per-project budget caps (STORY-23) and lets an admin set/adjust a cap."
@@ -3813,7 +3815,7 @@ epics:
         tasks:
           - id: TASK-143
             title: "lib + API: admin usage aggregation (GET /api/admin/usage)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3824,12 +3826,14 @@ epics:
               that first.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-08T08:48:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/341
             is_terminal: false
             task_acceptance:
               - "Returns windowed totals + per-project/user breakdown; 403 non-admin; tests (gated on usage_events)."
           - id: TASK-144
             title: "UI: /admin/usage dashboard + budget-cap setter"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3838,13 +3842,15 @@ epics:
               an admin budget-cap setter (writes the STORY-23 cap).
             depends_on: [TASK-143]
             attempt_count: 0
+            completed: '2026-06-08T08:48:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/341
             is_terminal: true
             task_acceptance:
               - "Dashboard renders real usage; window picker works; cap setter persists; component test."
               - "STORY-49 acceptance_criteria satisfied."
           - id: TASK-145
             title: "test: real-Postgres integration for usage aggregation"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -3852,6 +3858,8 @@ epics:
               Seed usage_events, assert aggregation by project/user/window.
             depends_on: [TASK-143]
             attempt_count: 0
+            completed: '2026-06-08T08:48:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/341
             is_terminal: true
             task_acceptance:
               - "Integration asserts correct aggregates by project/user/window."
