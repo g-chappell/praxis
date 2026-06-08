@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 35 / 50 (70%)
 - **Total tasks:** 155
-- **Done:** 136 (88%)
-- **Ready:** 19
+- **Done:** 139 (90%)
+- **Ready:** 16
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1561,20 +1561,20 @@ flags, observability) mount into.
   **Out of scope:**
   - Budget caps / enforcement (STORY-23).
   - Invoicing or payment integration (post-POC).
-  - :black_circle: **TASK-060** — usage_events table (project, session, tokens, cost estimate) + migration  `med` `small` _(packages/db)_  
+  - :white_check_mark: **TASK-060** — usage_events table (project, session, tokens, cost estimate) + migration  `med` `small` _(packages/db)_ · [PR](https://github.com/g-chappell/praxis/pull/337)  
     _depends on: TASK-011_
     > Schema for per-turn usage: project_id, session_id, input_tokens,
     > output_tokens, estimated_cost, created_at. Migration + codegen.
     _Task AC:_
     - Table + migration exist; codegen clean.
-  - :black_circle: **TASK-061** — Orchestrator records usage from turn-complete events  `med` `medium` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-061** — Orchestrator records usage from turn-complete events  `med` `medium` _(services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/337)  
     _depends on: TASK-060, TASK-025, TASK-027_
     > In the session loop, persist a usage_events row from each AcpEvent
     > of type turn-complete (the usage payload AcpHost surfaces), keyed by
     > project + session.
     _Task AC:_
     - An integration/unit test shows a completed turn writes a usage row with the reported tokens.
-  - :black_circle: **TASK-062** :checkered_flag: — Owner usage view (cumulative tokens + cost estimate)  `med` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-062** :checkered_flag: — Owner usage view (cumulative tokens + cost estimate)  `med` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/337)  
     _depends on: TASK-061_
     > Project-scoped usage view for the owner: cumulative input/output
     > tokens and an estimated cost, sourced from usage_events. Real data,
