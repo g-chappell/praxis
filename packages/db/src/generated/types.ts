@@ -23,6 +23,9 @@ export type NewEvent = InferInsertModel<typeof schema.events>;
 export type LearningLink = InferSelectModel<typeof schema.learningLinks>;
 export type NewLearningLink = InferInsertModel<typeof schema.learningLinks>;
 
+export type McpConnector = InferSelectModel<typeof schema.mcpConnectors>;
+export type NewMcpConnector = InferInsertModel<typeof schema.mcpConnectors>;
+
 export type McpUsage = InferSelectModel<typeof schema.mcpUsage>;
 export type NewMcpUsage = InferInsertModel<typeof schema.mcpUsage>;
 
@@ -46,6 +49,9 @@ export type NewTeamMembership = InferInsertModel<typeof schema.teamMemberships>;
 
 export type Team = InferSelectModel<typeof schema.teams>;
 export type NewTeam = InferInsertModel<typeof schema.teams>;
+
+export type TemplateMcpConnector = InferSelectModel<typeof schema.templateMcpConnectors>;
+export type NewTemplateMcpConnector = InferInsertModel<typeof schema.templateMcpConnectors>;
 
 export type UsageEvent = InferSelectModel<typeof schema.usageEvents>;
 export type NewUsageEvent = InferInsertModel<typeof schema.usageEvents>;

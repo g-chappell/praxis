@@ -251,6 +251,10 @@ export const auditAction = pgEnum('audit_action', [
   'user.unbanned',
   'blocklist.added',
   'blocklist.removed',
+  'connector.created',
+  'connector.updated',
+  'connector.deleted',
+  'connector.template_changed',
 ]);
 
 // ─── audit_log ────────────────────────────────────────────────────────
@@ -354,6 +358,45 @@ export const mcpUsage = pgTable(
     count: integer('count').notNull().default(0),
   },
   (table) => [primaryKey({ columns: [table.projectId, table.tool, table.day] })],
+);
+
+// ─── mcp_connectors ───────────────────────────────────────────────────
+// Admin-curated catalog of MCP connectors (STORY-50, ADR-0020). `command_ref`
+// is a KEY into an allow-list of wrappers baked into the sandbox-base image —
+// never a free-form command (security). `credentials_encrypted` is @praxis/crypto
+// ciphertext (never returned plaintext); delivered to the sandbox via the
+// ADR-0018 ephemeral cred-file outside /workspace. `usage_cap` is a per-day cap
+// enforced via mcp_usage. Definition only — where a connector is USED is the
+// per-template map below.
+export const mcpConnectors = pgTable('mcp_connectors', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull().unique(),
+  commandRef: text('command_ref').notNull(),
+  args: jsonb('args'),
+  credentialsEncrypted: text('credentials_encrypted'),
+  usageCap: integer('usage_cap'),
+  createdBy: uuid('created_by').references(() => users.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+// ─── template_mcp_connectors ──────────────────────────────────────────
+// Per-template enablement of catalog connectors (STORY-50, ADR-0020). A
+// connector reaches a project's sandbox only if `enabled` for that project's
+// `template_id`; `allowed_commands` is the permitted subset of the connector's
+// tools for the template (null = all), enforced via Claude tool-permission
+// settings (mcp__<name>__<command>).
+export const templateMcpConnectors = pgTable(
+  'template_mcp_connectors',
+  {
+    templateId: text('template_id').notNull(),
+    connectorId: uuid('connector_id')
+      .references(() => mcpConnectors.id, { onDelete: 'cascade' })
+      .notNull(),
+    enabled: boolean('enabled').notNull().default(false),
+    allowedCommands: jsonb('allowed_commands'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.templateId, table.connectorId] })],
 );
 
 // `sql` is imported above so `defaultRandom()` (which emits gen_random_uuid())
