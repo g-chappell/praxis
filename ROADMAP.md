@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 37 / 50 (74%)
 - **Total tasks:** 155
-- **Done:** 141 (91%)
-- **Ready:** 14
+- **Done:** 144 (93%)
+- **Ready:** 11
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2310,21 +2310,21 @@ requiring both-contributor sign-off before implementation.
   **Out of scope:**
   - Building the metering pipeline or usage_events table (STORY-22) or the cap engine (STORY-23) — this consumes them.
   - Invoicing / billing / payment.
-  - :black_circle: **TASK-143** — lib + API: admin usage aggregation (GET /api/admin/usage)  `high` `medium` _(apps/web)_
+  - :white_check_mark: **TASK-143** — lib + API: admin usage aggregation (GET /api/admin/usage)  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/341)
     > Aggregate usage_events (STORY-22) by project + user + total over a
     > window; include platform-key spend estimate. Role-gated. NOTE:
     > depends on STORY-22's usage_events table existing (EPIC-05) — build
     > that first.
     _Task AC:_
     - Returns windowed totals + per-project/user breakdown; 403 non-admin; tests (gated on usage_events).
-  - :black_circle: **TASK-144** :checkered_flag: — UI: /admin/usage dashboard + budget-cap setter  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-144** :checkered_flag: — UI: /admin/usage dashboard + budget-cap setter  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/341)  
     _depends on: TASK-143_
     > /admin/usage with a window picker, totals, top projects/users, and
     > an admin budget-cap setter (writes the STORY-23 cap).
     _Task AC:_
     - Dashboard renders real usage; window picker works; cap setter persists; component test.
     - STORY-49 acceptance_criteria satisfied.
-  - :black_circle: **TASK-145** :checkered_flag: — test: real-Postgres integration for usage aggregation  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-145** :checkered_flag: — test: real-Postgres integration for usage aggregation  `med` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/341)  
     _depends on: TASK-143_
     > Seed usage_events, assert aggregation by project/user/window.
     _Task AC:_

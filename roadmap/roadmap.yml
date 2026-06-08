@@ -3811,7 +3811,7 @@ epics:
         tasks:
           - id: TASK-143
             title: "lib + API: admin usage aggregation (GET /api/admin/usage)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3822,12 +3822,14 @@ epics:
               that first.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-08T08:48:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/341
             is_terminal: false
             task_acceptance:
               - "Returns windowed totals + per-project/user breakdown; 403 non-admin; tests (gated on usage_events)."
           - id: TASK-144
             title: "UI: /admin/usage dashboard + budget-cap setter"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3836,13 +3838,15 @@ epics:
               an admin budget-cap setter (writes the STORY-23 cap).
             depends_on: [TASK-143]
             attempt_count: 0
+            completed: '2026-06-08T08:48:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/341
             is_terminal: true
             task_acceptance:
               - "Dashboard renders real usage; window picker works; cap setter persists; component test."
               - "STORY-49 acceptance_criteria satisfied."
           - id: TASK-145
             title: "test: real-Postgres integration for usage aggregation"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -3850,6 +3854,8 @@ epics:
               Seed usage_events, assert aggregation by project/user/window.
             depends_on: [TASK-143]
             attempt_count: 0
+            completed: '2026-06-08T08:48:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/341
             is_terminal: true
             task_acceptance:
               - "Integration asserts correct aggregates by project/user/window."
