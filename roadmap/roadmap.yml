@@ -3797,6 +3797,8 @@ epics:
         description: |
           An admin-wide view of platform spend + per-project/user usage, on top
           of STORY-22's usage_events. Build STORY-22/23 (EPIC-05) first.
+        verified_at: '2026-06-08T08:52:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "/admin/usage shows aggregate spend against the platform key and per-project and per-user usage (tokens + cost estimate) over a selectable time window, reflecting real recorded usage_events (STORY-22)."
           - "The dashboard surfaces the per-project budget caps (STORY-23) and lets an admin set/adjust a cap."

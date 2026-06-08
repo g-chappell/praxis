@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 37 / 50 (74%)
+- **Features verified:** 38 / 50 (76%)
 - **Total tasks:** 155
 - **Done:** 144 (93%)
 - **Ready:** 11
@@ -2296,7 +2296,7 @@ place; this epic depends on them and adds the admin-wide surfaces. MCP
 changes are ADR-gated (AGENTS.md) — the connector story leads with an ADR
 requiring both-contributor sign-off before implementation.
 
-- **STORY-49** — Admin usage & cost dashboard
+- **STORY-49** — Admin usage & cost dashboard  [:white_check_mark: verified]
   > An admin-wide view of platform spend + per-project/user usage, on top
   > of STORY-22's usage_events. Build STORY-22/23 (EPIC-05) first.
   **Acceptance criteria:**
