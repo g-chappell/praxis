@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 36 / 50 (72%)
+- **Features verified:** 37 / 50 (74%)
 - **Total tasks:** 155
 - **Done:** 139 (90%)
 - **Ready:** 16
@@ -1550,7 +1550,7 @@ flags, observability) mount into.
     - An admin can set and rotate the key through the UI; the raw value is never re-displayed.
     - STORY-21 acceptance_criteria satisfied.
 
-- **STORY-22** — Per-project usage metering (record + display)
+- **STORY-22** — Per-project usage metering (record + display)  [:white_check_mark: verified]
   > Persist the token usage emitted on each AcpEvent turn-complete
   > (ADR-0009), attributed to project and session, and surface cumulative
   > usage (with a cost estimate) to the project owner. The data foundation
