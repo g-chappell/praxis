@@ -3905,7 +3905,7 @@ epics:
               - "ADR committed under docs/decisions/ as Proposed, covering registry + creds + rendering + caps."
           - id: TASK-147
             title: "db: mcp_connectors table + migration + codegen"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["packages/db"]
@@ -3919,6 +3919,8 @@ epics:
               connector_id)). migration + codegen.
             depends_on: [TASK-146]
             attempt_count: 0
+            completed: '2026-06-08T10:48:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/344
             is_terminal: false
             task_acceptance:
               - "Table added; codegen; clean."
@@ -3940,7 +3942,7 @@ epics:
               - "A fresh sandbox gets .mcp.json from the enabled registry; creds delivered outside /workspace; integration test."
           - id: TASK-149
             title: "lib + API + UI: /admin/connectors CRUD (creds via crypto, caps, audit-logged)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -3950,6 +3952,8 @@ epics:
               recordAudit. /admin/connectors UI.
             depends_on: [TASK-147, TASK-123]
             attempt_count: 0
+            completed: '2026-06-08T10:48:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/344
             is_terminal: false
             task_acceptance:
               - "CRUD works; credentials encrypted at rest + never returned plaintext; audit rows; 403 non-admin; tests."
