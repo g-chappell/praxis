@@ -4273,3 +4273,132 @@ epics:
             task_acceptance:
               - "The full no-team->create->rename->project flow passes; pre-create a project is blocked with needs_team guidance"
               - "STORY-54 acceptance_criteria satisfied."
+      - id: STORY-55
+        title: "Manage your pair — invite, remove, leave (owner-controlled, cap of 2)"
+        description: |
+          Make team membership owner-controlled and bounded to a pair. On
+          /settings the owner mints an invite link (only when the team has <2
+          members) and can remove the partner; a non-owner can leave. Accepting
+          an invite is refused once the team has 2 members. Settings becomes the
+          single invite surface — the workspace header Invite button is removed.
+          This is the remediation surface: the owner of an over-cap team
+          (graham's 3-member team in prod) reconciles it back to a pair here.
+        acceptance_criteria:
+          - "Only the team owner (teams.createdBy) can mint an invite or remove a member; a non-owner has no invite/remove controls and the corresponding APIs return 403 for them."
+          - "The 'Invite partner' control appears only when the team has fewer than 2 members; at 2 members it's replaced by a 'team is full' note. Minting when full returns 409."
+          - "Accepting an invite when the team already has 2 members is refused with a clear 'this team is full' message on /invite/[code] and adds no membership; an existing member re-opening their link still no-ops (already a member)."
+          - "The owner can remove the partner (confirm dialog -> membership deleted -> audit team.member_removed); the owner cannot remove themselves and cannot be removed. After removal the target can no longer open the project (bounced) or start a new session (POST /api/sessions -> 403)."
+          - "A non-owner can leave the team (confirm -> own membership deleted -> audit team.member_left -> lands in a no-team state); the owner cannot leave (refused)."
+          - "An over-cap team (>2 members) can be reconciled to 2 by the owner removing members; the cap only blocks new joins, never existing ones."
+          - "Settings is the only invite surface — the workspace header Invite button is removed."
+        user_flow:
+          - "Owner on /settings with a solo team -> clicks 'Invite partner' -> link minted + Copy; shares it out-of-band"
+          - "Invitee opens /invite/[code] -> (team has room) joins as partner, lands in the shared project"
+          - "A third person opens an invite for a full team -> /invite/[code] shows 'This team is full (a pair). Ask the owner to make room.'"
+          - "Owner on /settings -> per-partner 'Remove' -> confirm -> member list updates; removed user is blocked on their next request"
+          - "Partner on /settings -> 'Leave team' -> confirm -> returns to the no-team empty state"
+        out_of_scope:
+          - "Force-terminating a removed/left member's already-open live socket or preview (next-request enforcement only — new sessions 403 and re-open is bounced, but an open WS continues until it ends)"
+          - "Transferring ownership, deleting a team, or the owner leaving"
+          - "More than 2 members, roles beyond owner/partner"
+          - "Email/notification on invite or removal"
+          - "Team create/rename (STORY-54), profile (STORY-56), admin attribution (STORY-57)"
+        tasks:
+          - id: TASK-167
+            title: "Cap enforcement on acceptInvite + 'team_full' result"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              In acceptInvite, before adding membership, count the team's members;
+              if already 2 and the accepter isn't already a member, return
+              {status:'team_full'} (add nothing). Preserve the existing atomic
+              single-use claim + already-member no-op. /invite/[code] page renders
+              a 'this team is full' message for team_full (extend the REASONS map).
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "A 3rd distinct user accepting a valid invite for a 2-member team gets status team_full and no membership row is added"
+              - "An existing member re-opening their link still returns ok (already a member); the single-use atomic claim is unchanged"
+              - "/invite/[code] shows a clear team-full message (testid invite-error) for team_full"
+          - id: TASK-168
+            title: "lib + API: removeMember (owner) + leaveTeam (non-owner) with audit"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              removeMember(ownerId, teamId, targetUserId): owner-gated (403
+              otherwise), refuse removing the owner/self-as-owner, delete the
+              team_membership, recordAudit('team.member_removed'). leaveTeam(userId):
+              delete own non-owner membership, recordAudit('team.member_left');
+              owner leaving is refused (409). Routes: DELETE
+              /api/teams/:id/members/:userId, POST /api/teams/:id/leave.
+              Removal/leave is idempotent.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Non-owner calling remove -> 403; owner removing the partner deletes the membership + writes team.member_removed"
+              - "Owner attempting to remove self or to leave -> refused (4xx); non-owner leave deletes own membership + writes team.member_left"
+              - "After removal the target's userOwnsProject(project) is false (POST /api/sessions -> 403)"
+          - id: TASK-169
+            title: "lib + API: team-level invite mint (owner-only, cap-aware)"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Add createTeamInvite(userId): resolve the user's team, owner-gated
+              (403 non-owner), refuse when the team already has 2 members
+              (409 team_full), else mint via the existing teamInvites path. Route
+              POST /api/teams/invites returning {code,url,expiresAt}. Generalizes
+              the current createInvite(userId, projectId) to a teamId lookup with
+              no project.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Non-owner mint -> 403; mint when the team is full -> 409"
+              - "Owner mint with <2 members -> returns a /invite/<code> url"
+          - id: TASK-170
+            title: "Settings Team card controls: invite / remove / leave; remove workspace Invite button"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Extend the STORY-54 Team card. Owner: 'Invite partner' (mint + link
+              + copy, shown only when <2 members; a 'team is full' note at 2) and a
+              per-partner 'Remove' (confirm). Non-owner: 'Leave team' (confirm).
+              Reuse the invite link/copy UI; confirm dialogs mirror the
+              archive/delete pattern; router.refresh on success; inline errors.
+              Remove the workspace header InviteButton
+              (apps/web/components/workspace/invite-button.tsx usage). Testids:
+              team-invite-button, team-invite-link, team-invite-copy,
+              team-full-note, team-member-remove, team-leave-button.
+            depends_on: [TASK-168, TASK-169]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Owner sees Invite only when <2 members (else the full note) + a Remove per partner; non-owner sees Leave and no invite/remove controls"
+              - "Removing or leaving refreshes the card to the new membership; the workspace header no longer renders an Invite button"
+          - id: TASK-171
+            title: "e2e: invite -> accept -> cap blocks 3rd -> owner removes -> access revoked"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Two-user Playwright: owner mints from /settings, partner accepts +
+              sees a team project; a 3rd user accepting is shown team-full; owner
+              removes the partner -> partner re-opening the project is bounced (no
+              access). Assert the workspace header has no Invite button.
+            depends_on: [TASK-167, TASK-168, TASK-169, TASK-170]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Full flow passes: invite->accept->3rd blocked (team_full)->owner removes->removed user loses project access"
+              - "STORY-55 acceptance_criteria satisfied."
