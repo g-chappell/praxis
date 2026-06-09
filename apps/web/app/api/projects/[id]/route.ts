@@ -66,6 +66,20 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!ok) {
       return NextResponse.json({ error: 'not_found' }, { status: 404 });
     }
+    // On archive, cold-store the sandbox immediately (STORY-52): snapshot + tear
+    // the container down (keeping the volume). Best-effort — the read-only guard
+    // already blocks interaction and the idle sweep is the backstop, so a failure
+    // here doesn't fail the archive. Restore needs no call: reopening rebuilds.
+    if (body.archived) {
+      const orchestratorUrl = process.env.ORCHESTRATOR_INTERNAL_URL;
+      const internalSecret = process.env.ORCHESTRATOR_INTERNAL_SECRET;
+      if (orchestratorUrl && internalSecret) {
+        await fetch(`${orchestratorUrl}/projects/${encodeURIComponent(projectId)}/archive`, {
+          method: 'POST',
+          headers: { 'x-internal-secret': internalSecret },
+        }).catch(() => null);
+      }
+    }
     console.info(
       JSON.stringify({
         event: body.archived ? 'project.archived' : 'project.restored',
