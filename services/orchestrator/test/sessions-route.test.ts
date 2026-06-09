@@ -11,7 +11,7 @@ const { startSpy, exposeSpy, spawnSpy, insertSpy, state } = vi.hoisted(() => ({
   exposeSpy: vi.fn(async () => 'http://10.0.0.5:5173'),
   spawnSpy: vi.fn(async () => ({ pid: 1 })),
   insertSpy: vi.fn(),
-  state: { insertCount: 0 },
+  state: { insertCount: 0, projectRow: null as Record<string, unknown> | null },
 }));
 
 vi.mock('../src/runtime', async (importOriginal) => {
@@ -40,7 +40,9 @@ vi.mock('@praxis/db/client', () => ({
   db: {
     select: () => ({
       from: () => ({
-        where: () => ({ limit: async () => [{ templateId: 'react-threejs-scene' }] }),
+        where: () => ({
+          limit: async () => [state.projectRow ?? { templateId: 'react-threejs-scene' }],
+        }),
       }),
     }),
     insert: () => ({
@@ -80,6 +82,7 @@ beforeEach(() => {
   spawnSpy.mockClear();
   insertSpy.mockClear();
   state.insertCount = 0;
+  state.projectRow = null;
 });
 
 afterEach(() => {
@@ -129,6 +132,15 @@ describe('POST /sessions room reuse (STORY-32)', () => {
       const room = getRoomByProject(projectId);
       if (room) deleteRoom(room.sessionId);
     }
+  });
+
+  it('refuses an archived project (read-only cold storage, STORY-52) — no sandbox start', async () => {
+    state.projectRow = { templateId: 'react-threejs-scene', archivedAt: new Date() };
+    const res = await post('archived-proj', 'user-a', 'Ada');
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'archived' });
+    expect(startSpy).not.toHaveBeenCalled();
+    expect(insertSpy).not.toHaveBeenCalled();
   });
 
   it('two simultaneous first-joiners do not double-boot (per-project create-lock)', async () => {

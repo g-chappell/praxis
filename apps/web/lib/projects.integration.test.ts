@@ -16,6 +16,7 @@ import { eq } from 'drizzle-orm';
 
 import {
   duplicateProjectRow,
+  isProjectArchived,
   listUserProjects,
   setProjectArchived,
   setProjectBudget,
@@ -164,6 +165,21 @@ describeDb('setProjectArchived + listUserProjects status filter (real DB)', () =
       expect(await setProjectArchived(stranger, projectId, true, db)).toBe(false);
       const active = await listUserProjects(owner, { status: 'active' }, db);
       expect(active.map((p) => p.id)).toContain(projectId);
+    });
+  });
+
+  it('isProjectArchived tracks archived_at (STORY-52)', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const { projectId } = await seedTeamWithProject(db, owner);
+
+      expect(await isProjectArchived(projectId, db)).toBe(false);
+      await setProjectArchived(owner, projectId, true, db);
+      expect(await isProjectArchived(projectId, db)).toBe(true);
+      await setProjectArchived(owner, projectId, false, db);
+      expect(await isProjectArchived(projectId, db)).toBe(false);
+      // A missing project reads as not-archived (ownership check 404s it upstream).
+      expect(await isProjectArchived(randomUUID(), db)).toBe(false);
     });
   });
 });
