@@ -67,4 +67,30 @@ describe('ProjectList', () => {
     expect(queryByTestId('projects-no-match')).not.toBeNull();
     expect(names(container)).toEqual([]);
   });
+
+  it('archived projects have no Open button and a non-clickable name (STORY-52/TASK-160)', () => {
+    const archived: ProjectSummary = {
+      ...p('Archived One', '2026-01-04T00:00:00Z'),
+      archivedAt: new Date('2026-01-05T00:00:00Z'),
+    };
+    const { container, queryByText, getByTestId } = render(
+      <ProjectList projects={[archived]} status="archived" />,
+    );
+
+    // No Open button, and the name isn't wrapped in a link to the workspace.
+    expect(queryByText('Open')).toBeNull();
+    expect(container.querySelector('li a[href="/projects/Archived One"]')).toBeNull();
+    expect(container.querySelector('li .font-medium')?.textContent).toBe('Archived One');
+
+    // Restore is the way back in.
+    expect(getByTestId('restore-project-button')).not.toBeNull();
+  });
+
+  it('active projects keep the Open button and a clickable name', () => {
+    const { container, getByText } = render(
+      <ProjectList projects={[p('Live One', '2026-01-04T00:00:00Z')]} status="active" />,
+    );
+    expect(getByText('Open')).not.toBeNull();
+    expect(container.querySelector('li a[href="/projects/Live One"]')).not.toBeNull();
+  });
 });
