@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 47 / 52 (90%)
-- **Total tasks:** 160
-- **Done:** 153 (96%)
-- **Ready:** 7
+- **Features verified:** 47 / 53 (89%)
+- **Total tasks:** 165
+- **Done:** 153 (93%)
+- **Ready:** 12
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2493,3 +2493,89 @@ requiring both-contributor sign-off before implementation.
     _Task AC:_
     - Docker-gated integration confirms the enabled connector is wired into the sandbox.
     - STORY-50 acceptance_criteria satisfied.
+
+## EPIC-10 — Teams & profiles — manage your pair
+
+Praxis is a two-person workspace, but the team-as-shared-workspace model
+is invisible and unmanaged: teams were auto-created ("Personal"), invites
+silently added members with full access to ALL the team's projects, and
+there was no UI to see members, remove them, rename the team, or edit your
+own profile. In prod this let one team accumulate 3 members unnoticed.
+This epic makes the pair explicit and owner-controlled (hard cap of 2),
+adds a minimal user profile, and corrects admin attribution so sessions
+and projects reflect REAL participation + ownership, not bare membership.
+
+- **STORY-54** — Create and manage your team
+  > Make teams explicit. Today a "Personal" team is silently auto-created
+  > on first project; this removes that — a user must deliberately create a
+  > named team to build, or join someone else's via invite. The owner can
+  > see the team's members (owner/partner badges + joined date) and rename
+  > it. Foundation for the rest of EPIC-10. NOTE: this couples to project
+  > creation — with no auto-create, creating a project requires an existing
+  > team, so the create flow now instructs a teamless user to make/join one.
+  **Acceptance criteria:**
+  - A signed-in user with no team sees an empty Team section on /settings instructing them to create a team (with a name) to start building, or join another user's team via an invite link; teams are NOT auto-created.
+  - Creating a team (non-empty name, <=60 chars) makes the creator its owner; a user already in a team cannot create a second one (one team per user this pass).
+  - Attempting to create a project while in no team is refused and the UI tells the user to create or join a team first (no project and no team are silently created).
+  - The owner sees the team name as editable and can rename it (persisted, audit-logged team.renamed); a non-owner sees the name read-only. Both see the member list with an owner badge, partner (if any), and each member's joined date.
+  - Empty/whitespace names are rejected on create and rename (Save disabled + inline error); server 403s a non-owner rename and 409s a duplicate-team create.
+  **User flow:**
+  1. New user (no team) opens /settings -> Team section shows empty state: 'You don't have a team yet. Create one to start building, or ask a teammate for an invite link.'
+  2. User clicks 'Create team', enters a name, Submit -> team created, they're shown as owner; they can now create projects
+  3. Teamless user instead clicks 'New project' -> blocked with the same create-or-join-a-team guidance
+  4. Owner opens /settings later -> Team card shows editable name + member list (owner badge, partner, joined dates); edits name, Save -> 'Saving...' -> name updates
+  5. Partner (non-owner) opens /settings -> sees team name read-only + member list
+  **Out of scope:**
+  - Inviting / removing members and leaving a team (STORY-55) — this pass shows members and the empty-state mentions invites but builds no invite/remove controls
+  - Editing your own display name / profile (STORY-56)
+  - Fixing admin session/project attribution (STORY-57)
+  - More than one team per user, transferring ownership, deleting a team, team avatars
+  - :black_circle: **TASK-162** — lib + API: create / get / rename team (one-team-per-user, owner-gated rename)  `high` `medium` _(apps/web, packages/db)_
+    > createTeam(userId, name): 409 if the user is already in a team; else
+    > insert team (name, createdBy=userId) + owner team_membership; return
+    > it. getTeamForUser(userId) -> {id, name, isOwner, members:[{userId,
+    > email, displayName, isOwner, joinedAt}]} | null. renameTeam(userId,
+    > teamId, name): owner-gated (403 otherwise), trim, non-empty, <=60;
+    > audit recordAudit('team.renamed'). Routes: POST /api/teams,
+    > PATCH /api/teams/:id. No schema change (teams.name exists).
+    _Task AC:_
+    - createTeam returns 409 when the user already belongs to a team; on success the creator is the owner member
+    - renameTeam returns 403 for a non-owner and 400 for empty/>60-char names; writes a team.renamed audit row on success
+    - getTeamForUser returns null when the user has no team, else the team + members with isOwner/joinedAt
+  - :black_circle: **TASK-163** — Require an explicit team to create a project (remove auto-create)  `high` `small` _(apps/web)_
+    > Remove the ensurePersonalTeam auto-create from POST /api/projects;
+    > when the user has no team, return 409 {error:'needs_team'} and create
+    > nothing. When they have one, create the project under it.
+    > Update/retire ensurePersonalTeam in lib/projects.ts.
+    _Task AC:_
+    - POST /api/projects with no team returns 409 needs_team and creates neither a team nor a project
+    - POST /api/projects with a team creates the project under that team
+  - :black_circle: **TASK-164** — Settings UI: Team card — empty/create state, member list, owner rename  `high` `medium` _(apps/web)_  
+    _depends on: TASK-162_
+    > Add a Team card to /settings. No team -> empty state with a
+    > Create-team inline form (mirrors EditProjectButton pattern: inline
+    > input, inline text-destructive error, 'Creating...' pending,
+    > router.refresh). Has team -> member list (owner badge, partner,
+    > joined date) + editable name for the owner / read-only for non-owner.
+    > Testids: team-card, team-create-form, team-name-input,
+    > team-create-submit, team-rename-input, team-rename-save,
+    > team-member-row, team-member-owner-badge.
+    _Task AC:_
+    - No-team user sees the create form; creating refreshes into the populated card with them as owner
+    - Owner sees an editable name + Save (disabled when empty); non-owner sees read-only name; members render with owner badge + joined date
+  - :black_circle: **TASK-165** — Project-create UX: guide a teamless user to create/join a team  `med` `small` _(apps/web)_  
+    _depends on: TASK-163_
+    > When project creation returns needs_team (or on the dashboard when
+    > the user has no team), surface guidance: 'Create a team in Settings to
+    > start building, or join a teammate's via an invite link', linking to
+    > /settings.
+    _Task AC:_
+    - A teamless user attempting to create a project sees the create-or-join-a-team guidance linking to /settings; no error toast/crash
+  - :black_circle: **TASK-166** :checkered_flag: — e2e: no-team -> create team -> rename -> create a project; members list  `med` `small` _(apps/web)_  
+    _depends on: TASK-162, TASK-163, TASK-164, TASK-165_
+    > Playwright: fresh user signs in -> /settings Team section shows empty
+    > state -> create team 'Acme' -> rename to 'Acme Labs' -> create a
+    > project succeeds -> member list shows the user as owner.
+    _Task AC:_
+    - The full no-team->create->rename->project flow passes; pre-create a project is blocked with needs_team guidance
+    - STORY-54 acceptance_criteria satisfied.
