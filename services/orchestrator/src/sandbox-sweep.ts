@@ -19,7 +19,7 @@ import { deleteRoom, getRoomByProject, getSandbox } from './runtime';
  *  closes the shared agent + drops the in-memory room, and marks the project's
  *  open session(s) ended in the DB. The project VOLUME is never touched — files
  *  persist for the next open. Best-effort: a failure is logged, never thrown. */
-async function cleanupStoppedProject(projectId: string): Promise<void> {
+export async function cleanupStoppedProject(projectId: string): Promise<void> {
   removePreview(projectId);
   const room = getRoomByProject(projectId);
   if (room) {

@@ -221,12 +221,18 @@ sessionsRoute.post('/', async (c) => {
       agentSessionId: projects.agentSessionId,
       controlMode: projects.controlMode,
       ownerUserId: projects.createdBy,
+      archivedAt: projects.archivedAt,
     })
     .from(projects)
     .where(eq(projects.id, projectId))
     .limit(1);
   if (!project) {
     return c.json({ error: 'project_not_found' }, 404);
+  }
+  // Archived projects are read-only cold storage (STORY-52). The web app gates
+  // this too; refuse here as the security boundary so no session/sandbox spins up.
+  if (project.archivedAt) {
+    return c.json({ error: 'archived' }, 409);
   }
 
   // Attach to the project's live room, or create it once (STORY-32). A second

@@ -5,17 +5,24 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { destroy, purge, clone, start, stop } = vi.hoisted(() => ({
+const { destroy, purge, clone, start, stop, getRoomByProject, cleanup } = vi.hoisted(() => ({
   destroy: vi.fn(async () => {}),
   purge: vi.fn(),
   clone: vi.fn(async () => true),
   start: vi.fn(async () => ({ projectId: 'new', containerId: 'c' })),
   stop: vi.fn(async () => {}),
+  getRoomByProject: vi.fn(() => undefined as unknown),
+  cleanup: vi.fn(async () => {}),
 }));
 
 vi.mock('../src/runtime', () => ({
   getSandbox: () => ({ destroy, clone, start, stop }),
   purgeProjectRooms: purge,
+  getRoomByProject,
+}));
+
+vi.mock('../src/sandbox-sweep', () => ({
+  cleanupStoppedProject: cleanup,
 }));
 
 import { projectsRoute } from '../src/routes/projects';
@@ -29,6 +36,8 @@ beforeEach(() => {
   clone.mockReset().mockResolvedValue(true);
   start.mockReset().mockResolvedValue({ projectId: 'new', containerId: 'c' });
   stop.mockReset().mockResolvedValue(undefined);
+  getRoomByProject.mockReset().mockReturnValue(undefined);
+  cleanup.mockReset().mockResolvedValue(undefined);
 });
 afterEach(() => {
   delete process.env.ORCHESTRATOR_INTERNAL_SECRET;
@@ -106,5 +115,45 @@ describe('POST /projects/:projectId/duplicate', () => {
     clone.mockRejectedValueOnce(new Error('boom'));
     const res = await dup({ newProjectId: 'new', templateId: 'blank' });
     expect(res.status).toBe(502);
+  });
+});
+
+describe('POST /projects/:projectId/archive', () => {
+  function archive(withSecret = true) {
+    return projectsRoute.request('/p1/archive', {
+      method: 'POST',
+      headers: { ...(withSecret ? { 'x-internal-secret': SECRET } : {}) },
+    });
+  }
+
+  it('rejects without the internal secret', async () => {
+    const res = await archive(false);
+    expect(res.status).toBe(403);
+    expect(stop).not.toHaveBeenCalled();
+    expect(cleanup).not.toHaveBeenCalled();
+  });
+
+  it('stops the live sandbox (snapshot + teardown) and cleans up when a room exists', async () => {
+    getRoomByProject.mockReturnValueOnce({ handle: { projectId: 'p1' } });
+    const res = await archive();
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true });
+    expect(stop).toHaveBeenCalledWith({ projectId: 'p1' });
+    expect(cleanup).toHaveBeenCalledWith('p1');
+  });
+
+  it('still cleans up (and does not stop) when no room exists', async () => {
+    const res = await archive();
+    expect(res.status).toBe(200);
+    expect(stop).not.toHaveBeenCalled();
+    expect(cleanup).toHaveBeenCalledWith('p1');
+  });
+
+  it('stays best-effort (200) when stop throws', async () => {
+    getRoomByProject.mockReturnValueOnce({ handle: { projectId: 'p1' } });
+    stop.mockRejectedValueOnce(new Error('boom'));
+    const res = await archive();
+    expect(res.status).toBe(200);
+    expect(cleanup).toHaveBeenCalledWith('p1');
   });
 });

@@ -60,6 +60,48 @@ test.describe('project archive + restore', () => {
     await page.getByTestId('tab-active').click();
     await expect(page.getByText(projectName)).toBeVisible({ timeout: 10_000 });
   });
+
+  // STORY-52: an archived project is read-only cold storage — opening it renders
+  // the ArchivedNotice instead of the live workspace shell (so the agent + editor
+  // never mount), and Restore reopens it into the interactive workspace. The
+  // sandbox teardown-on-archive + restore-rebuilds-from-snapshot round-trip is
+  // proven at the Docker layer (packages/sandbox persistence.test.ts) and the
+  // orchestrator archive endpoint (projects-route.test.ts); here we prove the
+  // user-facing read-only guard + restore path end-to-end.
+  test('an archived project opens read-only; restore returns it to the live workspace', async ({
+    page,
+  }) => {
+    const email = `archived-ro-${Date.now()}@test.local`;
+    await page.goto('/signin');
+    await page.getByLabel(/email/i).fill(email);
+    await page.getByRole('button', { name: /email me a sign-in link/i }).click();
+    await page.waitForURL(/\/signin\/check-email/, { timeout: 30_000 });
+    const verifyUrl = await pollForMagicLink(email);
+    await page.goto(verifyUrl);
+    await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
+
+    const res = await page.request.post('/api/projects', { data: { name: `RO ${Date.now()}` } });
+    expect(res.ok()).toBeTruthy();
+    const { id } = (await res.json()) as { id: string };
+    expect(id).toBeTruthy();
+
+    // Archive via the API (the list round-trip is covered by the test above).
+    const archived = await page.request.patch(`/api/projects/${id}`, {
+      data: { archived: true },
+    });
+    expect(archived.ok()).toBeTruthy();
+
+    // Opening it is read-only: the ArchivedNotice renders and the live shell
+    // (ControlBar 'Mode') never mounts.
+    await page.goto(`/projects/${id}`);
+    await expect(page.getByText(/this project is archived/i)).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('Mode')).toHaveCount(0);
+
+    // Restore from the notice → reloads into the interactive workspace shell.
+    await page.getByRole('button', { name: /restore project/i }).click();
+    await expect(page.getByText('Mode')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/this project is archived/i)).toHaveCount(0);
+  });
 });
 
 async function pollForMagicLink(forEmail: string, timeoutMs = 10_000): Promise<string> {

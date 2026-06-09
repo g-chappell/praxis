@@ -3310,6 +3310,8 @@ epics:
           sandbox and makes it interactive again. This story makes that real.
           SUPERSEDES STORY-40's out_of_scope item "Forcibly destroying the
           sandbox container on archive (idle sweep handles it)".
+        verified_at: '2026-06-09T10:17:00Z'
+        feature_complete: pending
         acceptance_criteria:
           - "Opening an archived project is read-only: POST /sessions is refused for an archived project (no agent prompts run, no file saves), and the UI clearly shows the project is archived / read-only with a Restore path."
           - "On archive the project's sandbox container is torn down (not left to the idle sweep) and its files are preserved in cold storage (MinIO snapshot, ADR-0008) it can be rebuilt from."
@@ -3326,7 +3328,7 @@ epics:
         tasks:
           - id: TASK-157
             title: "Guard: refuse sessions + prompts + file saves for archived projects (read-only)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web", "services/orchestrator"]
@@ -3343,7 +3345,7 @@ epics:
               - "Archived project: POST /sessions refused; prompt + file-save rejected; UI shows read-only + Restore; tests."
           - id: TASK-158
             title: "Archive tears down the container to cold storage; restore rebuilds"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["services/orchestrator", "packages/sandbox"]
@@ -3361,7 +3363,7 @@ epics:
               - "After archive: no running container; files snapshotted. After restore: container rebuilt, files intact. Integration test (Docker-gated)."
           - id: TASK-159
             title: "e2e/integration: archived is read-only; restore rebuilds with files intact"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]

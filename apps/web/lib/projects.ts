@@ -153,6 +153,22 @@ export async function setProjectArchived(
   return Boolean(row);
 }
 
+/** Whether a project is archived (STORY-52). Call AFTER an ownership/membership
+ *  check — this only reads archived_at. Used to gate interaction (sessions are
+ *  refused, the workspace renders read-only) for cold-stored projects. A missing
+ *  project reads as not-archived (the ownership check already 403/404s it). */
+export async function isProjectArchived(
+  projectId: string,
+  database: Database = db,
+): Promise<boolean> {
+  const [row] = await database
+    .select({ archivedAt: projects.archivedAt })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+  return Boolean(row?.archivedAt);
+}
+
 /** Update a project the user owns. Trims inputs; `name` (when provided) must be
  *  non-empty and ≤ NAME_MAX, `description` ≤ DESCRIPTION_MAX (empty string clears
  *  it to null). Returns the updated summary, or null when the project isn't the

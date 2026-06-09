@@ -11,7 +11,7 @@ import { NoPlatformKeyError, getActivePlatformKey, tryGetActivePlatformKey } fro
 
 import { getAuth } from '@/lib/auth';
 import { connectorCredsForProject } from '@/lib/connector-creds';
-import { userOwnsProject } from '@/lib/projects';
+import { isProjectArchived, userOwnsProject } from '@/lib/projects';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,6 +29,12 @@ export async function POST(req: NextRequest) {
   }
   if (!(await userOwnsProject(session.user.id, projectId))) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  // Archived projects are read-only cold storage (STORY-52): refuse to start a
+  // session so the agent can't be prompted and files can't be edited. Restore
+  // (PATCH {archived:false}) brings it back.
+  if (await isProjectArchived(projectId)) {
+    return NextResponse.json({ error: 'archived' }, { status: 409 });
   }
 
   const orchestratorUrl = process.env.ORCHESTRATOR_INTERNAL_URL;

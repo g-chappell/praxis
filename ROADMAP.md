@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 46 / 51 (90%)
 - **Total tasks:** 158
-- **Done:** 149 (94%)
-- **Ready:** 9
+- **Done:** 152 (96%)
+- **Ready:** 6
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2031,7 +2031,7 @@ addition to the Sandbox interface (ADR + sign-off).
     - e2e passes asserting the copy has the source's files and is independent of the original.
     - STORY-42 acceptance_criteria satisfied.
 
-- **STORY-52** — Archived projects are read-only cold storage
+- **STORY-52** — Archived projects are read-only cold storage  [:hourglass: pending]
   > STORY-40 made archive/restore a reversible STATE change but left an
   > archived project fully interactive: it only sets archived_at (the
   > sandbox/volume are untouched, container left to the idle sweep), so a
@@ -2055,7 +2055,7 @@ addition to the Sandbox interface (ADR + sign-off).
   - Auto-archiving by inactivity (still manual).
   - A read-only file BROWSER beyond what the existing workspace renders (this pass blocks interaction; a polished archived viewer can come later).
   - Changing the snapshot/restore mechanism itself (ADR-0008 MinIO) beyond tearing down on archive + refusing to start while archived.
-  - :black_circle: **TASK-157** — Guard: refuse sessions + prompts + file saves for archived projects (read-only)  `high` `medium` _(apps/web, services/orchestrator)_
+  - :white_check_mark: **TASK-157** — Guard: refuse sessions + prompts + file saves for archived projects (read-only)  `high` `medium` _(apps/web, services/orchestrator)_
     > Block interaction with an archived project. Web: POST /api/sessions
     > returns a clear 'archived' error when projects.archived_at is set;
     > the workspace surfaces a read-only/archived state with a Restore
@@ -2063,7 +2063,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > reject prompts / file_save frames) for an archived project.
     _Task AC:_
     - Archived project: POST /sessions refused; prompt + file-save rejected; UI shows read-only + Restore; tests.
-  - :black_circle: **TASK-158** — Archive tears down the container to cold storage; restore rebuilds  `high` `medium` _(services/orchestrator, packages/sandbox)_  
+  - :white_check_mark: **TASK-158** — Archive tears down the container to cold storage; restore rebuilds  `high` `medium` _(services/orchestrator, packages/sandbox)_  
     _depends on: TASK-157_
     > On archive, snapshot the sandbox to MinIO (ADR-0008) and destroy the
     > running container (cold storage — no live container for an archived
@@ -2073,7 +2073,7 @@ addition to the Sandbox interface (ADR + sign-off).
     > performs the snapshot + teardown / rebuild.
     _Task AC:_
     - After archive: no running container; files snapshotted. After restore: container rebuilt, files intact. Integration test (Docker-gated).
-  - :black_circle: **TASK-159** :checkered_flag: — e2e/integration: archived is read-only; restore rebuilds with files intact  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-159** :checkered_flag: — e2e/integration: archived is read-only; restore rebuilds with files intact  `med` `small` _(apps/web)_  
     _depends on: TASK-157, TASK-158_
     > Archive a seeded project → opening it is read-only (no agent, no
     > edits) and the container is gone → restore → interactive again with
