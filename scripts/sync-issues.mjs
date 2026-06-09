@@ -66,6 +66,26 @@ const roadmap = parse(yamlSrc);
 const epics = roadmap.epics ?? [];
 log(`Loaded roadmap: ${epics.length} epics`);
 
+// Completion helpers — shared by the board-Status seed (Pass D) and the
+// close pass (Pass E).
+const isTaskComplete = (task) => task.status === 'done';
+const isStoryComplete = (story) =>
+  story.feature_complete === 'verified' ||
+  (Array.isArray(story.tasks) && story.tasks.length > 0 && story.tasks.every(isTaskComplete));
+const isEpicComplete = (epic) =>
+  Array.isArray(epic.stories) && epic.stories.length > 0 && epic.stories.every(isStoryComplete);
+
+// Roadmap ids that are complete — used to seed the right board Status (Done vs
+// Backlog) for items that don't yet have a Status set.
+const completedIds = new Set();
+for (const epic of epics) {
+  for (const story of epic.stories ?? []) {
+    for (const task of story.tasks ?? []) if (isTaskComplete(task)) completedIds.add(task.id);
+    if (isStoryComplete(story)) completedIds.add(story.id);
+  }
+  if (isEpicComplete(epic)) completedIds.add(epic.id);
+}
+
 // ----- discover existing issues -----
 log('Fetching existing repo issues…');
 const existingIssues = ghJson(
@@ -375,44 +395,83 @@ if (!SKIP_SUBISSUES) {
   }
 }
 
-// ----- Pass D: ensure each issue is on the project board -----
+// ----- Pass D: ensure each issue is on the project board with a Status -----
+// New items land with "No Status" unless we set one. We seed the Status field
+// (Done if the roadmap item is complete, else Backlog) for items that have no
+// Status yet — both freshly added items and any existing "No Status" rows —
+// without clobbering a human's manual move (In progress / In review / etc.).
 if (!SKIP_PROJECT) {
-  log('\n=== Pass D: add issues to project board ===');
+  log('\n=== Pass D: add issues to project board + seed Status ===');
 
-  // Fetch existing project items once
+  // Discover the board's node id + Status field + option ids once (don't
+  // hardcode — they're project-specific). Degrade gracefully if unavailable.
+  let projectNodeId = null;
+  let statusFieldId = null;
+  const optionId = {}; // option name -> id
+  try {
+    projectNodeId = ghJson(
+      `gh project view ${PROJECT_NUMBER} --owner ${PROJECT_OWNER} --format json`,
+    ).id;
+    const fields =
+      ghJson(`gh project field-list ${PROJECT_NUMBER} --owner ${PROJECT_OWNER} --format json`)
+        .fields ?? [];
+    const status = fields.find((f) => f.name === 'Status' && Array.isArray(f.options));
+    if (status) {
+      statusFieldId = status.id;
+      for (const o of status.options) optionId[o.name] = o.id;
+    }
+  } catch (err) {
+    log(`  ⚠ could not read project metadata — adding items without Status (${err.message})`);
+  }
+  const canSetStatus = Boolean(projectNodeId && statusFieldId && optionId.Backlog);
+  if (projectNodeId && !canSetStatus) {
+    log('  ⚠ Status field / Backlog option not found — items added without a Status');
+  }
+
+  // Existing board items indexed by content url (capture item id + current status).
   const items = ghJson(
     `gh project item-list ${PROJECT_NUMBER} --owner ${PROJECT_OWNER} --format json --limit 1000`,
   );
-  const itemsOnBoard = new Set();
+  const itemByUrl = new Map();
   for (const it of items.items ?? []) {
-    if (it?.content?.url) itemsOnBoard.add(it.content.url);
+    if (it?.content?.url) itemByUrl.set(it.content.url, { id: it.id, status: it.status ?? '' });
   }
-  log(`  ${itemsOnBoard.size} items already on board.`);
+  log(`  ${itemByUrl.size} items already on board.`);
+
+  function seedStatus(itemId, id) {
+    if (!canSetStatus || !itemId) return;
+    const want = completedIds.has(id) ? 'Done' : 'Backlog';
+    const optId = optionId[want] ?? optionId.Backlog;
+    sh(
+      `gh project item-edit --id ${itemId} --field-id ${statusFieldId} ` +
+        `--single-select-option-id ${optId} --project-id ${projectNodeId}`,
+      { write: true },
+    );
+    log(`  status: ${id} → ${want}`);
+  }
 
   for (const [id, num] of idToNum) {
     if (num < 0) continue;
     const url = `https://github.com/${REPO}/issues/${num}`;
-    if (itemsOnBoard.has(url)) {
-      // already there
-      continue;
+    const existing = itemByUrl.get(url);
+    if (!existing) {
+      const added = DRY_RUN
+        ? { id: null }
+        : ghJson(
+            `gh project item-add ${PROJECT_NUMBER} --owner ${PROJECT_OWNER} --url ${url} --format json`,
+          );
+      log(`  added: ${id} (#${num}) → board`);
+      seedStatus(added?.id, id);
+    } else if (!existing.status) {
+      // On the board but "No Status" — seed without overwriting a manual status.
+      seedStatus(existing.id, id);
     }
-    sh(`gh project item-add ${PROJECT_NUMBER} --owner ${PROJECT_OWNER} --url ${url}`, {
-      write: true,
-    });
-    log(`  added: ${id} (#${num}) → board`);
   }
 }
 
 // ----- Pass E: reconcile open/closed state from roadmap completion -----
 if (!SKIP_CLOSE) {
   log('\n=== Pass E: close completed issues ===');
-
-  const isTaskComplete = (task) => task.status === 'done';
-  const isStoryComplete = (story) =>
-    story.feature_complete === 'verified' ||
-    (Array.isArray(story.tasks) && story.tasks.length > 0 && story.tasks.every(isTaskComplete));
-  const isEpicComplete = (epic) =>
-    Array.isArray(epic.stories) && epic.stories.length > 0 && epic.stories.every(isStoryComplete);
 
   let closed = 0;
   function closeIfComplete(id, complete) {
