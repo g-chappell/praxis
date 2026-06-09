@@ -9,8 +9,8 @@ _Created: 2026-05-31_
 ## Summary
 
 - **Features verified:** 46 / 51 (90%)
-- **Total tasks:** 158
-- **Done:** 152 (96%)
+- **Total tasks:** 159
+- **Done:** 153 (96%)
 - **Ready:** 6
 - **In progress:** 0
 - **Blocked:** 0
@@ -2081,6 +2081,15 @@ addition to the Sandbox interface (ADR + sign-off).
     _Task AC:_
     - e2e/integration proves archived read-only + cold-storage teardown + restore-rebuilds-with-files.
     - STORY-52 acceptance_criteria satisfied.
+  - :white_check_mark: **TASK-160** — Archived projects: drop the redundant Open button + non-clickable name  `low` `small` _(apps/web)_  
+    _depends on: TASK-157_
+    > Post-merge UX follow-up surfaced during STORY-52 live verification:
+    > an archived project can't be opened (opening only renders the restore
+    > prompt), so the dashboard's Open button and the clickable project-name
+    > link are redundant for archived rows. Hide both for archived projects
+    > so Restore is the only way back in; active rows are unchanged.
+    _Task AC:_
+    - Archived rows render no Open button and a non-clickable name; active rows keep both. Unit test in project-list.test.tsx.
 
 ## EPIC-08 — Admin console: accountability & moderation
 

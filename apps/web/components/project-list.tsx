@@ -91,9 +91,10 @@ export function ProjectList({
         </div>
       ) : (
         <ul className="divide-y rounded-md border">
-          {visible.map((p) => (
-            <li key={p.id} className="flex items-center justify-between gap-4 px-4 py-3">
-              <Link href={`/projects/${p.id}`} className="min-w-0 flex-1 hover:underline">
+          {visible.map((p) => {
+            const archived = p.archivedAt !== null;
+            const details = (
+              <>
                 <span className="block truncate font-medium">{p.name}</span>
                 {p.description && (
                   <span className="block truncate text-xs text-muted-foreground">
@@ -105,29 +106,43 @@ export function ProjectList({
                     Created {new Date(p.createdAt).toISOString().slice(0, 10)}
                   </span>
                 )}
-              </Link>
-              <div className="flex shrink-0 items-center gap-2">
-                <Link
-                  href={`/projects/${p.id}`}
-                  className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent"
-                >
-                  Open
-                </Link>
-                {p.archivedAt === null && (
-                  <>
-                    <EditProjectButton projectId={p.id} name={p.name} description={p.description} />
-                    <DuplicateProjectButton projectId={p.id} />
-                  </>
+              </>
+            );
+            return (
+              <li key={p.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                {/* Archived projects are read-only cold storage (STORY-52/TASK-160):
+                    there's no live workspace to open, so the name isn't a link and
+                    the Open button is dropped — Restore is the only way back in. */}
+                {archived ? (
+                  <div className="min-w-0 flex-1">{details}</div>
+                ) : (
+                  <Link href={`/projects/${p.id}`} className="min-w-0 flex-1 hover:underline">
+                    {details}
+                  </Link>
                 )}
-                <ArchiveProjectButton
-                  projectId={p.id}
-                  projectName={p.name}
-                  archived={p.archivedAt !== null}
-                />
-                <DeleteProjectButton projectId={p.id} projectName={p.name} />
-              </div>
-            </li>
-          ))}
+                <div className="flex shrink-0 items-center gap-2">
+                  {!archived && (
+                    <>
+                      <Link
+                        href={`/projects/${p.id}`}
+                        className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent"
+                      >
+                        Open
+                      </Link>
+                      <EditProjectButton
+                        projectId={p.id}
+                        name={p.name}
+                        description={p.description}
+                      />
+                      <DuplicateProjectButton projectId={p.id} />
+                    </>
+                  )}
+                  <ArchiveProjectButton projectId={p.id} projectName={p.name} archived={archived} />
+                  <DeleteProjectButton projectId={p.id} projectName={p.name} />
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -3377,6 +3377,23 @@ epics:
             task_acceptance:
               - "e2e/integration proves archived read-only + cold-storage teardown + restore-rebuilds-with-files."
               - "STORY-52 acceptance_criteria satisfied."
+          - id: TASK-160
+            title: "Archived projects: drop the redundant Open button + non-clickable name"
+            status: done
+            priority: low
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Post-merge UX follow-up surfaced during STORY-52 live verification:
+              an archived project can't be opened (opening only renders the restore
+              prompt), so the dashboard's Open button and the clickable project-name
+              link are redundant for archived rows. Hide both for archived projects
+              so Restore is the only way back in; active rows are unchanged.
+            depends_on: [TASK-157]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "Archived rows render no Open button and a non-clickable name; active rows keep both. Unit test in project-list.test.tsx."
 
   - id: EPIC-08
     title: "Admin console: accountability & moderation"
