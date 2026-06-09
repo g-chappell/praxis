@@ -2122,7 +2122,7 @@ addition to the Sandbox interface (ADR + sign-off).
   - Swapping the ObjectStore backend implementation (S3/GCS adapters) — a new ObjectStore impl + env, separate work.
   - Periodic/scheduled snapshotting beyond the existing stop()/idle-sweep/archive trigger points.
   - Reclaiming the local volume on archive (current teardown keeps it; revisit only if disk pressure warrants).
-  - :black_circle: **TASK-161** :checkered_flag: — Stand up MinIO on durable storage; wire MINIO_* in prod; verify a live snapshot/restore round-trip  `med` `medium` _(infrastructure/deploy)_
+  - :black_circle: **TASK-161** :checkered_flag: — Provision MinIO in prod and verify a live snapshot/restore round-trip  `med` `medium` _(infrastructure/deploy)_
     > Operator-led: run a MinIO container on praxis-net (or point at an
     > external S3 bucket) backed by storage independent of the app VPS
     > disk; create the bucket; add MINIO_ENDPOINT/ACCESS_KEY/SECRET_KEY/

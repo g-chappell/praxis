@@ -3430,7 +3430,7 @@ epics:
           - "Reclaiming the local volume on archive (current teardown keeps it; revisit only if disk pressure warrants)."
         tasks:
           - id: TASK-161
-            title: "Stand up MinIO on durable storage; wire MINIO_* in prod; verify a live snapshot/restore round-trip"
+            title: "Provision MinIO in prod and verify a live snapshot/restore round-trip"
             status: ready
             priority: med
             complexity: medium
