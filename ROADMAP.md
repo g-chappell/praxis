@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 46 / 51 (90%)
-- **Total tasks:** 159
+- **Features verified:** 47 / 52 (90%)
+- **Total tasks:** 160
 - **Done:** 153 (96%)
-- **Ready:** 6
+- **Ready:** 7
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2031,7 +2031,7 @@ addition to the Sandbox interface (ADR + sign-off).
     - e2e passes asserting the copy has the source's files and is independent of the original.
     - STORY-42 acceptance_criteria satisfied.
 
-- **STORY-52** — Archived projects are read-only cold storage  [:hourglass: pending]
+- **STORY-52** — Archived projects are read-only cold storage  [:white_check_mark: verified]
   > STORY-40 made archive/restore a reversible STATE change but left an
   > archived project fully interactive: it only sets archived_at (the
   > sandbox/volume are untouched, container left to the idle sweep), so a
@@ -2044,8 +2044,8 @@ addition to the Sandbox interface (ADR + sign-off).
   > sandbox container on archive (idle sweep handles it)".
   **Acceptance criteria:**
   - Opening an archived project is read-only: POST /sessions is refused for an archived project (no agent prompts run, no file saves), and the UI clearly shows the project is archived / read-only with a Restore path.
-  - On archive the project's sandbox container is torn down (not left to the idle sweep) and its files are preserved in cold storage (MinIO snapshot, ADR-0008) it can be rebuilt from.
-  - On restore the sandbox is rebuilt from the snapshot and the project becomes interactive again with files intact (reuses the start()-restores-from-MinIO path).
+  - On archive the project's sandbox container is torn down (not left to the idle sweep) and its files are preserved (Docker volume on the single-VPS POC; a durable MinIO snapshot per ADR-0008 once the object store is provisioned — see STORY-53) so the project can be rebuilt from them.
+  - On restore the sandbox is rebuilt and the project becomes interactive again with files intact (start() reuses the persisted volume, or restores from the MinIO snapshot when the volume is empty and the object store is configured).
   - STORY-40's archive/restore state transitions + status-filtered dashboard listing continue to work; delete-with-cleanup (STORY-28) remains available.
   **User flow:**
   1. Owner archives a project → its container is torn down; files snapshot to cold storage
@@ -2090,6 +2090,50 @@ addition to the Sandbox interface (ADR + sign-off).
     > so Restore is the only way back in; active rows are unchanged.
     _Task AC:_
     - Archived rows render no Open button and a non-clickable name; active rows keep both. Unit test in project-list.test.tsx.
+
+- **STORY-53** — Provision the MinIO object store for durable sandbox snapshots
+  > Sandbox persistence in prod is currently VOLUME-ONLY: MinIO is not
+  > provisioned (no MINIO_* env), so DockerSandbox.stop() skips the
+  > snapshot and ADR-0008's durable cold storage never engages. This is
+  > the documented degraded default — fine day-to-day on the single VPS
+  > (volumes persist across restarts/deploys; the hygiene volume-prune is
+  > DB-guarded, so archived/active volumes are safe) — but project files
+  > survive only as long as the VPS disk does. A rebuild or disk loss
+  > wipes every project with no off-host copy, and the archived "cold
+  > storage" of STORY-52 AC#2 is volume-only rather than a true snapshot.
+  > 
+  > Provision MinIO so stop()/idle-sweep/archive actually snapshot and
+  > start() can restore from object storage. NO APPLICATION CODE CHANGE is
+  > needed — getSandbox() builds the store from MINIO_* via fromEnv(); this
+  > is operator + verification work. To deliver real durability (not a
+  > same-disk copy) the bucket SHOULD live on separate/backed-up storage.
+  > Also unblocks multi-host / non-Docker sandboxes later (a fresh host has
+  > no local volume and must restore from the snapshot).
+  **Acceptance criteria:**
+  - MinIO (or an S3-compatible bucket) is reachable from the orchestrator on praxis-net, with MINIO_ENDPOINT/ACCESS_KEY/SECRET_KEY/BUCKET set in the prod env (praxis.env) and the orchestrator restarted to pick them up.
+  - Bucket storage is durable independent of the app VPS disk (separate volume/host or external S3), so a VPS rebuild does not lose snapshots — otherwise it is only a same-disk copy and provides no real DR.
+  - Live round-trip verified on the VPS: archive (or idle-sweep) a project → a snapshot object exists in the bucket; remove the local volume → reopen → start() restores /workspace from the snapshot with files intact.
+  - STORY-52 AC#2/#3 are then satisfied in the strong (MinIO snapshot) sense, not just volume-only; secret handling follows the no-platform-creds-in-sandbox rule (MINIO_* live only in prod env, never in /workspace or sandbox env).
+  **User flow:**
+  1. Operator stands up the MinIO bucket on durable storage, adds MINIO_* to praxis.env, restarts the orchestrator
+  2. A project is archived/idle → its /workspace is snapshotted to the bucket
+  3. Even after the local volume is gone (host rebuild), reopening the project restores files from the snapshot
+  **Out of scope:**
+  - Swapping the ObjectStore backend implementation (S3/GCS adapters) — a new ObjectStore impl + env, separate work.
+  - Periodic/scheduled snapshotting beyond the existing stop()/idle-sweep/archive trigger points.
+  - Reclaiming the local volume on archive (current teardown keeps it; revisit only if disk pressure warrants).
+  - :black_circle: **TASK-161** :checkered_flag: — Stand up MinIO on durable storage; wire MINIO_* in prod; verify a live snapshot/restore round-trip  `med` `medium` _(infrastructure/deploy)_
+    > Operator-led: run a MinIO container on praxis-net (or point at an
+    > external S3 bucket) backed by storage independent of the app VPS
+    > disk; create the bucket; add MINIO_ENDPOINT/ACCESS_KEY/SECRET_KEY/
+    > BUCKET to praxis.env (ASCII-only, no inline comments); restart the
+    > orchestrator. Then verify live: archive a project, confirm a
+    > snapshot object lands in the bucket, remove the local volume,
+    > reopen, and confirm start() restores /workspace with files intact.
+    > Record the bootstrap in the orchestrator runbook's Setup history.
+    > No application code change — fromEnv() already builds the store.
+    _Task AC:_
+    - MINIO_* set in prod, orchestrator restarted, and a live archive→snapshot→volume-loss→restore round-trip verified on the VPS with files intact; bucket storage is independent of the app VPS disk; runbook Setup history updated.
 
 ## EPIC-08 — Admin console: accountability & moderation
 
