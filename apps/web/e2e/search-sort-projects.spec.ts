@@ -57,7 +57,7 @@ test.describe('dashboard search + sort', () => {
     // 5. Clear search, sort by Name → Apple is the first row.
     await page.getByTestId('project-search').fill('');
     await page.getByTestId('project-sort').selectOption('name');
-    const firstRowName = page.locator('ul > li').first().locator('a .font-medium');
+    const firstRowName = page.locator('ul > li').first().locator('a .font-semibold');
     await expect(firstRowName).toHaveText(apple);
   });
 });
