@@ -60,7 +60,7 @@ const user = { name: 'Tester', image: null };
 describe('file errors are scoped to the editor, not the chat (TASK-071)', () => {
   it('a file-scoped error (with a path) leaves the chat input enabled', () => {
     const { getByPlaceholderText, queryByText } = render(<ChatPanel currentUser={user} />);
-    const input = getByPlaceholderText(/message as/i) as HTMLInputElement;
+    const input = getByPlaceholderText(/message the assistant/i) as HTMLInputElement;
     expect(input.disabled).toBe(false);
 
     emit({ type: 'error', reason: 'save_failed', path: 'a.ts' });
@@ -71,7 +71,7 @@ describe('file errors are scoped to the editor, not the chat (TASK-071)', () => 
 
   it('a session error (no path) disables the chat and shows Session error', () => {
     const { getByPlaceholderText, queryAllByText } = render(<ChatPanel currentUser={user} />);
-    const input = getByPlaceholderText(/message as/i) as HTMLInputElement;
+    const input = getByPlaceholderText(/message the assistant/i) as HTMLInputElement;
 
     emit({ type: 'error', reason: 'agent_error' });
 

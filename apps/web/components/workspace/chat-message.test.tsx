@@ -27,14 +27,13 @@ describe('initials', () => {
 
 describe('ChatTranscript', () => {
   it('renders each message kind with per-user attribution', () => {
-    const { asFragment, getByText, getAllByText, getByAltText } = render(
-      <ChatTranscript messages={messages} />,
-    );
+    const { asFragment, getByText, getAllByText } = render(<ChatTranscript messages={messages} />);
 
-    // Attribution: names shown; the image author gets an <img>, the other initials.
-    expect(getAllByText('Graham Chappell').length).toBe(4);
-    expect(getByText('Ada Lovelace')).toBeTruthy();
-    expect(getByAltText('Ada Lovelace')).toBeTruthy();
+    // User prompts name the prompting user; agent kinds read as "Assistant" while
+    // still naming who prompted ("· for <name>").
+    expect(getByText('Graham Chappell')).toBeTruthy();
+    expect(getAllByText('Assistant').length).toBe(4);
+    expect(getByText('· for Ada Lovelace')).toBeTruthy();
 
     // Each kind's body rendered.
     expect(getByText('build me a rotating cube')).toBeTruthy();
@@ -43,8 +42,8 @@ describe('ChatTranscript', () => {
     expect(getByText('src/scene.tsx')).toBeTruthy();
     expect(getByText('Tool failed: timeout')).toBeTruthy();
 
-    // Agent kinds tagged; the user prompt is not.
-    expect(getAllByText('Agent').length).toBe(4);
+    // file_change renders the friendly verb for a 'create'.
+    expect(getByText(/wrote/)).toBeTruthy();
 
     expect(asFragment()).toMatchSnapshot();
   });

@@ -65,7 +65,7 @@ export function InviteButton({ projectId }: { projectId: string }) {
               readOnly
               value={link}
               onFocus={(e) => e.currentTarget.select()}
-              className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1 text-xs"
+              className="min-w-0 flex-1 border-2 bg-field px-2 py-1 font-mono text-xs"
             />
             <Button size="sm" variant="outline" data-testid="invite-copy-button" onClick={copy}>
               {copied ? 'Copied' : 'Copy'}

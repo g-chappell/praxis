@@ -6,14 +6,23 @@ exports[`ChatTranscript > renders each message kind with per-user attribution 1`
     class="flex-1 space-y-3 overflow-y-auto"
   >
     <li
-      class="flex gap-2 text-sm"
+      class="flex gap-2.5 text-sm"
     >
-      <span
-        aria-hidden="true"
-        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground"
+      <div
+        class="flex flex-col items-center gap-1 pt-0.5"
       >
-        GC
-      </span>
+        <span
+          class="font-mono text-[0.6rem] text-muted-foreground"
+        >
+          01
+        </span>
+        <span
+          class="inline-grid place-items-center border-2 font-mono font-bold uppercase border-foreground bg-foreground text-background size-6 text-[0.55rem]"
+          title="Graham Chappell"
+        >
+          GC
+        </span>
+      </div>
       <div
         class="min-w-0 flex-1"
       >
@@ -21,7 +30,7 @@ exports[`ChatTranscript > renders each message kind with per-user attribution 1`
           class="flex items-center gap-1.5"
         >
           <span
-            class="truncate font-medium"
+            class="truncate font-semibold"
           >
             Graham Chappell
           </span>
@@ -34,14 +43,23 @@ exports[`ChatTranscript > renders each message kind with per-user attribution 1`
       </div>
     </li>
     <li
-      class="flex gap-2 text-sm"
+      class="flex gap-2.5 text-sm"
     >
-      <span
-        aria-hidden="true"
-        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground"
+      <div
+        class="flex flex-col items-center gap-1 pt-0.5"
       >
-        GC
-      </span>
+        <span
+          class="font-mono text-[0.6rem] text-muted-foreground"
+        >
+          02
+        </span>
+        <span
+          class="inline-grid place-items-center border-2 font-mono font-bold uppercase border-stamp bg-stamp text-destructive-foreground size-6 text-[0.55rem]"
+          title="Assistant"
+        >
+          AI
+        </span>
+      </div>
       <div
         class="min-w-0 flex-1"
       >
@@ -49,14 +67,14 @@ exports[`ChatTranscript > renders each message kind with per-user attribution 1`
           class="flex items-center gap-1.5"
         >
           <span
-            class="truncate font-medium"
+            class="font-semibold"
           >
-            Graham Chappell
+            Assistant
           </span>
           <span
-            class="rounded bg-muted px-1 text-[10px] uppercase tracking-wide text-muted-foreground"
+            class="truncate text-xs italic text-muted-foreground"
           >
-            Agent
+            · for Graham Chappell
           </span>
         </div>
         <p
@@ -67,14 +85,23 @@ exports[`ChatTranscript > renders each message kind with per-user attribution 1`
       </div>
     </li>
     <li
-      class="flex gap-2 text-sm"
+      class="flex gap-2.5 text-sm"
     >
-      <span
-        aria-hidden="true"
-        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground"
+      <div
+        class="flex flex-col items-center gap-1 pt-0.5"
       >
-        GC
-      </span>
+        <span
+          class="font-mono text-[0.6rem] text-muted-foreground"
+        >
+          03
+        </span>
+        <span
+          class="inline-grid place-items-center border-2 font-mono font-bold uppercase border-stamp bg-stamp text-destructive-foreground size-6 text-[0.55rem]"
+          title="Assistant"
+        >
+          AI
+        </span>
+      </div>
       <div
         class="min-w-0 flex-1"
       >
@@ -82,14 +109,14 @@ exports[`ChatTranscript > renders each message kind with per-user attribution 1`
           class="flex items-center gap-1.5"
         >
           <span
-            class="truncate font-medium"
+            class="font-semibold"
           >
-            Graham Chappell
+            Assistant
           </span>
           <span
-            class="rounded bg-muted px-1 text-[10px] uppercase tracking-wide text-muted-foreground"
+            class="truncate text-xs italic text-muted-foreground"
           >
-            Agent
+            · for Graham Chappell
           </span>
         </div>
         <p
@@ -110,14 +137,23 @@ exports[`ChatTranscript > renders each message kind with per-user attribution 1`
       </div>
     </li>
     <li
-      class="flex gap-2 text-sm"
+      class="flex gap-2.5 text-sm"
     >
-      <span
-        aria-hidden="true"
-        class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground"
+      <div
+        class="flex flex-col items-center gap-1 pt-0.5"
       >
-        GC
-      </span>
+        <span
+          class="font-mono text-[0.6rem] text-muted-foreground"
+        >
+          04
+        </span>
+        <span
+          class="inline-grid place-items-center border-2 font-mono font-bold uppercase border-stamp bg-stamp text-destructive-foreground size-6 text-[0.55rem]"
+          title="Assistant"
+        >
+          AI
+        </span>
+      </div>
       <div
         class="min-w-0 flex-1"
       >
@@ -125,27 +161,27 @@ exports[`ChatTranscript > renders each message kind with per-user attribution 1`
           class="flex items-center gap-1.5"
         >
           <span
-            class="truncate font-medium"
+            class="font-semibold"
           >
-            Graham Chappell
+            Assistant
           </span>
           <span
-            class="rounded bg-muted px-1 text-[10px] uppercase tracking-wide text-muted-foreground"
+            class="truncate text-xs italic text-muted-foreground"
           >
-            Agent
+            · for Graham Chappell
           </span>
         </div>
         <p
-          class="text-muted-foreground"
+          class="font-mono text-xs text-stamp"
         >
           <span
             aria-hidden="true"
           >
             ✎ 
           </span>
-          create 
+          wrote 
           <span
-            class="font-mono text-xs"
+            class="font-bold"
           >
             src/scene.tsx
           </span>
@@ -153,13 +189,23 @@ exports[`ChatTranscript > renders each message kind with per-user attribution 1`
       </div>
     </li>
     <li
-      class="flex gap-2 text-sm"
+      class="flex gap-2.5 text-sm"
     >
-      <img
-        alt="Ada Lovelace"
-        class="h-6 w-6 shrink-0 rounded-full object-cover"
-        src="https://example.com/ada.png"
-      />
+      <div
+        class="flex flex-col items-center gap-1 pt-0.5"
+      >
+        <span
+          class="font-mono text-[0.6rem] text-muted-foreground"
+        >
+          05
+        </span>
+        <span
+          class="inline-grid place-items-center border-2 font-mono font-bold uppercase border-stamp bg-stamp text-destructive-foreground size-6 text-[0.55rem]"
+          title="Assistant"
+        >
+          AI
+        </span>
+      </div>
       <div
         class="min-w-0 flex-1"
       >
@@ -167,14 +213,14 @@ exports[`ChatTranscript > renders each message kind with per-user attribution 1`
           class="flex items-center gap-1.5"
         >
           <span
-            class="truncate font-medium"
+            class="font-semibold"
           >
-            Ada Lovelace
+            Assistant
           </span>
           <span
-            class="rounded bg-muted px-1 text-[10px] uppercase tracking-wide text-muted-foreground"
+            class="truncate text-xs italic text-muted-foreground"
           >
-            Agent
+            · for Ada Lovelace
           </span>
         </div>
         <p

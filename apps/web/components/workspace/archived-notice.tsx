@@ -34,7 +34,7 @@ export function ArchivedNotice({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex h-full items-center justify-center p-6">
-      <div className="max-w-md space-y-4 rounded-lg border p-6 text-center">
+      <div className="max-w-md space-y-4 border-2 p-6 text-center shadow-hard">
         <h1 className="text-xl font-semibold tracking-tight">This project is archived</h1>
         <p className="text-sm text-muted-foreground">
           Archived projects are read-only and kept in cold storage — the agent and file editing are

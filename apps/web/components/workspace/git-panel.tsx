@@ -2,6 +2,7 @@
 
 import { loader } from '@monaco-editor/react';
 import dynamic from 'next/dynamic';
+import { useTheme } from 'next-themes';
 import { useCallback, useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -80,7 +81,7 @@ export function GitPanel({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
+      <div className="flex items-center justify-between gap-2 border-b-2 px-3 py-1.5">
         <span className="truncate text-xs text-muted-foreground">
           {branch ? (
             <>
@@ -99,9 +100,9 @@ export function GitPanel({ projectId }: { projectId: string }) {
         <Message>{loadError}</Message>
       ) : (
         <div className="flex min-h-0 flex-1">
-          <ul className="w-72 shrink-0 overflow-y-auto border-r">
+          <ul className="w-72 shrink-0 overflow-y-auto border-r-2">
             {commits.length === 0 && !loading ? (
-              <li className="p-3 text-xs text-muted-foreground">No commits yet.</li>
+              <li className="p-3 text-xs italic text-muted-foreground">No commits yet.</li>
             ) : (
               commits.map((c) => (
                 <li key={c.sha}>
@@ -109,8 +110,8 @@ export function GitPanel({ projectId }: { projectId: string }) {
                     type="button"
                     onClick={() => setSelected(c)}
                     className={cn(
-                      'w-full border-b px-3 py-2 text-left hover:bg-accent',
-                      selected?.sha === c.sha && 'bg-accent',
+                      'w-full border-b-2 border-l-4 border-l-transparent px-3 py-2 text-left hover:bg-accent',
+                      selected?.sha === c.sha && 'border-l-stamp bg-accent',
                     )}
                   >
                     <div className="truncate text-sm">{c.message}</div>
@@ -166,6 +167,7 @@ function CommitDiff({
   const [files, setFiles] = useState<DiffFile[] | null>(null);
   const [activePath, setActivePath] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { resolvedTheme } = useTheme();
 
   useEffect(() => {
     let cancelled = false;
@@ -203,7 +205,7 @@ function CommitDiff({
 
   return (
     <>
-      <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
+      <div className="flex items-center justify-between gap-2 border-b-2 px-3 py-1.5">
         <span className="truncate text-xs text-muted-foreground">
           <span className="font-mono">{commit.sha.slice(0, 7)}</span> {commit.message}
         </span>
@@ -220,7 +222,7 @@ function CommitDiff({
         <Message>No file changes in this commit.</Message>
       ) : (
         <>
-          <div className="flex flex-wrap gap-1 border-b px-2 py-1">
+          <div className="flex flex-wrap gap-1 border-b-2 px-2 py-1">
             {files.map((f) => (
               <button
                 key={f.path}
@@ -244,7 +246,7 @@ function CommitDiff({
               <Message>Binary file — no text preview.</Message>
             ) : active ? (
               <MonacoDiffEditor
-                theme="vs-dark"
+                theme={resolvedTheme === 'dark' ? 'vs-dark' : 'vs'}
                 language={languageFromPath(active.path)}
                 original={active.oldContent}
                 modified={active.newContent}
@@ -317,7 +319,7 @@ function RevertModal({
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={onSubmit}
-        className="w-96 space-y-3 rounded-md border bg-background p-4 shadow-lg"
+        className="w-96 space-y-3 border-2 bg-card p-4 shadow-hard"
       >
         <h2 className="text-sm font-semibold">Revert to commit {short}?</h2>
         <p className="text-xs text-muted-foreground">
@@ -332,7 +334,7 @@ function RevertModal({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={short}
-          className="w-full rounded-md border bg-background px-2 py-1 font-mono text-sm"
+          className="w-full border-2 bg-field px-2 py-1 font-mono text-sm focus-visible:outline-none focus-visible:shadow-hard-stamp"
           aria-label="Confirm commit SHA"
         />
         {error && <p className="text-xs text-destructive">{error}</p>}

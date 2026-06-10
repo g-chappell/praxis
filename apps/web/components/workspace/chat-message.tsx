@@ -1,9 +1,11 @@
+import { Monogram } from '@/components/ui/monogram';
 import { cn } from '@/lib/utils';
 
 // Typed chat messages + their presentational rendering (TASK-032). Pure (no
 // socket), so ChatPanel feeds it state and the snapshot test renders it directly.
-// Each message is attributed to the prompting user (avatar + name); agent-produced
-// kinds carry an "Agent" tag so they read distinctly from the user's own prompt.
+// User prompts are attributed to the prompting user (ink monogram); agent-produced
+// kinds read as the "Assistant" (oxblood monogram) while still naming the user who
+// prompted, so multiplayer attribution (STORY-32) survives.
 
 export interface ChatAuthor {
   name: string;
@@ -28,35 +30,46 @@ export function initials(name: string): string {
   return picked.toUpperCase() || '?';
 }
 
-export function Avatar({ name, image }: ChatAuthor) {
-  if (image) {
-    // Plain <img>: avatar URLs are external (gravatar/OAuth), no Next loader.
-    return <img src={image} alt={name} className="h-6 w-6 shrink-0 rounded-full object-cover" />;
-  }
-  return (
-    <span
-      aria-hidden
-      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-accent-foreground"
-    >
-      {initials(name)}
-    </span>
-  );
+/** Square monogram for a chat author (no photos — index-card feel). */
+export function Avatar({ name }: ChatAuthor) {
+  return <Monogram name={name} size="sm" />;
 }
 
 const AGENT_KINDS = new Set<ChatMessage['kind']>(['text', 'tool_call', 'file_change', 'error']);
 
-export function ChatMessageView({ message }: { message: ChatMessage }) {
+const CHANGE_VERB: Record<string, string> = {
+  create: 'wrote',
+  modify: 'edited',
+  delete: 'deleted',
+};
+
+export function ChatMessageView({ message, index }: { message: ChatMessage; index?: number }) {
   const isAgent = AGENT_KINDS.has(message.kind);
   return (
-    <li className="flex gap-2 text-sm">
-      <Avatar name={message.author.name} image={message.author.image} />
+    <li className="flex gap-2.5 text-sm">
+      <div className="flex flex-col items-center gap-1 pt-0.5">
+        {index != null && (
+          <span className="font-mono text-[0.6rem] text-muted-foreground">
+            {String(index).padStart(2, '0')}
+          </span>
+        )}
+        {isAgent ? (
+          <Monogram name="AI" variant="stamp" size="sm" title="Assistant" />
+        ) : (
+          <Monogram name={message.author.name} variant="ink" size="sm" />
+        )}
+      </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="truncate font-medium">{message.author.name}</span>
-          {isAgent && (
-            <span className="rounded bg-muted px-1 text-[10px] uppercase tracking-wide text-muted-foreground">
-              Agent
-            </span>
+          {isAgent ? (
+            <>
+              <span className="font-semibold">Assistant</span>
+              <span className="truncate text-xs italic text-muted-foreground">
+                · for {message.author.name}
+              </span>
+            </>
+          ) : (
+            <span className="truncate font-semibold">{message.author.name}</span>
           )}
         </div>
         <MessageBody message={message} />
@@ -78,9 +91,10 @@ function MessageBody({ message }: { message: ChatMessage }) {
       );
     case 'file_change':
       return (
-        <p className="text-muted-foreground">
+        <p className="font-mono text-xs text-stamp">
           <span aria-hidden>✎ </span>
-          {message.change} <span className="font-mono text-xs">{message.path}</span>
+          {CHANGE_VERB[message.change] ?? message.change}{' '}
+          <span className="font-bold">{message.path}</span>
         </p>
       );
     case 'error':
@@ -91,8 +105,8 @@ function MessageBody({ message }: { message: ChatMessage }) {
 export function ChatTranscript({ messages }: { messages: ChatMessage[] }) {
   return (
     <ul className={cn('flex-1 space-y-3 overflow-y-auto')}>
-      {messages.map((message) => (
-        <ChatMessageView key={message.id} message={message} />
+      {messages.map((message, i) => (
+        <ChatMessageView key={message.id} message={message} index={i + 1} />
       ))}
     </ul>
   );

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Stamp } from '@/components/ui/stamp';
 import { type ServerFrame, useWorkspaceSocket } from '@/components/workspace/workspace-socket';
 
 // The live preview of the sandbox's dev server (STORY-13/14). The dev server is
@@ -56,27 +57,27 @@ export function PreviewPane() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
-        <a
-          href={previewUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="truncate text-xs text-muted-foreground hover:underline"
-        >
-          {previewUrl}
-        </a>
-        <div className="flex shrink-0 items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={() => setNonce((n) => n + 1)}>
-            Refresh
-          </Button>
+      <div className="flex items-center justify-between gap-2 border-b-2 px-3 py-1.5">
+        <div className="flex min-w-0 items-center gap-2">
+          <Stamp>Live preview</Stamp>
           <a
             href={previewUrl}
             target="_blank"
             rel="noreferrer"
-            className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent"
+            className="truncate font-mono text-xs text-muted-foreground hover:underline"
           >
-            Open ↗
+            {previewUrl}
           </a>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setNonce((n) => n + 1)}>
+            Refresh
+          </Button>
+          <Button asChild size="sm" variant="outline">
+            <a href={previewUrl} target="_blank" rel="noreferrer">
+              Open ↗
+            </a>
+          </Button>
         </div>
       </div>
       <iframe
