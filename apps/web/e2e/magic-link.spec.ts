@@ -28,7 +28,7 @@ test.describe('magic-link sign-in', () => {
     await page.goto('/signin');
     await expect(page.getByRole('heading', { name: /sign in to praxis/i })).toBeVisible();
     await page.getByLabel(/email/i).fill(email);
-    await page.getByRole('button', { name: /email me a sign-in link/i }).click();
+    await page.getByRole('button', { name: /email me a link/i }).click();
 
     // 2. Lands on /signin/check-email with the email surfaced.
     // `next dev` cold compile on /api/auth can be ~15s; allow ~30s here.

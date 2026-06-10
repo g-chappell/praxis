@@ -29,7 +29,7 @@ test.describe('prompt-control modes', () => {
     const email = `ctl-${Date.now()}@test.local`;
     await page.goto('/signin');
     await page.getByLabel(/email/i).fill(email);
-    await page.getByRole('button', { name: /email me a sign-in link/i }).click();
+    await page.getByRole('button', { name: /email me a link/i }).click();
     await page.waitForURL(/\/signin\/check-email/, { timeout: 30_000 });
     const verifyUrl = await pollForMagicLink(email);
     await page.goto(verifyUrl);
@@ -47,7 +47,7 @@ test.describe('prompt-control modes', () => {
     //    the default 'serialised' — enough to confirm the bar renders in-shell.)
     await page.goto(`/projects/${id}`);
     await expect(page.getByText('Mode')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText('Serialised')).toBeVisible();
+    await expect(page.getByText('Anyone')).toBeVisible();
   });
 });
 

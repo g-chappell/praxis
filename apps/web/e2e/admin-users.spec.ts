@@ -85,7 +85,7 @@ test.describe('admin users role management', () => {
 async function signIn(page: Page, email: string): Promise<void> {
   await page.goto('/signin');
   await page.getByLabel(/email/i).fill(email);
-  await page.getByRole('button', { name: /email me a sign-in link/i }).click();
+  await page.getByRole('button', { name: /email me a link/i }).click();
   await page.waitForURL(/\/signin\/check-email/, { timeout: 30_000 });
   const verifyUrl = await pollForMagicLink(email);
   await page.goto(verifyUrl);
