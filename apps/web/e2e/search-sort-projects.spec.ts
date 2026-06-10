@@ -25,7 +25,7 @@ test.describe('dashboard search + sort', () => {
     const email = `search-${Date.now()}@test.local`;
     await page.goto('/signin');
     await page.getByLabel(/email/i).fill(email);
-    await page.getByRole('button', { name: /email me a sign-in link/i }).click();
+    await page.getByRole('button', { name: /email me a link/i }).click();
     await page.waitForURL(/\/signin\/check-email/, { timeout: 30_000 });
     const verifyUrl = await pollForMagicLink(email);
     await page.goto(verifyUrl);
@@ -57,7 +57,7 @@ test.describe('dashboard search + sort', () => {
     // 5. Clear search, sort by Name → Apple is the first row.
     await page.getByTestId('project-search').fill('');
     await page.getByTestId('project-sort').selectOption('name');
-    const firstRowName = page.locator('ul > li').first().locator('a .font-medium');
+    const firstRowName = page.locator('ul > li').first().locator('a .font-semibold');
     await expect(firstRowName).toHaveText(apple);
   });
 });

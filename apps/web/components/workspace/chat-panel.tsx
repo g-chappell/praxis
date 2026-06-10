@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Monogram } from '@/components/ui/monogram';
 import {
-  Avatar,
   type ChatAuthor,
   type ChatMessage,
   ChatTranscript,
@@ -221,15 +222,15 @@ export function ChatPanel({ currentUser }: { currentUser: ChatAuthor }) {
       <PromptQueue />
 
       <form onSubmit={sendPrompt} className="flex items-center gap-2">
-        <Avatar name={currentUser.name} image={currentUser.image} />
-        <input
+        <Monogram variant="ink" name={currentUser.name} />
+        <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={
-            canPrompt ? `Message as ${currentUser.name}…` : 'Another user has control of the agent'
+            canPrompt ? 'Message the assistant…' : 'Another user has control of the assistant'
           }
           disabled={status !== 'connected' || !canPrompt}
-          className="min-w-0 flex-1 rounded-md border px-3 py-2 text-sm"
+          className="min-w-0 flex-1"
         />
         <Button
           type="submit"

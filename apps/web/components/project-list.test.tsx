@@ -28,9 +28,9 @@ const PROJECTS = [
 ];
 
 function names(container: HTMLElement): string[] {
-  // The name span is the only .font-medium inside the row's link (the Edit /
-  // Archive buttons also carry font-medium but live outside the <a>).
-  return [...container.querySelectorAll('li a .font-medium')].map((n) => n.textContent ?? '');
+  // In the (default) ledger view the name span is the only .font-semibold inside
+  // the row's link (the Open / Edit / Archive controls use font-bold, outside the <a>).
+  return [...container.querySelectorAll('li a .font-semibold')].map((n) => n.textContent ?? '');
 }
 
 describe('ProjectList', () => {
@@ -80,7 +80,7 @@ describe('ProjectList', () => {
     // No Open button, and the name isn't wrapped in a link to the workspace.
     expect(queryByText('Open')).toBeNull();
     expect(container.querySelector('li a[href="/projects/Archived One"]')).toBeNull();
-    expect(container.querySelector('li .font-medium')?.textContent).toBe('Archived One');
+    expect(container.querySelector('li .font-semibold')?.textContent).toBe('Archived One');
 
     // Restore is the way back in.
     expect(getByTestId('restore-project-button')).not.toBeNull();

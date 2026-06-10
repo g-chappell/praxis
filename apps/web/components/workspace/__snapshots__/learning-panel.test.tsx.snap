@@ -7,16 +7,23 @@ exports[`LearningLinksList > renders links grouped by topic, each opening in a n
   >
     <section>
       <h3
-        class="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+        class="label-mono mb-1"
       >
         ACP
       </h3>
       <ul
         class="flex flex-col gap-1"
       >
-        <li>
+        <li
+          class="flex items-start gap-2"
+        >
+          <input
+            aria-label="Mark “Agent Client Protocol” as read"
+            class="mt-1.5 size-3.5 shrink-0 accent-[hsl(var(--stamp))]"
+            type="checkbox"
+          />
           <a
-            class="block rounded px-2 py-1 text-sm text-foreground hover:bg-accent"
+            class="block px-1 py-1 text-sm text-foreground hover:bg-accent"
             href="https://acp.example/intro"
             rel="noopener noreferrer"
             target="_blank"
@@ -33,16 +40,23 @@ exports[`LearningLinksList > renders links grouped by topic, each opening in a n
     </section>
     <section>
       <h3
-        class="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+        class="label-mono mb-1"
       >
         MCP
       </h3>
       <ul
         class="flex flex-col gap-1"
       >
-        <li>
+        <li
+          class="flex items-start gap-2"
+        >
+          <input
+            aria-label="Mark “MCP introduction” as read"
+            class="mt-1.5 size-3.5 shrink-0 accent-[hsl(var(--stamp))]"
+            type="checkbox"
+          />
           <a
-            class="block rounded px-2 py-1 text-sm text-foreground hover:bg-accent"
+            class="block px-1 py-1 text-sm text-foreground hover:bg-accent"
             href="https://mcp.example/intro"
             rel="noopener noreferrer"
             target="_blank"
@@ -55,9 +69,16 @@ exports[`LearningLinksList > renders links grouped by topic, each opening in a n
             </span>
           </a>
         </li>
-        <li>
+        <li
+          class="flex items-start gap-2"
+        >
+          <input
+            aria-label="Mark “MCP servers” as read"
+            class="mt-1.5 size-3.5 shrink-0 accent-[hsl(var(--stamp))]"
+            type="checkbox"
+          />
           <a
-            class="block rounded px-2 py-1 text-sm text-foreground hover:bg-accent"
+            class="block px-1 py-1 text-sm text-foreground hover:bg-accent"
             href="https://mcp.example/servers"
             rel="noopener noreferrer"
             target="_blank"
@@ -69,16 +90,23 @@ exports[`LearningLinksList > renders links grouped by topic, each opening in a n
     </section>
     <section>
       <h3
-        class="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+        class="label-mono mb-1"
       >
         Three.js
       </h3>
       <ul
         class="flex flex-col gap-1"
       >
-        <li>
+        <li
+          class="flex items-start gap-2"
+        >
+          <input
+            aria-label="Mark “three.js docs” as read"
+            class="mt-1.5 size-3.5 shrink-0 accent-[hsl(var(--stamp))]"
+            type="checkbox"
+          />
           <a
-            class="block rounded px-2 py-1 text-sm text-foreground hover:bg-accent"
+            class="block px-1 py-1 text-sm text-foreground hover:bg-accent"
             href="https://threejs.example/docs"
             rel="noopener noreferrer"
             target="_blank"

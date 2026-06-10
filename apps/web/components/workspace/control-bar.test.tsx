@@ -79,7 +79,7 @@ describe('ControlBar (STORY-34)', () => {
       { connId: 'c', userId: 'owner', userName: 'Owner', userImage: null, filePath: null },
     ];
     render(<ControlBar />);
-    fireEvent.click(screen.getByText('Turn-based'));
+    fireEvent.click(screen.getByText('Take turns'));
     expect(control.setMode).toHaveBeenCalledWith('turn_based');
   });
 

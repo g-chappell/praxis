@@ -27,7 +27,7 @@ test.describe('project duplicate', () => {
     const email = `dup-${Date.now()}@test.local`;
     await page.goto('/signin');
     await page.getByLabel(/email/i).fill(email);
-    await page.getByRole('button', { name: /email me a sign-in link/i }).click();
+    await page.getByRole('button', { name: /email me a link/i }).click();
     await page.waitForURL(/\/signin\/check-email/, { timeout: 30_000 });
     const verifyUrl = await pollForMagicLink(email);
     await page.goto(verifyUrl);

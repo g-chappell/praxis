@@ -4,6 +4,7 @@ import { loader } from '@monaco-editor/react';
 import type { Monaco } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import dynamic from 'next/dynamic';
+import { useTheme } from 'next-themes';
 import { useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,8 @@ const MonacoEditor = dynamic(() => import('@monaco-editor/react').then((m) => m.
 export function CodeEditor() {
   const { selectedPath, content, loading, saving, error, save } = useWorkspaceFiles();
   const { cursors, sendCursor, lockOwner } = useWorkspacePresence();
+  const { resolvedTheme } = useTheme();
+  const monacoTheme = resolvedTheme === 'dark' ? 'vs-dark' : 'vs';
   const lockedBy = selectedPath ? lockOwner(selectedPath) : null;
   const [draft, setDraft] = useState('');
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -71,11 +74,11 @@ export function CodeEditor() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between gap-2 border-b px-3 py-1.5">
-        <span className="truncate text-xs text-muted-foreground">{selectedPath}</span>
+      <div className="flex items-center justify-between gap-2 border-b-2 px-3 py-1.5">
+        <span className="truncate font-mono text-xs text-muted-foreground">{selectedPath}</span>
         <div className="flex items-center gap-2">
           {lockedBy && (
-            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+            <span className="border-2 border-stamp px-1.5 py-0.5 font-mono text-xs font-bold text-stamp">
               🔒 Locked by {lockedBy.userName}
             </span>
           )}
@@ -95,7 +98,7 @@ export function CodeEditor() {
           <EditorMessage>Loading…</EditorMessage>
         ) : (
           <MonacoEditor
-            theme="vs-dark"
+            theme={monacoTheme}
             language={languageFromPath(selectedPath)}
             value={draft}
             onChange={(value) => setDraft(value ?? '')}

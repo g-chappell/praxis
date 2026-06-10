@@ -23,10 +23,27 @@ const usd = new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD
 
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-lg border p-4">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+    <div className="border-2 p-4 shadow-hard-sm">
+      <div className="label-mono">{label}</div>
       <div className="mt-1 text-2xl font-semibold tracking-tight">{value}</div>
       {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+function BudgetMeter({ used, budget }: { used: number; budget: number }) {
+  const pct = budget > 0 ? Math.min(100, Math.round((used / budget) * 100)) : 0;
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between">
+        <span className="label-mono">Budget used</span>
+        <span className="font-mono text-xs">
+          {usd.format(used)} / {usd.format(budget)} · {pct}%
+        </span>
+      </div>
+      <div className="h-3 w-full border-2 bg-field">
+        <div className="h-full bg-stamp" style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }
@@ -98,10 +115,12 @@ export function UsagePanel({ projectId }: { projectId: string }) {
       </p>
 
       {usage.overBudget && (
-        <p className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p className="border-2 border-stamp bg-destructive/10 px-3 py-2 text-sm text-destructive">
           This project is over budget — prompting is paused. Raise the budget below to resume.
         </p>
       )}
+
+      <BudgetMeter used={usage.estimatedCostUsd} budget={usage.budgetUsd} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Stat label="Input tokens" value={nf.format(usage.inputTokens)} />
@@ -114,9 +133,9 @@ export function UsagePanel({ projectId }: { projectId: string }) {
         <Stat label="Turns" value={nf.format(usage.turns)} />
       </div>
 
-      <div className="space-y-2 rounded-md border p-4">
+      <div className="space-y-2 border-2 p-4 shadow-hard-sm">
         <label className="block space-y-1">
-          <span className="text-sm font-medium">Budget (USD)</span>
+          <span className="label-mono">Budget (USD)</span>
           <input
             type="number"
             min="0"
@@ -124,7 +143,7 @@ export function UsagePanel({ projectId }: { projectId: string }) {
             value={budgetInput}
             onChange={(e) => setBudgetInput(e.target.value)}
             aria-label="Budget in USD"
-            className="w-40 rounded-md border px-3 py-1.5 text-sm"
+            className="block w-40 border-2 bg-field px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:shadow-hard-stamp"
           />
         </label>
         {saveError && <p className="text-sm text-destructive">{saveError}</p>}

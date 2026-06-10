@@ -45,16 +45,18 @@ export default async function DashboardPage({
   return (
     <>
       <AppNav />
-      <main className="mx-auto w-full max-w-2xl px-6 py-12">
-        <div className="mb-6 flex items-center justify-between gap-4">
+      <main className="mx-auto w-full max-w-4xl px-6 py-12">
+        <div className="mb-6 flex items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Your projects</h1>
-            <p className="text-sm text-muted-foreground">Open one to resume, or start a new one.</p>
+            <h1 className="text-3xl font-semibold tracking-tight">Your projects</h1>
+            <p className="mt-1 italic text-muted-foreground">
+              Open one to resume, or start a new one.
+            </p>
           </div>
           <CreateProjectForm />
         </div>
 
-        <div className="mb-4 flex gap-1 border-b" role="tablist">
+        <div className="mb-5 flex gap-1 border-b-2" role="tablist">
           {TABS.map((tab) => {
             const active = tab.status === status;
             return (
@@ -66,8 +68,8 @@ export default async function DashboardPage({
                 data-testid={`tab-${tab.status}`}
                 className={
                   active
-                    ? 'border-b-2 border-foreground px-3 py-2 text-sm font-medium'
-                    : 'border-b-2 border-transparent px-3 py-2 text-sm text-muted-foreground hover:text-foreground'
+                    ? 'label-mono -mb-0.5 border-b-2 border-stamp px-3 py-2 text-foreground'
+                    : 'label-mono -mb-0.5 border-b-2 border-transparent px-3 py-2 hover:text-foreground'
                 }
               >
                 {tab.label}

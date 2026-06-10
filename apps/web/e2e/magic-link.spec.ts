@@ -28,7 +28,7 @@ test.describe('magic-link sign-in', () => {
     await page.goto('/signin');
     await expect(page.getByRole('heading', { name: /sign in to praxis/i })).toBeVisible();
     await page.getByLabel(/email/i).fill(email);
-    await page.getByRole('button', { name: /email me a sign-in link/i }).click();
+    await page.getByRole('button', { name: /email me a link/i }).click();
 
     // 2. Lands on /signin/check-email with the email surfaced.
     // `next dev` cold compile on /api/auth can be ~15s; allow ~30s here.
@@ -44,9 +44,11 @@ test.describe('magic-link sign-in', () => {
     await page.goto(verifyUrl);
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 
-    // 5. /dashboard renders (the project list) and the nav shows the user's email.
+    // 5. /dashboard renders (the project list) and the nav shows the signed-in
+    //    user — a monogram whose title is their email (the redesign dropped the
+    //    plain-text email in favour of the masthead monogram).
     await expect(page.getByRole('heading', { name: /your projects/i })).toBeVisible();
-    await expect(page.getByText(email)).toBeVisible();
+    await expect(page.getByTitle(email)).toBeVisible();
   });
 
   test('middleware redirects unauthenticated /dashboard → /signin', async ({ page }) => {

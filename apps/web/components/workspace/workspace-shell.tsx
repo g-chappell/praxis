@@ -14,6 +14,7 @@ import { ChatPanel } from '@/components/workspace/chat-panel';
 import { CodeEditor } from '@/components/workspace/code-editor';
 import { FileTree } from '@/components/workspace/file-tree';
 import { GitPanel } from '@/components/workspace/git-panel';
+import { FolderTab } from '@/components/ui/folder-tab';
 import { InviteButton } from '@/components/workspace/invite-button';
 import { LearningPanel } from '@/components/workspace/learning-panel';
 import { ControlBar } from '@/components/workspace/control-bar';
@@ -148,7 +149,7 @@ function FilesPane({ projectId }: { projectId: string }) {
   return (
     <>
       <PaneHeader>Files</PaneHeader>
-      <div className="border-b px-3 py-2">
+      <div className="border-b-2 px-3 py-2">
         <InviteButton projectId={projectId} />
       </div>
       <PresenceBar />
@@ -164,19 +165,19 @@ function EditorPane({ projectId }: { projectId: string }) {
   const [tab, setTab] = useState<'editor' | 'preview' | 'git' | 'usage'>('editor');
   return (
     <>
-      <div className="flex items-center gap-1 border-b px-2 py-1">
-        <PaneTab active={tab === 'editor'} onClick={() => setTab('editor')}>
-          Editor
-        </PaneTab>
-        <PaneTab active={tab === 'preview'} onClick={() => setTab('preview')}>
+      <div className="flex items-end gap-1 border-b-2 px-2 pt-2">
+        <FolderTab active={tab === 'editor'} onClick={() => setTab('editor')}>
+          Code
+        </FolderTab>
+        <FolderTab active={tab === 'preview'} onClick={() => setTab('preview')}>
           Preview
-        </PaneTab>
-        <PaneTab active={tab === 'git'} onClick={() => setTab('git')}>
+        </FolderTab>
+        <FolderTab active={tab === 'git'} onClick={() => setTab('git')}>
           Git
-        </PaneTab>
-        <PaneTab active={tab === 'usage'} onClick={() => setTab('usage')}>
+        </FolderTab>
+        <FolderTab active={tab === 'usage'} onClick={() => setTab('usage')}>
           Usage
-        </PaneTab>
+        </FolderTab>
       </div>
       {/* Keep editor + preview mounted (hide the inactive one) so the preview's
           running app isn't reloaded on every tab switch. The Git + Usage panels
@@ -201,29 +202,6 @@ function EditorPane({ projectId }: { projectId: string }) {
   );
 }
 
-function PaneTab({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        'rounded px-2 py-1 text-xs font-medium uppercase tracking-wide',
-        active ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-accent',
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
 function ChatPane({ currentUser }: { currentUser: ChatAuthor }) {
   return (
     <>
@@ -237,15 +215,9 @@ function ChatPane({ currentUser }: { currentUser: ChatAuthor }) {
 }
 
 function PaneHeader({ children }: { children: string }) {
-  return (
-    <div className="border-b px-3 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-      {children}
-    </div>
-  );
+  return <div className="label-mono border-b-2 px-3 py-2.5">{children}</div>;
 }
 
 function ResizeHandle() {
-  return (
-    <Separator className="w-1 bg-border transition-colors hover:bg-primary/40 active:bg-primary/60" />
-  );
+  return <Separator className="w-0.5 bg-border transition-colors hover:bg-stamp active:bg-stamp" />;
 }

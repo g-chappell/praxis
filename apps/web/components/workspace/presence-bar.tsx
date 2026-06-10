@@ -15,26 +15,37 @@ export function PresenceBar() {
   const myUserId = members.find((m) => m.connId === myConnId)?.userId ?? null;
 
   return (
-    <ul className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
-      {people.map((m) => {
-        const isMe = m.userId === myUserId;
-        return (
-          <li
-            key={m.userId}
-            className={cn(
-              'flex items-center gap-1.5 rounded-full border py-0.5 pl-0.5 pr-2 text-xs',
-              isMe ? 'border-primary/40 bg-primary/5' : 'border-border',
-            )}
-            title={m.filePath ? `${m.userName} — ${m.filePath}` : m.userName}
-          >
-            <Avatar name={m.userName} image={m.userImage} />
-            <span className="max-w-[8rem] truncate font-medium">
-              {m.userName}
-              {isMe && <span className="text-muted-foreground"> (you)</span>}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="border-b-2 px-3 py-2">
+      <span className="label-mono">Who&apos;s here</span>
+      <ul className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        {people.map((m) => {
+          const isMe = m.userId === myUserId;
+          const file = m.filePath ? m.filePath.split('/').pop() : null;
+          return (
+            <li
+              key={m.userId}
+              className={cn(
+                'flex items-center gap-1.5 border-2 py-0.5 pl-0.5 pr-2 text-xs',
+                isMe ? 'border-stamp' : 'border-border',
+              )}
+              title={m.filePath ? `${m.userName} — ${m.filePath}` : m.userName}
+            >
+              <Avatar name={m.userName} image={m.userImage} />
+              <span className="flex min-w-0 flex-col leading-tight">
+                <span className="max-w-[8rem] truncate font-semibold">
+                  {m.userName}
+                  {isMe && <span className="text-muted-foreground"> (you)</span>}
+                </span>
+                {file && (
+                  <span className="max-w-[8rem] truncate font-mono text-[0.6rem] text-muted-foreground">
+                    {file}
+                  </span>
+                )}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

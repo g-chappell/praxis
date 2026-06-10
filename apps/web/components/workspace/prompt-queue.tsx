@@ -11,8 +11,8 @@ export function PromptQueue() {
   if (c.mode !== 'serialised' || c.queue.length === 0) return null;
 
   return (
-    <div className="rounded-md border p-2 text-xs">
-      <p className="mb-1 font-medium text-muted-foreground">Queued ({c.queue.length})</p>
+    <div className="border-2 p-2 text-xs">
+      <p className="label-mono mb-1">Queued ({c.queue.length})</p>
       <ul className="space-y-1">
         {c.queue.map((q) => (
           <li key={q.id} className="flex items-center gap-2">

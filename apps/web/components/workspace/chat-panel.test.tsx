@@ -80,9 +80,9 @@ describe('ChatPanel shared-chat attribution (STORY-32)', () => {
     });
 
     expect(screen.getByText('On it — adding the cube.')).toBeTruthy();
-    // Attributed to Ada (the prompter), with the agent tag.
-    expect(screen.getByText('Ada')).toBeTruthy();
-    expect(screen.getByText('Agent')).toBeTruthy();
+    // Reads as the Assistant, still naming Ada (the prompter).
+    expect(screen.getByText('Assistant')).toBeTruthy();
+    expect(screen.getByText('· for Ada')).toBeTruthy();
   });
 
   it('concatenates streamed text chunks into one agent message', () => {
@@ -100,7 +100,7 @@ describe('ChatPanel shared-chat attribution (STORY-32)', () => {
 
     expect(screen.getByText(/finishing another turn/i)).toBeTruthy();
     // Input stays live so the user can retry.
-    const input = screen.getByPlaceholderText('Message as Me…') as HTMLInputElement;
+    const input = screen.getByPlaceholderText('Message the assistant…') as HTMLInputElement;
     expect(input.disabled).toBe(false);
   });
 
@@ -110,7 +110,7 @@ describe('ChatPanel shared-chat attribution (STORY-32)', () => {
 
     expect(screen.getByText(/over budget/i)).toBeTruthy();
     expect(screen.getByText(/Usage tab/i)).toBeTruthy();
-    const input = screen.getByPlaceholderText('Message as Me…') as HTMLInputElement;
+    const input = screen.getByPlaceholderText('Message the assistant…') as HTMLInputElement;
     expect(input.disabled).toBe(false);
   });
 
@@ -119,7 +119,7 @@ describe('ChatPanel shared-chat attribution (STORY-32)', () => {
     emit({ type: 'agent_restarted' });
 
     expect(screen.getByText(/agent restarted/i)).toBeTruthy();
-    const input = screen.getByPlaceholderText('Message as Me…') as HTMLInputElement;
+    const input = screen.getByPlaceholderText('Message the assistant…') as HTMLInputElement;
     expect(input.disabled).toBe(false);
   });
 

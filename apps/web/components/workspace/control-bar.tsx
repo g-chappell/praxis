@@ -1,6 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
+import { Stamp } from '@/components/ui/stamp';
 import { useWorkspaceControl } from '@/components/workspace/workspace-control';
 import { uniqueByUser, useWorkspacePresence } from '@/components/workspace/workspace-presence';
 
@@ -16,8 +17,8 @@ export function ControlBar() {
   const iRequested = c.myUserId !== null && c.requests.includes(c.myUserId);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2 text-xs">
-      <span className="text-muted-foreground">Mode</span>
+    <div className="flex flex-wrap items-center gap-2 border-b-2 px-3 py-2 text-xs">
+      <span className="label-mono">Mode</span>
       {c.isOwner ? (
         <div className="flex gap-1">
           <Button
@@ -25,26 +26,24 @@ export function ControlBar() {
             variant={c.mode === 'serialised' ? 'default' : 'outline'}
             onClick={() => c.setMode('serialised')}
           >
-            Serialised
+            Anyone
           </Button>
           <Button
             size="sm"
             variant={c.mode === 'turn_based' ? 'default' : 'outline'}
             onClick={() => c.setMode('turn_based')}
           >
-            Turn-based
+            Take turns
           </Button>
         </div>
       ) : (
-        <span className="font-medium">{c.mode === 'turn_based' ? 'Turn-based' : 'Serialised'}</span>
+        <span className="font-semibold">{c.mode === 'turn_based' ? 'Take turns' : 'Anyone'}</span>
       )}
 
       {c.mode === 'turn_based' &&
         (c.isHolder ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">
-              You have control
-            </span>
+            <Stamp solid>You have control</Stamp>
             <Button size="sm" variant="outline" onClick={c.releaseControl}>
               Release
             </Button>
@@ -61,7 +60,7 @@ export function ControlBar() {
                 </Button>
               ))}
             {c.requests.map((uid) => (
-              <span key={uid} className="flex items-center gap-1 rounded border px-1.5 py-0.5">
+              <span key={uid} className="flex items-center gap-1 border-2 px-1.5 py-0.5">
                 <span>{nameOf(uid)} wants control</span>
                 <Button size="sm" onClick={() => c.grantControl(uid)}>
                   Approve
