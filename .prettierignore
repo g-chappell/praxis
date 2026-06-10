@@ -60,6 +60,9 @@ scripts/story-acceptance-check.mjs
 scripts/story-remaining.mjs
 scripts/update-story-feature-complete.mjs
 
+# Design handoff bundle — reference prototypes (HTML/JSX/CSS), not source we ship
+design_handoff_praxis_neobrutalist
+
 # Long-form prose we don't want reformatted
 docs
 LICENSE
