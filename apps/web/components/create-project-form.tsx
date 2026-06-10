@@ -4,7 +4,11 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Stamp } from '@/components/ui/stamp';
 import { DEFAULT_TEMPLATE_ID, TEMPLATES } from '@/lib/templates';
+import { cn } from '@/lib/utils';
 
 // Create a project (STORY-27): pick a name + a template, then POST. Subsumes the
 // old NewProjectButton (which sent an empty POST). Shown as a button that opens
@@ -47,55 +51,72 @@ export function CreateProjectForm() {
   return (
     <div className="relative">
       <Button disabled>New project</Button>
-      <form
-        onSubmit={onSubmit}
-        className="absolute right-0 top-full z-10 mt-2 w-80 space-y-3 rounded-md border bg-background p-4 text-left shadow-md"
-      >
-        <div className="space-y-1">
-          <label htmlFor="project-name" className="text-xs font-medium text-muted-foreground">
-            Name
-          </label>
-          <input
-            id="project-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Untitled project"
-            className="w-full rounded-md border px-3 py-2 text-sm"
-            autoFocus
-          />
-        </div>
-
-        <fieldset className="space-y-2">
-          <legend className="text-xs font-medium text-muted-foreground">Template</legend>
-          {TEMPLATES.map((t) => (
-            <label key={t.id} className="flex cursor-pointer gap-2 rounded-md border p-2 text-sm">
-              <input
-                type="radio"
-                name="template"
-                value={t.id}
-                checked={templateId === t.id}
-                onChange={() => setTemplateId(t.id)}
-                className="mt-1"
-              />
-              <span className="min-w-0">
-                <span className="block font-medium">{t.name}</span>
-                <span className="block text-xs text-muted-foreground">{t.description}</span>
-              </span>
+      <Card className="absolute right-0 top-full z-10 mt-2 w-96 p-4 text-left">
+        <form onSubmit={onSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <label htmlFor="project-name" className="label-mono block">
+              Name
             </label>
-          ))}
-        </fieldset>
+            <Input
+              id="project-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Untitled project"
+              className="text-lg italic"
+              autoFocus
+            />
+          </div>
 
-        {error && <p className="text-xs text-destructive">{error}</p>}
+          <fieldset className="space-y-2">
+            <legend className="label-mono mb-1">Template</legend>
+            <div className="grid grid-cols-2 gap-2">
+              {TEMPLATES.map((t) => {
+                const selected = templateId === t.id;
+                return (
+                  <button
+                    type="button"
+                    key={t.id}
+                    onClick={() => setTemplateId(t.id)}
+                    aria-pressed={selected}
+                    className={cn(
+                      'border-2 p-2 text-left transition-transform',
+                      selected
+                        ? 'border-stamp shadow-hard-stamp'
+                        : 'border-border hover:-translate-x-px hover:-translate-y-px hover:shadow-hard-sm',
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        '-m-2 mb-2 block px-2 py-1 text-sm font-semibold',
+                        selected ? 'bg-foreground text-background' : 'border-b-2 border-border',
+                      )}
+                    >
+                      {t.name}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">{t.description}</span>
+                    {selected && (
+                      <span className="mt-2 block">
+                        <Stamp>✓ Selected</Stamp>
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button type="submit" size="sm" disabled={pending}>
-            {pending ? 'Creating…' : 'Create'}
-          </Button>
-        </div>
-      </form>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="stamp" size="sm" disabled={pending}>
+              {pending ? 'Creating…' : 'Create project'}
+            </Button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 }

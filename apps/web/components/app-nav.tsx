@@ -2,6 +2,9 @@ import { headers } from 'next/headers';
 import Link from 'next/link';
 
 import { SignOutButton } from '@/components/sign-out-button';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { TweaksPanel } from '@/components/tweaks-panel';
+import { Monogram } from '@/components/ui/monogram';
 import { isUserAdmin } from '@/lib/admin';
 import { getAuth } from '@/lib/auth';
 
@@ -13,16 +16,16 @@ export async function AppNav() {
   if (!session?.user) return null;
   const admin = await isUserAdmin(session.user.id);
 
-  const link = 'text-muted-foreground transition-colors hover:text-foreground';
+  const link = 'label-mono transition-colors hover:text-foreground';
 
   return (
-    <header className="flex items-center justify-between border-b px-6 py-3">
-      <nav className="flex items-center gap-4 text-sm">
-        <Link href="/dashboard" className="font-semibold tracking-tight text-foreground">
+    <header className="flex items-center justify-between border-b-2 px-6 py-3">
+      <nav className="flex items-center gap-5">
+        <Link href="/dashboard" className="text-xl font-semibold tracking-tight text-foreground">
           Praxis
         </Link>
         <Link href="/dashboard" className={link}>
-          Dashboard
+          Projects
         </Link>
         {admin && (
           <Link href="/admin" className={link}>
@@ -33,9 +36,15 @@ export async function AppNav() {
           Settings
         </Link>
       </nav>
-      <div className="flex items-center gap-3">
-        <span className="hidden text-xs text-muted-foreground sm:inline">{session.user.email}</span>
+      <div className="flex items-center gap-2">
+        <TweaksPanel />
+        <ThemeToggle />
         <SignOutButton />
+        <Monogram
+          variant="ink"
+          name={session.user.name || session.user.email}
+          title={session.user.email}
+        />
       </div>
     </header>
   );
