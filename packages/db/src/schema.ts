@@ -256,6 +256,8 @@ export const auditAction = pgEnum('audit_action', [
   'connector.deleted',
   'connector.template_changed',
   'team.renamed',
+  'team.member_removed',
+  'team.member_left',
 ]);
 
 // ─── audit_log ────────────────────────────────────────────────────────

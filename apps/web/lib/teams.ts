@@ -6,7 +6,7 @@
 // The `database` is injectable for persistence tests; it defaults to the
 // @praxis/db/client singleton.
 
-import { asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 
 import { teamMemberships, teams, users } from '@praxis/db';
 import { type Database, db } from '@praxis/db/client';
@@ -163,4 +163,77 @@ export async function renameTeam(
 
   const hydrated = await getTeamById(teamId, userId, database);
   return { team: hydrated! };
+}
+
+export type RemoveMemberResult =
+  | { ok: true }
+  | { error: 'not_found' | 'not_owner' | 'cannot_remove_owner' };
+
+/** Remove a member from a team (STORY-56). Owner-gated: 403 (not_owner) for a
+ *  non-owner, 404 (not_found) if the team is gone, 400 (cannot_remove_owner) if
+ *  the target is the owner (the owner can't remove themselves and can't be
+ *  removed). Deletes the membership and audits team.member_removed only when a
+ *  row was actually removed — so a repeat call is an idempotent ok. */
+export async function removeMember(
+  ownerId: string,
+  teamId: string,
+  targetUserId: string,
+  database: Database = db,
+): Promise<RemoveMemberResult> {
+  const [team] = await database
+    .select({ createdBy: teams.createdBy })
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
+  if (!team) return { error: 'not_found' };
+  if (team.createdBy !== ownerId) return { error: 'not_owner' };
+  if (targetUserId === team.createdBy) return { error: 'cannot_remove_owner' };
+
+  const removed = await database
+    .delete(teamMemberships)
+    .where(and(eq(teamMemberships.teamId, teamId), eq(teamMemberships.userId, targetUserId)))
+    .returning({ userId: teamMemberships.userId });
+  if (removed.length > 0) {
+    await recordAudit(
+      ownerId,
+      'team.member_removed',
+      { targetType: 'team', targetId: teamId, metadata: { removed: targetUserId } },
+      database,
+    );
+  }
+  return { ok: true };
+}
+
+export type LeaveTeamResult = { ok: true } | { error: 'not_found' | 'owner_cannot_leave' };
+
+/** Leave a team you don't own (STORY-56). 404 (not_found) if the team is gone,
+ *  409 (owner_cannot_leave) if you're the owner — the owner reconciles via
+ *  removeMember and can't abandon their team this pass. Deletes your own
+ *  membership and audits team.member_left only when a row was removed (idempotent). */
+export async function leaveTeam(
+  userId: string,
+  teamId: string,
+  database: Database = db,
+): Promise<LeaveTeamResult> {
+  const [team] = await database
+    .select({ createdBy: teams.createdBy })
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
+  if (!team) return { error: 'not_found' };
+  if (team.createdBy === userId) return { error: 'owner_cannot_leave' };
+
+  const left = await database
+    .delete(teamMemberships)
+    .where(and(eq(teamMemberships.teamId, teamId), eq(teamMemberships.userId, userId)))
+    .returning({ userId: teamMemberships.userId });
+  if (left.length > 0) {
+    await recordAudit(
+      userId,
+      'team.member_left',
+      { targetType: 'team', targetId: teamId },
+      database,
+    );
+  }
+  return { ok: true };
 }

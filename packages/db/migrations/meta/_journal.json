@@ -120,6 +120,13 @@
       "when": 1781274598733,
       "tag": "0016_lyrical_swordsman",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1781292066129,
+      "tag": "0017_complete_thunderball",
+      "breakpoints": true
     }
   ]
 }
