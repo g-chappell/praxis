@@ -7,6 +7,7 @@ import { CreateProjectForm } from '@/components/create-project-form';
 import { ProjectList } from '@/components/project-list';
 import { getAuth } from '@/lib/auth';
 import { listUserProjects, parseProjectStatus } from '@/lib/projects';
+import { getTeamForUser } from '@/lib/teams';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -40,7 +41,10 @@ export default async function DashboardPage({
   // defaults anything unexpected to active.
   const raw = parseProjectStatus(searchParams.status);
   const status = raw === 'archived' ? 'archived' : 'active';
-  const projects = await listUserProjects(session.user.id, { status });
+  const [projects, team] = await Promise.all([
+    listUserProjects(session.user.id, { status }),
+    getTeamForUser(session.user.id),
+  ]);
 
   return (
     <>
@@ -53,7 +57,7 @@ export default async function DashboardPage({
               Open one to resume, or start a new one.
             </p>
           </div>
-          <CreateProjectForm />
+          <CreateProjectForm hasTeam={team !== null} />
         </div>
 
         <div className="mb-5 flex gap-1 border-b-2" role="tablist">

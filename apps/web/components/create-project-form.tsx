@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 
@@ -12,14 +13,17 @@ import { cn } from '@/lib/utils';
 
 // Create a project (STORY-27): pick a name + a template, then POST. Subsumes the
 // old NewProjectButton (which sent an empty POST). Shown as a button that opens
-// a small popover form.
-export function CreateProjectForm() {
+// a small popover form. A teamless user (STORY-54) is guided to create/join a
+// team first — both up-front (hasTeam=false) and as a fallback if the POST races
+// to a 409 needs_team.
+export function CreateProjectForm({ hasTeam = true }: { hasTeam?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [templateId, setTemplateId] = useState<string>(DEFAULT_TEMPLATE_ID);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsTeam, setNeedsTeam] = useState(false);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -33,6 +37,13 @@ export function CreateProjectForm() {
       });
       if (!res.ok) {
         setPending(false);
+        if (res.status === 409) {
+          const body = (await res.json().catch(() => null)) as { error?: string } | null;
+          if (body?.error === 'needs_team') {
+            setNeedsTeam(true);
+            return;
+          }
+        }
         setError('Could not create the project. Try again.');
         return;
       }
@@ -46,6 +57,31 @@ export function CreateProjectForm() {
 
   if (!open) {
     return <Button onClick={() => setOpen(true)}>New project</Button>;
+  }
+
+  if (!hasTeam || needsTeam) {
+    return (
+      <div className="relative">
+        <Button disabled>New project</Button>
+        <Card
+          data-testid="needs-team-guidance"
+          className="absolute right-0 top-full z-10 mt-2 w-96 p-4 text-left"
+        >
+          <p className="text-sm">
+            Create a team in{' '}
+            <Link href="/settings" className="font-semibold underline">
+              Settings
+            </Link>{' '}
+            to start building, or join a teammate&apos;s via an invite link.
+          </p>
+          <div className="mt-3 flex justify-end">
+            <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
+              Close
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
