@@ -4296,6 +4296,8 @@ epics:
           and joined dates. Per-team rename stays owner-gated. Each team is still
           a pair (cap of 2) — joining/inviting is STORY-56; project-team
           selection is STORY-57. Foundation for the rest of multi-team.
+        verified_at: '2026-06-12T17:15:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "A user already on a team can create another team and becomes its owner; the previous one-team-per-user 409 is gone — createTeam no longer refuses an existing member."
           - "getTeamsForUser returns every team the user owns OR is a member of (not just one), each with its members [{userId, name, isOwner, joinedAt}]; the old single-team getTeamForUser callers are migrated."
@@ -4313,7 +4315,7 @@ epics:
         tasks:
           - id: TASK-167
             title: "lib: getTeamsForUser (plural) + drop the one-team-per-user 409"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web", "packages/db"]
@@ -4327,6 +4329,8 @@ epics:
               dashboard hasTeam) to the list. Keep a thin getTeamById for rename.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-12T17:15:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/385
             is_terminal: false
             task_acceptance:
               - "createTeam succeeds for a user already on a team (no 409); the creator is owner+member of the new team"
@@ -4334,7 +4338,7 @@ epics:
               - "teams.integration tests updated; rename stays owner-gated per team"
           - id: TASK-168
             title: "Settings: list all your teams, each with its members by name"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -4348,6 +4352,8 @@ epics:
               team-member-owner-badge; rename targets the card's team id.
             depends_on: [TASK-167]
             attempt_count: 0
+            completed: '2026-06-12T17:15:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/385
             is_terminal: false
             task_acceptance:
               - "A user with two teams sees two cards, each labelled with its name and its own members by name"
@@ -4355,7 +4361,7 @@ epics:
               - "Create-team form is available even when the user already has a team; zero teams shows the empty state"
           - id: TASK-169
             title: "e2e: create a second team; each card lists its members by name"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -4365,6 +4371,8 @@ epics:
               member list by name. Rename team B and confirm team A is untouched.
             depends_on: [TASK-167, TASK-168]
             attempt_count: 0
+            completed: '2026-06-12T17:15:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/385
             is_terminal: true
             task_acceptance:
               - "Two-team flow passes: create A -> create B -> both listed with members by name -> rename B leaves A unchanged"

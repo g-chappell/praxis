@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 48 / 56 (86%)
+- **Features verified:** 49 / 56 (88%)
 - **Total tasks:** 176
-- **Done:** 158 (90%)
-- **Ready:** 18
+- **Done:** 161 (91%)
+- **Ready:** 15
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2580,7 +2580,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     - The full no-team->create->rename->project flow passes; pre-create a project is blocked with needs_team guidance
     - STORY-54 acceptance_criteria satisfied.
 
-- **STORY-55** — Own and belong to multiple teams (each a pair)
+- **STORY-55** — Own and belong to multiple teams (each a pair)  [:white_check_mark: verified]
   > Evolve past STORY-54's one-team-per-user limit: a user may create and
   > own more than one team, and may also be a partner in teams owned by
   > others. /settings lists every team the user owns or belongs to, each
@@ -2603,7 +2603,7 @@ and projects reflect REAL participation + ownership, not bare membership.
   - Inviting / removing / leaving members (STORY-56) and project-team selection (STORY-57)
   - Editing your own display name / profile (a later story) — members render by display name, falling back to email
   - More than 2 members per team, roles beyond owner/partner, transferring ownership, deleting a team
-  - :black_circle: **TASK-167** — lib: getTeamsForUser (plural) + drop the one-team-per-user 409  `high` `medium` _(apps/web, packages/db)_
+  - :white_check_mark: **TASK-167** — lib: getTeamsForUser (plural) + drop the one-team-per-user 409  `high` `medium` _(apps/web, packages/db)_ · [PR](https://github.com/g-chappell/praxis/pull/385)
     > Replace getTeamForUser with getTeamsForUser(userId): all teams the
     > user owns or belongs to (distinct), each hydrated with members
     > [{userId, email, displayName, isOwner, joinedAt}] + the viewer's
@@ -2615,7 +2615,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     - createTeam succeeds for a user already on a team (no 409); the creator is owner+member of the new team
     - getTeamsForUser returns every owned and member team with members; an unrelated user's team is excluded
     - teams.integration tests updated; rename stays owner-gated per team
-  - :black_circle: **TASK-168** — Settings: list all your teams, each with its members by name  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-168** — Settings: list all your teams, each with its members by name  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/385)  
     _depends on: TASK-167_
     > Replace the single TeamCard with a list rendered from
     > getTeamsForUser: one card per team (newest first), each showing the
@@ -2628,7 +2628,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     - A user with two teams sees two cards, each labelled with its name and its own members by name
     - Owner can rename a specific card (persists to that team only); a member's card name is read-only
     - Create-team form is available even when the user already has a team; zero teams shows the empty state
-  - :black_circle: **TASK-169** :checkered_flag: — e2e: create a second team; each card lists its members by name  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-169** :checkered_flag: — e2e: create a second team; each card lists its members by name  `med` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/385)  
     _depends on: TASK-167, TASK-168_
     > Playwright: a user creates team A, then team B from /settings; both
     > cards appear, the user is owner of both, and each card shows its
