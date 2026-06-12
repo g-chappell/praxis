@@ -368,17 +368,41 @@ if (!SKIP_SUBISSUES) {
     return out;
   }
 
+  // The child's current parent issue number, or null if it has none. GitHub
+  // allows a sub-issue only one parent, so we read this before linking to decide
+  // between a fresh link and a re-parent.
+  function currentParentNum(childNum) {
+    const q = `repository(owner:"${PROJECT_OWNER}",name:"praxis"){issue(number:${childNum}){parent{number}}}`;
+    const out = sh(
+      `gh api graphql -f query=${escapeForShellSingleQuote(`{${q}}`)} --jq '.data.repository.issue.parent.number // empty'`,
+    );
+    return out ? Number(out) : null;
+  }
+
   function linkSubIssue(parentNum, childNum) {
     if (parentNum < 0 || childNum < 0) return; // dry-run placeholders
+    const existing = currentParentNum(childNum);
+    if (existing === parentNum) return; // already correctly parented — no-op
+
     const parentId = nodeId(parentNum);
     const childId = nodeId(childNum);
-    const mutation = `mutation { addSubIssue(input: { issueId: "${parentId}", subIssueId: "${childId}" }) { issue { number } subIssue { number } } }`;
+    const add = `mutation { addSubIssue(input: { issueId: "${parentId}", subIssueId: "${childId}" }) { issue { number } subIssue { number } } }`;
     try {
-      sh(`gh api graphql -f query=${escapeForShellSingleQuote(mutation)}`, { write: true });
-      log(`  linked: #${childNum} → parent #${parentNum}`);
+      if (existing != null) {
+        // Re-parent: a task moved between stories in the roadmap but its issue is
+        // still linked under the old parent. GitHub rejects a second parent, so
+        // detach from the stale one first, then attach to the new one.
+        const remove = `mutation { removeSubIssue(input: { issueId: "${nodeId(existing)}", subIssueId: "${childId}" }) { issue { number } } }`;
+        sh(`gh api graphql -f query=${escapeForShellSingleQuote(remove)}`, { write: true });
+        sh(`gh api graphql -f query=${escapeForShellSingleQuote(add)}`, { write: true });
+        log(`  re-parented: #${childNum} → #${parentNum} (was #${existing})`);
+      } else {
+        sh(`gh api graphql -f query=${escapeForShellSingleQuote(add)}`, { write: true });
+        log(`  linked: #${childNum} → parent #${parentNum}`);
+      }
     } catch {
-      // Likely already linked, or sub-issues not enabled. Surface message but continue.
-      log(`  skip:   #${childNum} → #${parentNum} (already linked or API rejected)`);
+      // Sub-issues not enabled, or the API rejected it. Surface and continue.
+      log(`  skip:   #${childNum} → #${parentNum} (API rejected)`);
     }
   }
 
