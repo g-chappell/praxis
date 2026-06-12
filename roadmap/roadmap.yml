@@ -4164,6 +4164,8 @@ epics:
           it. Foundation for the rest of EPIC-10. NOTE: this couples to project
           creation — with no auto-create, creating a project requires an existing
           team, so the create flow now instructs a teamless user to make/join one.
+        verified_at: '2026-06-12T15:11:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "A signed-in user with no team sees an empty Team section on /settings instructing them to create a team (with a name) to start building, or join another user's team via an invite link; teams are NOT auto-created."
           - "Creating a team (non-empty name, <=60 chars) makes the creator its owner; a user already in a team cannot create a second one (one team per user this pass)."
@@ -4184,7 +4186,7 @@ epics:
         tasks:
           - id: TASK-162
             title: "lib + API: create / get / rename team (one-team-per-user, owner-gated rename)"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web", "packages/db"]
@@ -4198,6 +4200,8 @@ epics:
               PATCH /api/teams/:id. No schema change (teams.name exists).
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-12T15:11:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/374
             is_terminal: false
             task_acceptance:
               - "createTeam returns 409 when the user already belongs to a team; on success the creator is the owner member"
@@ -4205,7 +4209,7 @@ epics:
               - "getTeamForUser returns null when the user has no team, else the team + members with isOwner/joinedAt"
           - id: TASK-163
             title: "Require an explicit team to create a project (remove auto-create)"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -4216,13 +4220,15 @@ epics:
               Update/retire ensurePersonalTeam in lib/projects.ts.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-12T15:11:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/374
             is_terminal: false
             task_acceptance:
               - "POST /api/projects with no team returns 409 needs_team and creates neither a team nor a project"
               - "POST /api/projects with a team creates the project under that team"
           - id: TASK-164
             title: "Settings UI: Team card — empty/create state, member list, owner rename"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -4237,13 +4243,15 @@ epics:
               team-member-row, team-member-owner-badge.
             depends_on: [TASK-162]
             attempt_count: 0
+            completed: '2026-06-12T15:11:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/374
             is_terminal: false
             task_acceptance:
               - "No-team user sees the create form; creating refreshes into the populated card with them as owner"
               - "Owner sees an editable name + Save (disabled when empty); non-owner sees read-only name; members render with owner badge + joined date"
           - id: TASK-165
             title: "Project-create UX: guide a teamless user to create/join a team"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -4254,12 +4262,14 @@ epics:
               /settings.
             depends_on: [TASK-163]
             attempt_count: 0
+            completed: '2026-06-12T15:11:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/374
             is_terminal: false
             task_acceptance:
               - "A teamless user attempting to create a project sees the create-or-join-a-team guidance linking to /settings; no error toast/crash"
           - id: TASK-166
             title: "e2e: no-team -> create team -> rename -> create a project; members list"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -4269,6 +4279,8 @@ epics:
               project succeeds -> member list shows the user as owner.
             depends_on: [TASK-162, TASK-163, TASK-164, TASK-165]
             attempt_count: 0
+            completed: '2026-06-12T15:11:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/374
             is_terminal: true
             task_acceptance:
               - "The full no-team->create->rename->project flow passes; pre-create a project is blocked with needs_team guidance"

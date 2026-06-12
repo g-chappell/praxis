@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 47 / 54 (87%)
+- **Features verified:** 48 / 54 (89%)
 - **Total tasks:** 170
-- **Done:** 153 (90%)
-- **Ready:** 17
+- **Done:** 158 (93%)
+- **Ready:** 12
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2505,7 +2505,7 @@ This epic makes the pair explicit and owner-controlled (hard cap of 2),
 adds a minimal user profile, and corrects admin attribution so sessions
 and projects reflect REAL participation + ownership, not bare membership.
 
-- **STORY-54** — Create and manage your team
+- **STORY-54** — Create and manage your team  [:white_check_mark: verified]
   > Make teams explicit. Today a "Personal" team is silently auto-created
   > on first project; this removes that — a user must deliberately create a
   > named team to build, or join someone else's via invite. The owner can
@@ -2530,7 +2530,7 @@ and projects reflect REAL participation + ownership, not bare membership.
   - Editing your own display name / profile (STORY-56)
   - Fixing admin session/project attribution (STORY-57)
   - More than one team per user, transferring ownership, deleting a team, team avatars
-  - :black_circle: **TASK-162** — lib + API: create / get / rename team (one-team-per-user, owner-gated rename)  `high` `medium` _(apps/web, packages/db)_
+  - :white_check_mark: **TASK-162** — lib + API: create / get / rename team (one-team-per-user, owner-gated rename)  `high` `medium` _(apps/web, packages/db)_ · [PR](https://github.com/g-chappell/praxis/pull/374)
     > createTeam(userId, name): 409 if the user is already in a team; else
     > insert team (name, createdBy=userId) + owner team_membership; return
     > it. getTeamForUser(userId) -> {id, name, isOwner, members:[{userId,
@@ -2542,7 +2542,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     - createTeam returns 409 when the user already belongs to a team; on success the creator is the owner member
     - renameTeam returns 403 for a non-owner and 400 for empty/>60-char names; writes a team.renamed audit row on success
     - getTeamForUser returns null when the user has no team, else the team + members with isOwner/joinedAt
-  - :black_circle: **TASK-163** — Require an explicit team to create a project (remove auto-create)  `high` `small` _(apps/web)_
+  - :white_check_mark: **TASK-163** — Require an explicit team to create a project (remove auto-create)  `high` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/374)
     > Remove the ensurePersonalTeam auto-create from POST /api/projects;
     > when the user has no team, return 409 {error:'needs_team'} and create
     > nothing. When they have one, create the project under it.
@@ -2550,7 +2550,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     _Task AC:_
     - POST /api/projects with no team returns 409 needs_team and creates neither a team nor a project
     - POST /api/projects with a team creates the project under that team
-  - :black_circle: **TASK-164** — Settings UI: Team card — empty/create state, member list, owner rename  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-164** — Settings UI: Team card — empty/create state, member list, owner rename  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/374)  
     _depends on: TASK-162_
     > Add a Team card to /settings. No team -> empty state with a
     > Create-team inline form (mirrors EditProjectButton pattern: inline
@@ -2563,7 +2563,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     _Task AC:_
     - No-team user sees the create form; creating refreshes into the populated card with them as owner
     - Owner sees an editable name + Save (disabled when empty); non-owner sees read-only name; members render with owner badge + joined date
-  - :black_circle: **TASK-165** — Project-create UX: guide a teamless user to create/join a team  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-165** — Project-create UX: guide a teamless user to create/join a team  `med` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/374)  
     _depends on: TASK-163_
     > When project creation returns needs_team (or on the dashboard when
     > the user has no team), surface guidance: 'Create a team in Settings to
@@ -2571,7 +2571,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     > /settings.
     _Task AC:_
     - A teamless user attempting to create a project sees the create-or-join-a-team guidance linking to /settings; no error toast/crash
-  - :black_circle: **TASK-166** :checkered_flag: — e2e: no-team -> create team -> rename -> create a project; members list  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-166** :checkered_flag: — e2e: no-team -> create team -> rename -> create a project; members list  `med` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/374)  
     _depends on: TASK-162, TASK-163, TASK-164, TASK-165_
     > Playwright: fresh user signs in -> /settings Team section shows empty
     > state -> create team 'Acme' -> rename to 'Acme Labs' -> create a

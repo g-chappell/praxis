@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
+import { ensureTeam } from './teams';
+
 // Smoke e2e for project rename / re-describe (STORY-39/TASK-110): an
 // authenticated owner edits a project's name + description from the dashboard
 // and the change persists across a reload.
@@ -32,7 +34,9 @@ test.describe('project rename + re-describe', () => {
     await page.goto(verifyUrl);
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 
-    // 2. Create a project (owned by this user) via the API.
+    // 2. Create a project (owned by this user) via the API. A team is required
+    // first (STORY-54 removed auto-create).
+    await ensureTeam(page.request);
     const res = await page.request.post('/api/projects', { data: { name: 'Before rename' } });
     expect(res.ok()).toBeTruthy();
 
