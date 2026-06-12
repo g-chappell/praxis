@@ -1,4 +1,4 @@
-// Persistence tests for team create / get / rename (STORY-54). Real Postgres
+// Persistence tests for team create / get / rename (STORY-54/55). Real Postgres
 // (tier-3: no DB mocks), gated behind RUN_DB_TESTS=1 so CI without a database
 // still passes. Run locally with:
 //   pnpm db:up
@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { auditLog, teamMemberships, teams, users } from '@praxis/db';
 import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
 
-import { createTeam, getTeamForUser, renameTeam } from './teams';
+import { createTeam, getTeamsForUser, renameTeam } from './teams';
 
 const describeDb = dbTestsEnabled() ? describe : describe.skip;
 
@@ -45,11 +45,15 @@ describeDb('createTeam (real DB)', () => {
     });
   });
 
-  it('returns already_in_team when the user already belongs to one', async () => {
+  it('lets a user create multiple teams — no one-team-per-user guard', async () => {
     await withDb(async (db) => {
       const owner = await seedUser(db);
-      await createTeam(owner, 'First', db);
-      expect(await createTeam(owner, 'Second', db)).toEqual({ error: 'already_in_team' });
+      const first = await createTeam(owner, 'First', db);
+      const second = await createTeam(owner, 'Second', db);
+      expect('team' in first && 'team' in second).toBe(true);
+      const teams = await getTeamsForUser(owner, db);
+      expect(teams.map((t) => t.name).sort()).toEqual(['First', 'Second']);
+      expect(teams.every((t) => t.isOwner)).toBe(true);
     });
   });
 
@@ -58,37 +62,49 @@ describeDb('createTeam (real DB)', () => {
       const owner = await seedUser(db);
       expect(await createTeam(owner, '   ', db)).toEqual({ error: 'invalid_name' });
       expect(await createTeam(owner, 'a'.repeat(61), db)).toEqual({ error: 'invalid_name' });
-      expect(await getTeamForUser(owner, db)).toBeNull();
+      expect(await getTeamsForUser(owner, db)).toHaveLength(0);
     });
   });
 });
 
-describeDb('getTeamForUser (real DB)', () => {
-  it('returns null when the user has no team', async () => {
+describeDb('getTeamsForUser (real DB)', () => {
+  it('returns [] when the user is in no team', async () => {
     await withDb(async (db) => {
       const user = await seedUser(db);
-      expect(await getTeamForUser(user, db)).toBeNull();
+      expect(await getTeamsForUser(user, db)).toEqual([]);
     });
   });
 
-  it('reflects ownership per viewer and lists the owner first', async () => {
+  it('returns every owned + member team, newest first, with per-viewer isOwner', async () => {
     await withDb(async (db) => {
       const owner = await seedUser(db, 'Owner');
-      const created = await createTeam(owner, 'Acme', db);
-      if (!('team' in created)) throw new Error('expected team');
+      const a = await createTeam(owner, 'Alpha', db);
+      const b = await createTeam(owner, 'Beta', db);
+      if (!('team' in a) || !('team' in b)) throw new Error('expected teams');
 
+      // A partner joins Beta; the owner also belongs to a third team they don't own.
       const partner = await seedUser(db, 'Partner');
-      await db.insert(teamMemberships).values({ teamId: created.team.id, userId: partner });
+      await db.insert(teamMemberships).values({ teamId: b.team.id, userId: partner });
+      const other = await seedUser(db);
+      const c = await createTeam(other, 'Gamma', db);
+      if (!('team' in c)) throw new Error('expected team');
+      await db.insert(teamMemberships).values({ teamId: c.team.id, userId: owner });
 
-      const fromOwner = await getTeamForUser(owner, db);
-      expect(fromOwner!.isOwner).toBe(true);
-      expect(fromOwner!.members.map((m) => m.userId)).toEqual([owner, partner]);
-      expect(fromOwner!.members.find((m) => m.userId === owner)!.isOwner).toBe(true);
-      expect(fromOwner!.members.find((m) => m.userId === partner)!.isOwner).toBe(false);
+      const ownerTeams = await getTeamsForUser(owner, db);
+      // Assert by set + ownership (createdAt defaults can tie within one tx, so
+      // exact newest-first order isn't deterministic here).
+      expect(ownerTeams.map((t) => t.name).sort()).toEqual(['Alpha', 'Beta', 'Gamma']);
+      expect(ownerTeams.find((t) => t.name === 'Beta')!.isOwner).toBe(true);
+      expect(ownerTeams.find((t) => t.name === 'Gamma')!.isOwner).toBe(false);
+      expect(ownerTeams.find((t) => t.name === 'Beta')!.members.map((m) => m.userId)).toEqual([
+        owner,
+        partner,
+      ]);
 
-      const fromPartner = await getTeamForUser(partner, db);
-      expect(fromPartner!.id).toBe(created.team.id);
-      expect(fromPartner!.isOwner).toBe(false);
+      // The partner only sees Beta, as a non-owner; an unrelated team is excluded.
+      const partnerTeams = await getTeamsForUser(partner, db);
+      expect(partnerTeams.map((t) => t.name)).toEqual(['Beta']);
+      expect(partnerTeams[0]!.isOwner).toBe(false);
     });
   });
 });

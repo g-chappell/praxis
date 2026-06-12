@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-// Settings Team card (STORY-54/TASK-164). Mocks the team endpoints + the router
-// and asserts: no team → create form (POST + refresh); has team → owner sees an
-// editable name (Save disabled until dirty, PATCH + refresh) and the member list
-// renders the owner badge; a non-owner sees the name read-only.
+// Settings Teams panel (STORY-54/55, TASK-164/168). Mocks the team endpoints +
+// the router and asserts: zero teams → create form (POST + refresh); the create
+// form stays available with teams; each team renders as its own card labelled by
+// name with its members; an owner can rename inline (Save disabled until dirty,
+// PATCH + refresh); a member's card name is read-only.
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,7 +14,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh, push: vi.fn() }),
 }));
 
-import { TeamCard } from './team-card';
+import { TeamsPanel } from './team-card';
 
 afterEach(() => {
   cleanup();
@@ -21,7 +22,7 @@ afterEach(() => {
   refresh.mockReset();
 });
 
-const ownedTeam: TeamForUser = {
+const acme: TeamForUser = {
   id: 't1',
   name: 'Acme',
   isOwner: true,
@@ -42,17 +43,32 @@ const ownedTeam: TeamForUser = {
     },
   ],
 };
+const beta: TeamForUser = {
+  id: 't2',
+  name: 'Beta',
+  isOwner: false,
+  members: [
+    { userId: 'u3', email: 'lead@test.local', displayName: 'Lead', isOwner: true, joinedAt: null },
+    {
+      userId: 'u1',
+      email: 'owner@test.local',
+      displayName: 'Owner',
+      isOwner: false,
+      joinedAt: null,
+    },
+  ],
+};
 
-describe('TeamCard — no team', () => {
+describe('TeamsPanel — no teams', () => {
   it('shows the create form; creating posts and refreshes', async () => {
     const fetchMock = vi
       .spyOn(global, 'fetch')
-      .mockResolvedValue(new Response(JSON.stringify({ team: ownedTeam }), { status: 201 }));
+      .mockResolvedValue(new Response(JSON.stringify({ team: acme }), { status: 201 }));
 
-    const { getByTestId } = render(<TeamCard team={null} />);
+    const { getByTestId, queryByTestId } = render(<TeamsPanel teams={[]} />);
     expect(getByTestId('team-create-form')).toBeTruthy();
+    expect(queryByTestId('team-card')).toBeNull();
 
-    // Empty name keeps Submit disabled.
     expect((getByTestId('team-create-submit') as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(getByTestId('team-name-input'), { target: { value: '  Acme  ' } });
     expect((getByTestId('team-create-submit') as HTMLButtonElement).disabled).toBe(false);
@@ -68,22 +84,53 @@ describe('TeamCard — no team', () => {
   });
 });
 
-describe('TeamCard — owner', () => {
-  it('renders members with an owner badge and an editable name', () => {
-    const { getByTestId, getAllByTestId } = render(<TeamCard team={ownedTeam} />);
-    expect(getAllByTestId('team-member-row')).toHaveLength(2);
-    expect(getByTestId('team-member-owner-badge')).toBeTruthy();
-    expect((getByTestId('team-rename-input') as HTMLInputElement).value).toBe('Acme');
+describe('TeamsPanel — multiple teams', () => {
+  it('renders a card per team, each labelled by name, with create still available', () => {
+    const { getAllByTestId, getByTestId } = render(<TeamsPanel teams={[acme, beta]} />);
+    const cards = getAllByTestId('team-card');
+    expect(cards).toHaveLength(2);
+    expect(getAllByTestId('team-name').map((n) => n.textContent)).toEqual(['Acme', 'Beta']);
+    // The create-another form stays available alongside existing teams.
+    expect(getByTestId('team-create-form')).toBeTruthy();
   });
 
-  it('disables Save until the name changes, then PATCHes and refreshes', async () => {
-    const fetchMock = vi.spyOn(global, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ team: { ...ownedTeam, name: 'Acme Labs' } }), {
-        status: 200,
-      }),
-    );
+  it('falls back to email when a member has an empty/whitespace display name', () => {
+    const blankName: TeamForUser = {
+      id: 't3',
+      name: 'Gamma',
+      isOwner: true,
+      members: [
+        {
+          userId: 'u9',
+          email: 'solo@test.local',
+          displayName: '  ',
+          isOwner: true,
+          joinedAt: null,
+        },
+      ],
+    };
+    const { getByTestId } = render(<TeamsPanel teams={[blankName]} />);
+    expect(getByTestId('team-member-row').textContent).toContain('solo@test.local');
+  });
 
-    const { getByTestId } = render(<TeamCard team={ownedTeam} />);
+  it('owner card renders the owner badge + an editable name; member card is read-only', () => {
+    const { getAllByTestId } = render(<TeamsPanel teams={[acme, beta]} />);
+    // Acme (owned) has a rename input; Beta (member) does not.
+    expect(getAllByTestId('team-rename-input')).toHaveLength(1);
+    expect((getAllByTestId('team-rename-input')[0] as HTMLInputElement).value).toBe('Acme');
+    expect(getAllByTestId('team-member-owner-badge').length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('TeamsPanel — rename', () => {
+  it('disables Save until the name changes, then PATCHes the right team and refreshes', async () => {
+    const fetchMock = vi
+      .spyOn(global, 'fetch')
+      .mockResolvedValue(
+        new Response(JSON.stringify({ team: { ...acme, name: 'Acme Labs' } }), { status: 200 }),
+      );
+
+    const { getByTestId } = render(<TeamsPanel teams={[acme]} />);
     expect((getByTestId('team-rename-save') as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.change(getByTestId('team-rename-input'), { target: { value: '  Acme Labs  ' } });
@@ -97,15 +144,5 @@ describe('TeamCard — owner', () => {
       expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ name: 'Acme Labs' }) }),
     );
     await waitFor(() => expect(refresh).toHaveBeenCalled());
-  });
-});
-
-describe('TeamCard — non-owner', () => {
-  it('renders the name read-only (no rename input)', () => {
-    const { queryByTestId, getByText } = render(
-      <TeamCard team={{ ...ownedTeam, isOwner: false }} />,
-    );
-    expect(queryByTestId('team-rename-input')).toBeNull();
-    expect(getByText('Acme')).toBeTruthy();
   });
 });

@@ -8,10 +8,10 @@ import { db } from '@praxis/db/client';
 import { AppNav } from '@/components/app-nav';
 import { ConnectClaudeCode } from '@/components/connect-claude-code';
 import { DisconnectAnthropicButton } from '@/components/disconnect-anthropic-button';
-import { TeamCard } from '@/components/team-card';
+import { TeamsPanel } from '@/components/team-card';
 import { PROVIDER } from '@/lib/anthropic-oauth';
 import { getAuth } from '@/lib/auth';
-import { getTeamForUser } from '@/lib/teams';
+import { getTeamsForUser } from '@/lib/teams';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -35,7 +35,7 @@ export default async function SettingsPage() {
   const isConnected = Boolean(token);
   const connectedAt = token?.connectedAt ?? null;
 
-  const team = await getTeamForUser(session.user.id);
+  const teams = await getTeamsForUser(session.user.id);
 
   return (
     <>
@@ -74,7 +74,7 @@ export default async function SettingsPage() {
             )}
           </section>
 
-          <TeamCard team={team} />
+          <TeamsPanel teams={teams} />
         </div>
       </main>
     </>
