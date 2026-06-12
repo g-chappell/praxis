@@ -43,6 +43,17 @@ export interface DockerSandboxConfig {
   /** Per-container disk cap, e.g. "5G". Only honored when the storage driver
    *  supports StorageOpt (xfs+pquota) — silently unenforced on overlayfs. */
   diskLimit?: string;
+  /** Outbound egress allowlist (ADR-0021/STORY-19). When set, the sandbox's
+   *  HTTP(S)_PROXY env points every process at the allowlist proxy; paired with
+   *  an internal `network`, anything not allowlisted has no route out. */
+  egress?: {
+    /** Forward-proxy URL the sandbox routes HTTP(S) through, e.g.
+     *  `http://praxis-egress:3128`. */
+    proxyUrl: string;
+    /** Comma-separated hosts that bypass the proxy (loopback + any in-cluster
+     *  host the sandbox calls back to). Defaults to localhost/127.0.0.1/::1. */
+    noProxy?: string;
+  };
   /** Durable snapshot store. When set, stop() snapshots /workspace and start()
    *  restores it into a fresh volume. Omit to disable persistence. */
   store?: ObjectStore;
@@ -56,6 +67,22 @@ export interface DockerSandboxConfig {
 
 function id(): string {
   return randomBytes(8).toString('hex');
+}
+
+/** Build the `Env` entries that route a sandbox's HTTP(S) traffic through the
+ *  egress allowlist proxy (ADR-0021). Both upper- and lower-case forms are set
+ *  since tools disagree on which they read. Loopback always bypasses the proxy. */
+export function buildEgressEnv(egress: { proxyUrl: string; noProxy?: string }): string[] {
+  const url = egress.proxyUrl;
+  const noProxy = ['localhost', '127.0.0.1', '::1', egress.noProxy].filter(Boolean).join(',');
+  return [
+    `HTTP_PROXY=${url}`,
+    `HTTPS_PROXY=${url}`,
+    `http_proxy=${url}`,
+    `https_proxy=${url}`,
+    `NO_PROXY=${noProxy}`,
+    `no_proxy=${noProxy}`,
+  ];
 }
 
 function shSingleQuote(s: string): string {
@@ -162,6 +189,8 @@ export class DockerSandbox implements Sandbox {
   private readonly diskLimit?: string;
   private readonly store?: ObjectStore;
   private readonly templatesDir?: string;
+  /** Proxy env injected into every sandbox container when egress is restricted. */
+  private readonly egressEnv?: string[];
   /** Last exec/spawn activity per projectId, for idle detection. */
   private readonly activity = new Map<string, number>();
 
@@ -172,6 +201,7 @@ export class DockerSandbox implements Sandbox {
     this.diskLimit = config.diskLimit;
     this.store = config.store;
     this.templatesDir = config.templatesDir;
+    this.egressEnv = config.egress ? buildEgressEnv(config.egress) : undefined;
   }
 
   private container(handle: SandboxHandle): Docker.Container {
@@ -216,6 +246,10 @@ export class DockerSandbox implements Sandbox {
       Cmd: ['sleep', 'infinity'],
       WorkingDir: WORKDIR,
       Labels: { 'praxis.projectId': projectId, 'praxis.templateId': templateId },
+      // Proxy env (when egress is restricted) lives on the container so every
+      // `docker exec`/agent spawn inherits it (ADR-0021); the agent's own `-e`
+      // overrides add to, not replace, this.
+      ...(this.egressEnv ? { Env: this.egressEnv } : {}),
       HostConfig: {
         Memory: MEMORY_BYTES,
         NanoCpus: NANO_CPUS,
