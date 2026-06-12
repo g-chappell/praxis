@@ -4387,6 +4387,8 @@ epics:
           the single invite surface — the workspace header Invite button is
           removed. Remediation surface: the owner of an over-cap team (e.g.
           graham's 3-member team in prod) reconciles it back to a pair here.
+        verified_at: '2026-06-12T20:05:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "Only a team's owner (teams.createdBy) can mint an invite for that team or remove its members; a non-owner has no invite/remove controls and those APIs 403 for them (per team)."
           - "The 'Invite partner' control shows on a team's card only when that team has <2 members; at 2 it's replaced by a 'team is full' note. Minting for a full team returns 409 team_full."
@@ -4410,7 +4412,7 @@ epics:
         tasks:
           - id: TASK-170
             title: "Cap enforcement on acceptInvite + 'team_full' result"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -4422,6 +4424,8 @@ epics:
               'this team is full' message for team_full (extend the REASONS map).
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-12T20:05:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/388
             is_terminal: false
             task_acceptance:
               - "A 3rd distinct user accepting a valid invite for a 2-member team gets status team_full and no membership row is added"
@@ -4429,7 +4433,7 @@ epics:
               - "/invite/[code] shows a clear team-full message (testid invite-error) for team_full"
           - id: TASK-171
             title: "lib + API: removeMember (owner) + leaveTeam (non-owner) with audit"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web", "packages/db"]
@@ -4444,6 +4448,8 @@ epics:
               /api/teams/:id/leave. Removal/leave is idempotent.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-12T20:05:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/388
             is_terminal: false
             task_acceptance:
               - "Non-owner calling remove -> 403; owner removing the partner deletes the membership + writes team.member_removed"
@@ -4451,7 +4457,7 @@ epics:
               - "After removal the target's userOwnsProject for that team's project is false (POST /api/sessions -> 403)"
           - id: TASK-172
             title: "lib + API: team-level invite mint (owner-only, cap-aware)"
-            status: ready
+            status: done
             priority: high
             complexity: small
             workspaces: ["apps/web"]
@@ -4464,13 +4470,15 @@ epics:
               no project.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-12T20:05:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/388
             is_terminal: false
             task_acceptance:
               - "Non-owner mint -> 403; mint when that team is full -> 409 team_full"
               - "Owner mint for a team with <2 members -> returns a /invite/<code> url"
           - id: TASK-173
             title: "Team card controls: per-team invite / remove / leave; drop workspace Invite button"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -4486,13 +4494,15 @@ epics:
               team-full-note, team-member-remove, team-leave-button.
             depends_on: [TASK-171, TASK-172]
             attempt_count: 0
+            completed: '2026-06-12T20:05:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/388
             is_terminal: false
             task_acceptance:
               - "On a team they own, the owner sees Invite only when <2 members (else the full note) + a Remove per partner; a member sees Leave and no invite/remove controls"
               - "Removing or leaving refreshes the list to the new membership; the workspace header no longer renders an Invite button"
           - id: TASK-174
             title: "e2e: invite -> accept -> cap blocks 3rd -> owner removes -> access revoked"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -4503,6 +4513,8 @@ epics:
               (no access). Assert the workspace header has no Invite button.
             depends_on: [TASK-170, TASK-171, TASK-172, TASK-173]
             attempt_count: 0
+            completed: '2026-06-12T20:05:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/388
             is_terminal: true
             task_acceptance:
               - "Full flow passes: invite->accept->3rd blocked (team_full)->owner removes->removed user loses project access"
