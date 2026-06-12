@@ -4528,6 +4528,8 @@ epics:
           dashboard lists projects across all the user's teams, each labelled with
           its team name. A user in zero teams still gets the create-or-join
           guidance (STORY-54).
+        verified_at: '2026-06-12T20:41:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "The New-project form shows a team selector listing every team the user owns or belongs to; the selection is required and defaults to the most-recent team."
           - "POST /api/projects accepts a teamId and creates the project under it only if the user is a member of that team; a teamId the user doesn't belong to is refused (403), and a zero-team user still gets 409 needs_team."
@@ -4544,7 +4546,7 @@ epics:
         tasks:
           - id: TASK-175
             title: "lib + API: create project under a chosen team; list with team label"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -4555,13 +4557,15 @@ epics:
               returns each project's teamId + team name (join) for labelling.
             depends_on: []
             attempt_count: 0
+            completed: '2026-06-12T20:41:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/389
             is_terminal: false
             task_acceptance:
               - "POST with a teamId the user belongs to creates under it; a teamId they don't belong to -> 403; zero teams -> 409 needs_team"
               - "listUserProjects includes each project's team name across all the user's teams"
           - id: TASK-176
             title: "New-project form team selector + dashboard team labels"
-            status: ready
+            status: done
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
@@ -4572,13 +4576,15 @@ epics:
               create-project-team-select.
             depends_on: [TASK-175]
             attempt_count: 0
+            completed: '2026-06-12T20:41:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/389
             is_terminal: false
             task_acceptance:
               - "The selector lists all the user's teams; a user in 2 teams can pick which one and the project lands under the chosen team"
               - "The dashboard shows each project's team name; a single-team user sees it preselected"
           - id: TASK-177
             title: "e2e: pick a team on create; project shows under that team"
-            status: ready
+            status: done
             priority: med
             complexity: small
             workspaces: ["apps/web"]
@@ -4587,6 +4593,8 @@ epics:
               and the project appears on the dashboard labelled Team B.
             depends_on: [TASK-175, TASK-176]
             attempt_count: 0
+            completed: '2026-06-12T20:41:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/389
             is_terminal: true
             task_acceptance:
               - "Two-team create flow passes: select Team B -> project created under B -> dashboard shows it labelled B"
