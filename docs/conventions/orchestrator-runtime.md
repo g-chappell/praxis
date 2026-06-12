@@ -42,11 +42,31 @@ to verify (it only fails at runtime).
 
 ## Sandbox networking
 
-Sandboxes must join `PRAXIS_NETWORK=praxis-net` or the preview proxy can't
+Sandboxes must join the network in `PRAXIS_NETWORK` or the preview proxy can't
 reach `sandbox:<port>` and every preview 502s. Required in the env-file on
-the VPS — see `deploy.md`. ⚠ Security: this currently puts untrusted sandbox
-code on the same bridge as `praxis-db`; harden via STORY-19 (egress
-allowlist / dedicated sandbox network).
+the VPS — see `deploy.md`.
+
+### Egress allowlist (STORY-19 / ADR-0021)
+
+Sandboxes get an **outbound allowlist** via a forward proxy: set
+`PRAXIS_NETWORK=praxis-sandbox-net` (an `internal` network — no route out) and
+`PRAXIS_EGRESS_PROXY_URL=http://praxis-egress:3128`. The orchestrator then injects
+`HTTPS_PROXY`/`HTTP_PROXY`/`NO_PROXY` into every sandbox container, so HTTP(S) goes
+through `praxis-egress` (default-deny; allowlist in
+`infrastructure/docker/egress-proxy/allowlist`) and anything not allowlisted has
+**no route out** (the internal net is the fail-closed backstop). The proxy is
+dual-homed (internal + external) and the **orchestrator must also attach to
+`praxis-sandbox-net`** so it can still reach previews. `NO_PROXY` carries loopback
++ any in-cluster host the sandbox calls back to (e.g. `PRAXIS_MCP_USAGE_URL`'s
+host) via `PRAXIS_EGRESS_NO_PROXY`. **Operator follow-ups + verify steps:**
+`infrastructure/docker/egress-proxy/README.md`. Leaving `PRAXIS_EGRESS_PROXY_URL`
+unset (dev) keeps egress unrestricted, as before.
+
+> **Live-verify (deploy-layer):** the allowed-vs-blocked behaviour and that the
+> agent reaches Anthropic *through the proxy* are real-Docker facts — confirm on
+> the VPS post-deploy (the agent's HTTP client must honor `HTTPS_PROXY`; if it
+> doesn't, see the ADR-0021 fallback). The `egress.integration.test.ts` proves
+> the proxy mechanism with a real sandbox under `RUN_DOCKER_TESTS=1`.
 
 ## Preview routing
 

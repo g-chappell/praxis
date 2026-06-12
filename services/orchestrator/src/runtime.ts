@@ -24,9 +24,17 @@ let _sandbox: DockerSandbox | undefined;
 export function getSandbox(): DockerSandbox {
   if (!_sandbox) {
     const store = MinioObjectStore.fromEnv() ?? undefined;
+    // Sandbox egress allowlist (ADR-0021/STORY-19): when PRAXIS_EGRESS_PROXY_URL
+    // is set, sandboxes route HTTP(S) through the allowlist proxy. Paired with
+    // PRAXIS_NETWORK pointing at the internal praxis-sandbox-net, anything not
+    // allowlisted has no route out. Unset in dev → unrestricted, as before.
+    const egressProxyUrl = process.env.PRAXIS_EGRESS_PROXY_URL;
     _sandbox = new DockerSandbox({
       store,
       network: process.env.PRAXIS_NETWORK,
+      ...(egressProxyUrl
+        ? { egress: { proxyUrl: egressProxyUrl, noProxy: process.env.PRAXIS_EGRESS_NO_PROXY } }
+        : {}),
       // Templates ship in the orchestrator image at /app/templates (Dockerfile
       // COPY templates/). Dev sets PRAXIS_TEMPLATES_DIR to the repo templates/.
       templatesDir: process.env.PRAXIS_TEMPLATES_DIR ?? '/app/templates',
