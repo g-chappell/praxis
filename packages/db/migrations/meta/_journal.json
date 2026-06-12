@@ -113,6 +113,13 @@
       "when": 1780914718657,
       "tag": "0015_thin_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1781274598733,
+      "tag": "0016_lyrical_swordsman",
+      "breakpoints": true
     }
   ]
 }
