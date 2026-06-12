@@ -1,7 +1,20 @@
 # 0006 — Anthropic OAuth via PKCE subscription flow (public client)
 
 **Date:** 2026-06-01
-**Status:** Accepted
+**Status:** Accepted — but **not used for inference** (see amendment below).
+
+> **Amendment (STORY-24, 2026-06-12): reserved, not used for inference.** Under
+> ADR-0009 the **platform** API key powers all inference (hosted multiplayer
+> can't run on a personal subscription). The per-user OAuth flow below is **no
+> longer wired into agent spawn** — the orchestrator passes only the platform
+> `ANTHROPIC_API_KEY`, never a per-user `CLAUDE_CODE_OAUTH_TOKEN` (guarded by a
+> test in `packages/acp-host`). The Settings UI that surfaced "Connect to Claude
+> Code" was **removed** so nothing implies OAuth powers sessions. The flow itself
+> is **retained but unsurfaced** — routes (`/api/oauth/anthropic/{authorize,
+> exchange,disconnect}`), `lib/anthropic-oauth.ts`/`lib/anthropic-token.ts`, and
+> the `oauth_tokens` table stay intact, reserved for a future identity /
+> bring-your-own-key tier. The "Decision" bullet about passing the token to the
+> agent describes the original STORY-06 design, which no longer holds.
 
 ## Context
 
