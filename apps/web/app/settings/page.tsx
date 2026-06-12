@@ -11,7 +11,7 @@ import { DisconnectAnthropicButton } from '@/components/disconnect-anthropic-but
 import { TeamCard } from '@/components/team-card';
 import { PROVIDER } from '@/lib/anthropic-oauth';
 import { getAuth } from '@/lib/auth';
-import { getTeamForUser } from '@/lib/teams';
+import { getTeamsForUser } from '@/lib/teams';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -35,7 +35,7 @@ export default async function SettingsPage() {
   const isConnected = Boolean(token);
   const connectedAt = token?.connectedAt ?? null;
 
-  const team = await getTeamForUser(session.user.id);
+  const teams = await getTeamsForUser(session.user.id);
 
   return (
     <>
@@ -74,7 +74,11 @@ export default async function SettingsPage() {
             )}
           </section>
 
-          <TeamCard team={team} />
+          {teams.length === 0 ? (
+            <TeamCard team={null} />
+          ) : (
+            teams.map((t) => <TeamCard key={t.id} team={t} />)
+          )}
         </div>
       </main>
     </>

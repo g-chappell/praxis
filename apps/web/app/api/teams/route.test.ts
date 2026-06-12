@@ -1,5 +1,6 @@
-// Unit tests for POST /api/teams (STORY-54). Mocks the auth + lib boundaries to
-// exercise auth-gating and the create-result → status mapping.
+// Unit tests for POST /api/teams (STORY-54/55). Mocks the auth + lib boundaries
+// to exercise auth-gating and the create-result → status mapping. A user may own
+// multiple teams (STORY-55), so the only error is an invalid name (400).
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -42,13 +43,6 @@ describe('POST /api/teams', () => {
     expect(res.status).toBe(201);
     expect(await res.json()).toEqual({ team });
     expect(createTeam).toHaveBeenCalledWith('user-1', 'Acme');
-  });
-
-  it('409 when the user already belongs to a team', async () => {
-    createTeam.mockResolvedValue({ error: 'already_in_team' });
-    const res = await post({ name: 'Acme' });
-    expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({ error: 'already_in_team' });
   });
 
   it('400 for an invalid name', async () => {

@@ -1,5 +1,5 @@
-// POST /api/teams — create a team owned by the signed-in user (STORY-54). One
-// team per user this pass: a 409 (already_in_team) if they already belong to one.
+// POST /api/teams — create a team owned by the signed-in user (STORY-54/55). A
+// user may own multiple teams (STORY-55), so the only failure is an invalid name.
 
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
@@ -19,8 +19,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as { name?: unknown } | null;
   const result = await createTeam(session.user.id, body?.name);
   if ('error' in result) {
-    const status = result.error === 'already_in_team' ? 409 : 400;
-    return NextResponse.json({ error: result.error }, { status });
+    return NextResponse.json({ error: result.error }, { status: 400 });
   }
   return NextResponse.json({ team: result.team }, { status: 201 });
 }

@@ -1,11 +1,12 @@
-// Team helpers (STORY-54). Teams are explicit: a user deliberately creates a
-// named team (becoming its owner) or joins one via invite (STORY-55) — they are
-// no longer auto-created on first project. Ownership is derived from
-// teams.createdBy (no role column on team_memberships); one team per user this
-// pass. The `database` is injectable for persistence tests; it defaults to the
+// Team helpers (STORY-54/55). Teams are explicit: a user deliberately creates a
+// named team (becoming its owner) or joins one via invite — they are not
+// auto-created. Ownership is derived from teams.createdBy (no role column on
+// team_memberships). A user may own and belong to multiple teams (STORY-55); the
+// owner always holds a membership row, so "teams I'm in" = my membership rows.
+// The `database` is injectable for persistence tests; it defaults to the
 // @praxis/db/client singleton.
 
-import { asc, eq } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 
 import { teamMemberships, teams, users } from '@praxis/db';
 import { type Database, db } from '@praxis/db/client';
@@ -40,25 +41,30 @@ export function parseTeamName(value: unknown): { name: string } | { error: 'inva
   return { name };
 }
 
-/** The team the user belongs to (with its members), or null when they have none.
- *  A member is the owner iff they created the team. Members are oldest-joined
- *  first, so the owner (who joined at creation) leads the list. */
-export async function getTeamForUser(
+/** Every team the user owns or belongs to (with each team's members), newest
+ *  team first; empty when they're in none. The owner always holds a membership
+ *  row, so a single pass over the user's memberships (joined to teams for the
+ *  sort) covers both owned and partner teams. A member is the owner iff they
+ *  created the team. Within a team, members are oldest-joined first (owner leads). */
+export async function getTeamsForUser(
   userId: string,
   database: Database = db,
-): Promise<TeamForUser | null> {
-  const [membership] = await database
+): Promise<TeamForUser[]> {
+  const memberships = await database
     .select({ teamId: teamMemberships.teamId })
     .from(teamMemberships)
+    .innerJoin(teams, eq(teams.id, teamMemberships.teamId))
     .where(eq(teamMemberships.userId, userId))
-    .limit(1);
-  if (!membership) return null;
+    .orderBy(desc(teams.createdAt));
 
-  return getTeamById(membership.teamId, userId, database);
+  const hydrated = await Promise.all(
+    memberships.map((m) => getTeamById(m.teamId, userId, database)),
+  );
+  return hydrated.filter((t): t is TeamForUser => t !== null);
 }
 
 /** Hydrate a team + its members, computing `isOwner` for the viewer. Internal —
- *  callers reach a team through getTeamForUser / createTeam / renameTeam. */
+ *  callers reach a team through getTeamsForUser / createTeam / renameTeam. */
 async function getTeamById(
   teamId: string,
   viewerId: string,
@@ -94,14 +100,12 @@ async function getTeamById(
   return { id: team.id, name: team.name, isOwner: team.createdBy === viewerId, members };
 }
 
-export type CreateTeamResult =
-  | { team: TeamForUser }
-  | { error: 'invalid_name' | 'already_in_team' };
+export type CreateTeamResult = { team: TeamForUser } | { error: 'invalid_name' };
 
-/** Create a team owned by `userId` from an untrusted name. 409 (already_in_team)
- *  if the user already belongs to one — one team per user this pass; 400
- *  (invalid_name) if the name is empty/too long. On success the creator is the
- *  owner member. Sequential inserts (no transaction) match the codebase style. */
+/** Create a team owned by `userId` from an untrusted name. 400 (invalid_name) if
+ *  the name is empty/too long. A user may own multiple teams (STORY-55), so there
+ *  is no "already in a team" guard. On success the creator is the owner member.
+ *  Sequential inserts (no transaction) match the codebase style. */
 export async function createTeam(
   userId: string,
   rawName: unknown,
@@ -109,13 +113,6 @@ export async function createTeam(
 ): Promise<CreateTeamResult> {
   const parsed = parseTeamName(rawName);
   if ('error' in parsed) return { error: parsed.error };
-
-  const [existing] = await database
-    .select({ teamId: teamMemberships.teamId })
-    .from(teamMemberships)
-    .where(eq(teamMemberships.userId, userId))
-    .limit(1);
-  if (existing) return { error: 'already_in_team' };
 
   const [team] = await database
     .insert(teams)
