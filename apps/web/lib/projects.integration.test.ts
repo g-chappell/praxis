@@ -18,6 +18,7 @@ import {
   duplicateProjectRow,
   isProjectArchived,
   listUserProjects,
+  resolveCreateTeam,
   setProjectArchived,
   setProjectBudget,
   updateProject,
@@ -244,6 +245,48 @@ describeDb('duplicateProjectRow (real DB)', () => {
       expect(await duplicateProjectRow(stranger, projectId, db)).toBeNull();
       const ownerProjects = await listUserProjects(owner, { status: 'all' }, db);
       expect(ownerProjects).toHaveLength(1);
+    });
+  });
+});
+
+describeDb('resolveCreateTeam + listUserProjects team label (STORY-57, real DB)', () => {
+  it('resolveCreateTeam: member teamId ok; stranger forbidden; missing → most-recent; none → needs_team', async () => {
+    await withDb(async (db) => {
+      const user = await seedUser(db);
+      expect(await resolveCreateTeam(user, undefined, db)).toEqual({ error: 'needs_team' });
+
+      const [a] = await db
+        .insert(teams)
+        .values({ name: 'A', createdBy: user })
+        .returning({ id: teams.id });
+      await db.insert(teamMemberships).values({ teamId: a!.id, userId: user });
+      const [b] = await db
+        .insert(teams)
+        .values({ name: 'B', createdBy: user })
+        .returning({ id: teams.id });
+      await db.insert(teamMemberships).values({ teamId: b!.id, userId: user });
+
+      // Explicit team the user belongs to → that team.
+      expect(await resolveCreateTeam(user, a!.id, db)).toEqual({ teamId: a!.id });
+      // A team the user doesn't belong to → forbidden.
+      const stranger = await seedUser(db);
+      const [c] = await db
+        .insert(teams)
+        .values({ name: 'C', createdBy: stranger })
+        .returning({ id: teams.id });
+      await db.insert(teamMemberships).values({ teamId: c!.id, userId: stranger });
+      expect(await resolveCreateTeam(user, c!.id, db)).toEqual({ error: 'forbidden' });
+      // No teamId → the most-recent team (B was created last).
+      expect(await resolveCreateTeam(user, undefined, db)).toEqual({ teamId: b!.id });
+    });
+  });
+
+  it('listUserProjects labels each project with its team name', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const { projectId } = await seedTeamWithProject(db, owner);
+      const list = await listUserProjects(owner, { status: 'all' }, db);
+      expect(list.find((p) => p.id === projectId)!.teamName).toBe('T');
     });
   });
 });
