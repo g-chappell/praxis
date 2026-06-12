@@ -146,6 +146,22 @@ describe('ClaudeAcpHost — persistent AgentSession (ADR-0016)', () => {
     await session.close();
   });
 
+  it('spawns the agent with ONLY the platform key — no per-user OAuth token (ADR-0009/STORY-24)', async () => {
+    const { sandbox, spawn } = harness(makeAgent(() => async () => ({ stopReason: 'end_turn' })));
+    const host = new ClaudeAcpHost();
+    const session = await host.openAgent(sandbox, HANDLE, 'sk-ant-platform');
+
+    const env = (spawn.mock.calls[0]![2] as { env?: Record<string, string> }).env ?? {};
+    // The platform key is the sole inference credential.
+    expect(env.ANTHROPIC_API_KEY).toBe('sk-ant-platform');
+    // No subscription-OAuth fallback may reach the agent — neither the explicit
+    // adapter var nor any other token-shaped key.
+    expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
+    expect(Object.keys(env).some((k) => /oauth|token/i.test(k))).toBe(false);
+
+    await session.close();
+  });
+
   it('reuses one process + ACP session across turns, with continuity', async () => {
     let turns = 0;
     const { sandbox, spawn, kill } = harness(

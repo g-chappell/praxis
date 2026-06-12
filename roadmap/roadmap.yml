@@ -2585,6 +2585,8 @@ epics:
           as not-used-for-inference (or hide it behind a flag), and document the
           credential as reserved for future identity / bring-your-own-key. Do not
           modify oauth_tokens or @praxis/crypto.
+        verified_at: '2026-06-12T21:16:00Z'
+        feature_complete: verified
         acceptance_criteria:
           - "The agent-spawn path uses the platform API key exclusively; no code path forwards a per-user OAuth token to the agent."
           - "The Settings 'Connected to Anthropic' UI reflects reality (hidden or clearly marked 'not used for inference under the current plan'), with a note in docs."
@@ -2594,7 +2596,7 @@ epics:
         tasks:
           - id: TASK-065
             title: "Ensure the platform key is the sole inference credential"
-            status: ready
+            status: done
             priority: low
             complexity: small
             workspaces: ["services/orchestrator"]
@@ -2604,11 +2606,13 @@ epics:
               token is forwarded. Add a guard/test.
             depends_on: [TASK-058, TASK-027]
             attempt_count: 0
+            completed: '2026-06-12T21:16:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/390
             task_acceptance:
               - "A test asserts the agent env carries the platform key and no per-user OAuth token."
           - id: TASK-066
             title: "Settings UI + docs reflect OAuth's not-used-for-inference status"
-            status: ready
+            status: done
             priority: low
             complexity: small
             workspaces: ["apps/web"]
@@ -2619,6 +2623,8 @@ epics:
               and @praxis/crypto untouched.
             depends_on: [TASK-065, TASK-020]
             attempt_count: 0
+            completed: '2026-06-12T21:16:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/390
             is_terminal: true
             task_acceptance:
               - "Settings UI no longer implies OAuth powers sessions; docs note the reserved role."

@@ -1,5 +1,10 @@
 // Anthropic (Claude) subscription OAuth — PKCE public-client, code-paste flow.
 //
+// RESERVED, NOT USED FOR INFERENCE (STORY-24): inference runs on the platform
+// API key (ADR-0009), so this flow is no longer surfaced in the UI and its
+// token never reaches the agent. The routes/lib/oauth_tokens are kept intact for
+// a future identity / bring-your-own-key tier. See the amendment in ADR-0006.
+//
 // Lets a user connect their own Claude Pro/Max plan so the orchestrator can
 // drive Claude Code on their subscription. This is the same flow the Claude
 // Code CLI uses: the public client only allow-lists Anthropic's own

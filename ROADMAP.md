@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 51 / 56 (91%)
+- **Features verified:** 52 / 56 (93%)
 - **Total tasks:** 176
-- **Done:** 169 (96%)
-- **Ready:** 7
+- **Done:** 171 (97%)
+- **Ready:** 5
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -1609,7 +1609,7 @@ flags, observability) mount into.
     - Over-budget prompts are blocked with a clear message; raising the budget resumes prompting.
     - STORY-23 acceptance_criteria satisfied.
 
-- **STORY-24** — Reconcile Anthropic OAuth with the platform-key model
+- **STORY-24** — Reconcile Anthropic OAuth with the platform-key model  [:white_check_mark: verified]
   > Under ADR-0009 the platform API key powers inference; the per-user
   > Anthropic OAuth flow (STORY-06) is no longer used for it. Make that
   > explicit without discarding working code: ensure no code path passes a
@@ -1623,14 +1623,14 @@ flags, observability) mount into.
   **Out of scope:**
   - Deleting the OAuth flow or the oauth_tokens table.
   - Building the bring-your-own-key tier.
-  - :black_circle: **TASK-065** — Ensure the platform key is the sole inference credential  `low` `small` _(services/orchestrator)_  
+  - :white_check_mark: **TASK-065** — Ensure the platform key is the sole inference credential  `low` `small` _(services/orchestrator)_ · [PR](https://github.com/g-chappell/praxis/pull/390)  
     _depends on: TASK-058, TASK-027_
     > Audit the spawn path: confirm only ANTHROPIC_API_KEY (platform key)
     > reaches the agent and no CLAUDE_CODE_OAUTH_TOKEN / per-user OAuth
     > token is forwarded. Add a guard/test.
     _Task AC:_
     - A test asserts the agent env carries the platform key and no per-user OAuth token.
-  - :black_circle: **TASK-066** :checkered_flag: — Settings UI + docs reflect OAuth's not-used-for-inference status  `low` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-066** :checkered_flag: — Settings UI + docs reflect OAuth's not-used-for-inference status  `low` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/390)  
     _depends on: TASK-065, TASK-020_
     > Update the 'Connected to Anthropic' Settings UI to state it is not
     > used for inference under the current plan (or hide behind a flag),
