@@ -465,6 +465,11 @@ if (!SKIP_PROJECT) {
     } else if (!existing.status) {
       // On the board but "No Status" — seed without overwriting a manual status.
       seedStatus(existing.id, id);
+    } else if (completedIds.has(id) && existing.status !== 'Done') {
+      // Completed but stuck at a stale status (e.g. Backlog seeded while the item
+      // was still open) — promote to Done. Mirrors Pass E closing the issue; an
+      // incomplete item's manual in-progress status is still left untouched.
+      seedStatus(existing.id, id);
     }
   }
 }
