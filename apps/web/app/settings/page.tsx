@@ -8,7 +8,7 @@ import { db } from '@praxis/db/client';
 import { AppNav } from '@/components/app-nav';
 import { ConnectClaudeCode } from '@/components/connect-claude-code';
 import { DisconnectAnthropicButton } from '@/components/disconnect-anthropic-button';
-import { TeamCard } from '@/components/team-card';
+import { TeamsPanel } from '@/components/team-card';
 import { PROVIDER } from '@/lib/anthropic-oauth';
 import { getAuth } from '@/lib/auth';
 import { getTeamsForUser } from '@/lib/teams';
@@ -74,11 +74,7 @@ export default async function SettingsPage() {
             )}
           </section>
 
-          {teams.length === 0 ? (
-            <TeamCard team={null} />
-          ) : (
-            teams.map((t) => <TeamCard key={t.id} team={t} />)
-          )}
+          <TeamsPanel teams={teams} />
         </div>
       </main>
     </>

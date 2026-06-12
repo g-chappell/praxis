@@ -8,28 +8,35 @@ import { Input } from '@/components/ui/input';
 import { Stamp } from '@/components/ui/stamp';
 import type { TeamForUser, TeamMember } from '@/lib/teams';
 
-// Team management on /settings (STORY-54). No team → an inline create form
-// (mirrors CreateProjectForm); has team → the member list plus an editable name
-// for the owner / read-only for everyone else (mirrors EditProjectButton's
-// inline edit + router.refresh). Name bound to TEAM_NAME_MAX in lib/teams.ts
-// (inlined — that module pulls in the server-only db client).
+// Team management on /settings (STORY-54/55). A user may own and belong to
+// multiple teams, so this renders a panel: an always-available create form plus
+// one card per team (each labelled with its name and its members by name). The
+// owner of a team can rename it inline; a member sees it read-only. Name bound to
+// TEAM_NAME_MAX in lib/teams.ts (inlined — that module pulls in the server-only
+// db client). Per-team invite/remove/leave controls come in STORY-56.
 const TEAM_NAME_MAX = 60;
 
-export function TeamCard({ team }: { team: TeamForUser | null }) {
+export function TeamsPanel({ teams }: { teams: TeamForUser[] }) {
   return (
-    <section data-testid="team-card" className="space-y-3 rounded-lg border p-5">
+    <section data-testid="teams-panel" className="space-y-4">
       <div className="space-y-1">
-        <h2 className="font-medium">Team</h2>
+        <h2 className="font-medium">Teams</h2>
         <p className="text-sm text-muted-foreground">
-          Build together — projects belong to a team, not a person.
+          Build together — projects belong to a team, not a person. You can create or join more than
+          one.
         </p>
       </div>
-      {team ? <TeamDetails team={team} /> : <CreateTeam />}
+
+      <CreateTeam hasTeams={teams.length > 0} />
+
+      {teams.map((team) => (
+        <TeamCard key={team.id} team={team} />
+      ))}
     </section>
   );
 }
 
-function CreateTeam() {
+function CreateTeam({ hasTeams }: { hasTeams: boolean }) {
   const router = useRouter();
   const [name, setName] = useState('');
   const [pending, setPending] = useState(false);
@@ -51,6 +58,8 @@ function CreateTeam() {
         setError('Could not create the team. Try again.');
         return;
       }
+      setName('');
+      setPending(false);
       router.refresh();
     } catch {
       setPending(false);
@@ -59,11 +68,15 @@ function CreateTeam() {
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        You don&apos;t have a team yet. Create one to start building, or ask a teammate for an
-        invite link.
-      </p>
+    <div className="space-y-3 rounded-lg border p-5">
+      {hasTeams ? (
+        <h3 className="font-medium">Create another team</h3>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          You don&apos;t have a team yet. Create one to start building, or ask a teammate for an
+          invite link.
+        </p>
+      )}
       <form data-testid="team-create-form" onSubmit={onSubmit} className="space-y-2">
         <Input
           data-testid="team-name-input"
@@ -72,7 +85,6 @@ function CreateTeam() {
           onChange={(e) => setName(e.target.value)}
           placeholder="Team name"
           aria-label="Team name"
-          autoFocus
         />
         {error && <p className="text-xs text-destructive">{error}</p>}
         <Button
@@ -89,17 +101,14 @@ function CreateTeam() {
   );
 }
 
-function TeamDetails({ team }: { team: TeamForUser }) {
+function TeamCard({ team }: { team: TeamForUser }) {
   return (
-    <div className="space-y-4">
-      {team.isOwner ? (
-        <RenameTeam teamId={team.id} name={team.name} />
-      ) : (
-        <div className="space-y-1">
-          <span className="text-xs font-medium text-muted-foreground">Name</span>
-          <p className="text-lg font-semibold">{team.name}</p>
-        </div>
-      )}
+    <div data-testid="team-card" className="space-y-4 rounded-lg border p-5">
+      <h3 data-testid="team-name" className="text-lg font-semibold">
+        {team.name}
+      </h3>
+
+      {team.isOwner && <RenameTeam teamId={team.id} name={team.name} />}
 
       <ul className="divide-y rounded-md border">
         {team.members.map((member) => (
@@ -144,15 +153,18 @@ function RenameTeam({ teamId, name: initialName }: { teamId: string; name: strin
 
   return (
     <form onSubmit={onSubmit} className="space-y-2">
-      <label htmlFor="team-rename-input" className="text-xs font-medium text-muted-foreground">
-        Name
+      <label
+        htmlFor={`team-rename-${teamId}`}
+        className="text-xs font-medium text-muted-foreground"
+      >
+        Rename team
       </label>
       <div className="flex items-start gap-2">
         <Input
-          id="team-rename-input"
+          id={`team-rename-${teamId}`}
           data-testid="team-rename-input"
           value={name}
-          maxLength={60}
+          maxLength={TEAM_NAME_MAX}
           onChange={(e) => setName(e.target.value)}
         />
         <Button

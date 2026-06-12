@@ -44,10 +44,11 @@ test.describe('create and manage your team', () => {
       '/settings',
     );
 
-    // 3. Settings shows the empty-state Team card with a create form.
+    // 3. Settings shows the Teams panel with a create form and no team card yet.
     await page.goto('/settings');
-    await expect(page.getByTestId('team-card')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTestId('teams-panel')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('team-create-form')).toBeVisible();
+    await expect(page.getByTestId('team-card')).toHaveCount(0);
 
     // 4. Create the team 'Acme' → the card populates with the user as owner.
     await page.getByTestId('team-name-input').fill('Acme');
