@@ -101,6 +101,31 @@ describeDb('invites (real DB)', () => {
     });
   });
 
+  it('acceptInvite: a full team (cap 2) refuses a 3rd joiner without consuming the invite', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const partner = await seedUser(db);
+      const third = await seedUser(db);
+      const { teamId, projectId } = await seedTeamWithProject(db, owner);
+      // Fill the team to the cap of 2 (owner + partner).
+      await db.insert(teamMemberships).values({ teamId, userId: partner });
+
+      const { code } = await createInvite(owner, projectId, { db });
+      expect(await acceptInvite(third, code, { db })).toEqual({ status: 'team_full' });
+      expect(await memberCount(db, teamId, third)).toBe(0);
+
+      // The invite is left unconsumed so the owner can still reconcile.
+      const [inv] = await db.select().from(teamInvites).where(eq(teamInvites.inviteCode, code));
+      expect(inv!.acceptedBy).toBeNull();
+
+      // An existing member re-opening the link on a full team still no-ops ok.
+      expect(await acceptInvite(owner, code, { db })).toMatchObject({
+        status: 'ok',
+        alreadyMember: true,
+      });
+    });
+  });
+
   it('acceptInvite: invalid / expired / used all reject with no membership change', async () => {
     await withDb(async (db) => {
       const owner = await seedUser(db);

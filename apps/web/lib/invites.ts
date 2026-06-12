@@ -6,10 +6,12 @@
 
 import { randomBytes } from 'node:crypto';
 
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 
 import { projects, teamInvites, teamMemberships } from '@praxis/db';
 import { type Database, db as defaultDb } from '@praxis/db/client';
+
+import { TEAM_MAX_MEMBERS } from '@/lib/teams';
 
 /** Caller isn't a member of the project's team — they can't mint an invite. */
 export class ForbiddenError extends Error {
@@ -56,6 +58,7 @@ export type AcceptResult =
   | { status: 'invalid' }
   | { status: 'expired' }
   | { status: 'used' }
+  | { status: 'team_full' }
   | { status: 'ok'; teamId: string; projectId: string | null; alreadyMember: boolean };
 
 /** Redeem an invite code for a user. Validates the code, no-ops if they're
@@ -79,9 +82,16 @@ export async function acceptInvite(
   const projectId = await newestProjectId(db, teamId);
 
   // Already on the team (e.g. the owner opening their own link, or a re-open by
-  // the original acceptor): no write, and don't consume the code.
+  // the original acceptor): no write, and don't consume the code. Checked before
+  // the cap so an existing member's re-open still succeeds on a full team.
   if (await isMember(db, teamId, userId)) {
     return { status: 'ok', teamId, projectId, alreadyMember: true };
+  }
+
+  // Cap of 2 per team (STORY-56): a fresh joiner is refused once the team is
+  // full. The invite is left unconsumed so the owner can still reconcile.
+  if ((await memberCount(db, teamId)) >= TEAM_MAX_MEMBERS) {
+    return { status: 'team_full' };
   }
 
   // Claim the single-use invite atomically: only the redemption that flips
@@ -106,6 +116,15 @@ export async function acceptInvite(
 
   await db.insert(teamMemberships).values({ teamId, userId }).onConflictDoNothing();
   return { status: 'ok', teamId, projectId, alreadyMember: false };
+}
+
+/** Current member count for a team — used to enforce the per-team cap. */
+async function memberCount(db: Database, teamId: string): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(teamMemberships)
+    .where(eq(teamMemberships.teamId, teamId));
+  return row?.n ?? 0;
 }
 
 async function isMember(db: Database, teamId: string, userId: string): Promise<boolean> {

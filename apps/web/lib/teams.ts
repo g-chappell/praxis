@@ -16,6 +16,11 @@ import { recordAudit } from '@/lib/audit';
 /** Max team-name length, shared by the HTTP boundary and the create/rename form. */
 export const TEAM_NAME_MAX = 60;
 
+/** A team is a pair: at most this many members (STORY-56). Enforced on join
+ *  (acceptInvite) and on invite mint (createTeamInvite); never forces out an
+ *  existing member, so an over-cap team is only reconciled by removing members. */
+export const TEAM_MAX_MEMBERS = 2;
+
 export interface TeamMember {
   userId: string;
   email: string;
