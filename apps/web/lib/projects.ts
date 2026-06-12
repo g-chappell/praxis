@@ -1,10 +1,10 @@
-// Project + team helpers (STORY-09). A project needs a team (FK notNull); the POC
-// gives each user an implicit "Personal" team on first project. Full team
-// management is a later epic.
+// Project + team helpers (STORY-09). A project needs a team (FK notNull). Teams
+// are explicit (STORY-54): a user creates or joins one before they can build —
+// the create route refuses a teamless user (no auto-create). See lib/teams.ts.
 
 import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 
-import { projects, teamMemberships, teams } from '@praxis/db';
+import { projects, teamMemberships } from '@praxis/db';
 import { type Database, db } from '@praxis/db/client';
 
 export interface ProjectSummary {
@@ -62,23 +62,6 @@ export function parseProjectPatch(
     return { error: 'no_fields' };
   }
   return { fields };
-}
-
-/** Return the user's first team, creating a personal team + membership if none. */
-export async function ensurePersonalTeam(userId: string): Promise<string> {
-  const [existing] = await db
-    .select({ teamId: teamMemberships.teamId })
-    .from(teamMemberships)
-    .where(eq(teamMemberships.userId, userId))
-    .limit(1);
-  if (existing) return existing.teamId;
-
-  const [team] = await db
-    .insert(teams)
-    .values({ name: 'Personal', createdBy: userId })
-    .returning({ id: teams.id });
-  await db.insert(teamMemberships).values({ teamId: team!.id, userId });
-  return team!.id;
 }
 
 /** True iff the user is a member of the team that owns the project. The `db` is

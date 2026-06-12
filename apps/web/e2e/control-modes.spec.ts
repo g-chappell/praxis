@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
+import { ensureTeam } from './teams';
+
 // Smoke e2e for prompt-control modes (STORY-34/TASK-096): an authenticated owner
 // opens their project workspace and the ControlBar is mounted, showing the active
 // mode. The full two-user handoff (request → approve → prompt → release) and
@@ -36,7 +38,8 @@ test.describe('prompt-control modes', () => {
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 
     // 2. Create a project (owned by this user) via the API, using the page's
-    //    authenticated cookies.
+    //    authenticated cookies. A team is required first (STORY-54).
+    await ensureTeam(page.request);
     const res = await page.request.post('/api/projects', { data: { name: 'Control modes e2e' } });
     expect(res.ok()).toBeTruthy();
     const { id } = (await res.json()) as { id: string };

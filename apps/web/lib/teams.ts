@@ -101,8 +101,7 @@ export type CreateTeamResult =
 /** Create a team owned by `userId` from an untrusted name. 409 (already_in_team)
  *  if the user already belongs to one — one team per user this pass; 400
  *  (invalid_name) if the name is empty/too long. On success the creator is the
- *  owner member. Sequential inserts mirror the prior ensurePersonalTeam (the
- *  codebase does not use transactions). */
+ *  owner member. Sequential inserts (no transaction) match the codebase style. */
 export async function createTeam(
   userId: string,
   rawName: unknown,

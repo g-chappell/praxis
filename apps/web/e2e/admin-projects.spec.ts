@@ -6,6 +6,8 @@ import { withDb } from '@praxis/db/test';
 import { expect, test, type Page } from '@playwright/test';
 import { and, eq } from 'drizzle-orm';
 
+import { ensureTeam } from './teams';
+
 // Smoke e2e for admin project moderation (STORY-44/TASK-128): an admin opens the
 // projects directory, finds a project owned by ANOTHER user, and archives it with
 // a required reason — the status flips and an audit_log row is written. Admin
@@ -32,6 +34,7 @@ test.describe('admin projects moderation', () => {
     const ownerCtx = await browser.newContext();
     const ownerPage = await ownerCtx.newPage();
     await signIn(ownerPage, `owner-${stamp}@test.local`);
+    await ensureTeam(ownerPage.request);
     const res = await ownerPage.request.post('/api/projects', { data: { name: projectName } });
     expect(res.ok()).toBeTruthy();
     const { id: projectId } = (await res.json()) as { id: string };

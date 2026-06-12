@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
+import { ensureTeam } from './teams';
+
 // Smoke e2e for dashboard search + sort (STORY-41/TASK-116): an authenticated
 // owner with several projects searches by name and sorts the list, all
 // client-side over the loaded set.
@@ -31,11 +33,12 @@ test.describe('dashboard search + sort', () => {
     await page.goto(verifyUrl);
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 
-    // 2. Create three named projects via the API.
+    // 2. Create three named projects via the API (team required first — STORY-54).
     const stamp = Date.now();
     const apple = `Apple ${stamp}`;
     const banana = `Banana ${stamp}`;
     const cherry = `Cherry ${stamp}`;
+    await ensureTeam(page.request);
     for (const name of [banana, apple, cherry]) {
       const res = await page.request.post('/api/projects', { data: { name } });
       expect(res.ok()).toBeTruthy();

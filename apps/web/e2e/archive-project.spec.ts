@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
+import { ensureTeam } from './teams';
+
 // Smoke e2e for project archive / restore (STORY-40/TASK-114): an authenticated
 // owner archives a project (it leaves the Active list and appears under
 // Archived), then restores it (back in Active). The volume-untouched guarantee
@@ -33,8 +35,9 @@ test.describe('project archive + restore', () => {
     await page.goto(verifyUrl);
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 
-    // 2. Create a project owned by this fresh user.
+    // 2. Create a project owned by this fresh user (team required first — STORY-54).
     const projectName = `Archive me ${Date.now()}`;
+    await ensureTeam(page.request);
     const res = await page.request.post('/api/projects', { data: { name: projectName } });
     expect(res.ok()).toBeTruthy();
 
@@ -80,6 +83,7 @@ test.describe('project archive + restore', () => {
     await page.goto(verifyUrl);
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 
+    await ensureTeam(page.request);
     const res = await page.request.post('/api/projects', { data: { name: `RO ${Date.now()}` } });
     expect(res.ok()).toBeTruthy();
     const { id } = (await res.json()) as { id: string };

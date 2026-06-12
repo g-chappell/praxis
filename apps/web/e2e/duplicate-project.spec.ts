@@ -3,6 +3,8 @@ import { resolve } from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
+import { ensureTeam } from './teams';
+
 // Smoke e2e for project duplicate (STORY-42/TASK-121): an authenticated owner
 // sees the Duplicate control on an active project row. The full clone round-trip
 // (copy → open → files present → editing the copy doesn't change the source)
@@ -33,6 +35,7 @@ test.describe('project duplicate', () => {
     await page.goto(verifyUrl);
     await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
 
+    await ensureTeam(page.request);
     const res = await page.request.post('/api/projects', { data: { name: 'Duplicate me' } });
     expect(res.ok()).toBeTruthy();
 
