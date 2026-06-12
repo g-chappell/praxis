@@ -667,6 +667,8 @@ epics:
           exposed preview port, per project_plan.md §6. Deferred from STORY-07,
           whose acceptance criteria covered the Sandbox interface, DockerSandbox,
           and idle/persistence but not network policy.
+        verified_at: '2026-06-12T21:42:00Z'
+        feature_complete: pending
         acceptance_criteria:
           - "A sandbox container can reach api.anthropic.com and registry.npmjs.org but not an arbitrary disallowed host."
           - "No inbound connections succeed except the port published via exposePort."
@@ -676,7 +678,7 @@ epics:
         tasks:
           - id: TASK-053
             title: "Egress allowlist for sandbox containers"
-            status: ready
+            status: done
             priority: med
             complexity: medium
             workspaces: ["packages/sandbox", "infrastructure/docker"]
@@ -687,6 +689,8 @@ epics:
               how to extend the allowlist.
             depends_on: [TASK-022]
             attempt_count: 0
+            completed: '2026-06-12T21:42:00Z'
+            pr: https://github.com/g-chappell/praxis/pull/391
             is_terminal: true
             task_acceptance:
               - "Integration test: allowed host reachable, disallowed host blocked, from inside a sandbox."

@@ -10,8 +10,8 @@ _Created: 2026-05-31_
 
 - **Features verified:** 52 / 56 (93%)
 - **Total tasks:** 176
-- **Done:** 171 (97%)
-- **Ready:** 5
+- **Done:** 172 (98%)
+- **Ready:** 4
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -402,7 +402,7 @@ hello-world session that joins all three.
     - Integration test: write marker file, stop session, restart, marker present.
     - STORY-09 acceptance_criteria satisfied.
 
-- **STORY-19** — Sandbox outbound network egress allowlist
+- **STORY-19** — Sandbox outbound network egress allowlist  [:hourglass: pending]
   > Restrict sandbox containers to an outbound allowlist (Anthropic API,
   > OpenAI API, npm, PyPI, GitHub read-only) with no inbound except the
   > exposed preview port, per project_plan.md §6. Deferred from STORY-07,
@@ -413,7 +413,7 @@ hello-world session that joins all three.
   - No inbound connections succeed except the port published via exposePort.
   **Out of scope:**
   - Per-user / per-template network policy (a single allowlist for the POC).
-  - :black_circle: **TASK-053** :checkered_flag: — Egress allowlist for sandbox containers  `med` `medium` _(packages/sandbox, infrastructure/docker)_  
+  - :white_check_mark: **TASK-053** :checkered_flag: — Egress allowlist for sandbox containers  `med` `medium` _(packages/sandbox, infrastructure/docker)_ · [PR](https://github.com/g-chappell/praxis/pull/391)  
     _depends on: TASK-022_
     > Enforce an outbound allowlist on DockerSandbox containers (filtered
     > Docker network / egress proxy / firewall sidecar). Block all inbound
