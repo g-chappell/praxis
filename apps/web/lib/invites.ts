@@ -1,8 +1,8 @@
-// Project sharing via single-use invite links (STORY-31). An owner mints a code
-// bound to their project's team; whoever redeems it joins that team and thereby
-// gains access to its projects (userOwnsProject is team-scoped). Built on the
-// existing team_invites table — no schema change. Single-use: the claim is an
-// atomic conditional UPDATE so concurrent redemptions can't both win.
+// Team invite links (STORY-31/56). The team owner mints a single-use code bound
+// to a team; whoever redeems it joins that team and thereby gains access to its
+// projects (userOwnsProject is team-scoped). Built on the team_invites table —
+// no schema change. Single-use: the claim is an atomic conditional UPDATE so
+// concurrent redemptions can't both win. Joining is capped per team (STORY-56).
 
 import { randomBytes } from 'node:crypto';
 
@@ -12,14 +12,6 @@ import { projects, teamInvites, teamMemberships, teams } from '@praxis/db';
 import { type Database, db as defaultDb } from '@praxis/db/client';
 
 import { TEAM_MAX_MEMBERS } from '@/lib/teams';
-
-/** Caller isn't a member of the project's team — they can't mint an invite. */
-export class ForbiddenError extends Error {
-  constructor(message = 'forbidden') {
-    super(message);
-    this.name = 'ForbiddenError';
-  }
-}
 
 interface Deps {
   /** Injectable for tests; defaults to the lazy @praxis/db/client singleton. */
@@ -31,27 +23,6 @@ const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 export interface CreatedInvite {
   code: string;
   expiresAt: Date;
-}
-
-/** Mint a single-use, 7-day invite for the project's team. Throws
- *  {@link ForbiddenError} when the caller isn't a member of that team. */
-export async function createInvite(
-  userId: string,
-  projectId: string,
-  { db = defaultDb }: Deps = {},
-): Promise<CreatedInvite> {
-  const [row] = await db
-    .select({ teamId: projects.teamId })
-    .from(projects)
-    .innerJoin(teamMemberships, eq(teamMemberships.teamId, projects.teamId))
-    .where(and(eq(projects.id, projectId), eq(teamMemberships.userId, userId)))
-    .limit(1);
-  if (!row) throw new ForbiddenError();
-
-  const code = randomBytes(16).toString('base64url');
-  const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
-  await db.insert(teamInvites).values({ teamId: row.teamId, inviteCode: code, expiresAt });
-  return { code, expiresAt };
 }
 
 export type CreateTeamInviteResult =

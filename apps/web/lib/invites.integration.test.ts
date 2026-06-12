@@ -1,4 +1,4 @@
-// Persistence tests for project invite create/accept (STORY-31). Real Postgres
+// Persistence tests for team invite mint/accept (STORY-31/56). Real Postgres
 // (tier-3: no DB mocks), gated behind RUN_DB_TESTS=1 so CI without a database
 // still passes. Run locally with:
 //   pnpm db:up
@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { projects, teamInvites, teamMemberships, teams, users } from '@praxis/db';
 import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
 
-import { ForbiddenError, acceptInvite, createInvite, createTeamInvite } from './invites';
+import { acceptInvite, createTeamInvite } from './invites';
 
 const describeDb = dbTestsEnabled() ? describe : describe.skip;
 
@@ -47,34 +47,23 @@ async function memberCount(db: TestDb, teamId: string, userId: string): Promise<
   return rows.length;
 }
 
+/** Insert a fresh, valid invite code directly — decouples the acceptInvite tests
+ *  from the mint path (which is covered by the createTeamInvite test). */
+async function mintCode(db: TestDb, teamId: string): Promise<string> {
+  const code = randomBytesCode();
+  await db
+    .insert(teamInvites)
+    .values({ teamId, inviteCode: code, expiresAt: new Date(Date.now() + 86_400_000) });
+  return code;
+}
+
 describeDb('invites (real DB)', () => {
-  it('createInvite: owner mints a 7-day code; a non-member is forbidden', async () => {
-    await withDb(async (db) => {
-      const owner = await seedUser(db);
-      const stranger = await seedUser(db);
-      const { teamId, projectId } = await seedTeamWithProject(db, owner);
-
-      const { code, expiresAt } = await createInvite(owner, projectId, { db });
-      expect(code).toMatch(/^[A-Za-z0-9_-]{16,}$/);
-      const days = (expiresAt.getTime() - Date.now()) / 86_400_000;
-      expect(days).toBeGreaterThan(6.9);
-      expect(days).toBeLessThan(7.1);
-
-      const [row] = await db.select().from(teamInvites).where(eq(teamInvites.inviteCode, code));
-      expect(row!.teamId).toBe(teamId);
-
-      await expect(createInvite(stranger, projectId, { db })).rejects.toBeInstanceOf(
-        ForbiddenError,
-      );
-    });
-  });
-
   it('acceptInvite: a non-member joins exactly once and lands on the team project', async () => {
     await withDb(async (db) => {
       const owner = await seedUser(db);
       const joiner = await seedUser(db);
       const { teamId, projectId } = await seedTeamWithProject(db, owner);
-      const { code } = await createInvite(owner, projectId, { db });
+      const code = await mintCode(db, teamId);
 
       const r = await acceptInvite(joiner, code, { db });
       expect(r).toEqual({ status: 'ok', teamId, projectId, alreadyMember: false });
@@ -90,7 +79,7 @@ describeDb('invites (real DB)', () => {
     await withDb(async (db) => {
       const owner = await seedUser(db);
       const { teamId, projectId } = await seedTeamWithProject(db, owner);
-      const { code } = await createInvite(owner, projectId, { db });
+      const code = await mintCode(db, teamId);
 
       const r = await acceptInvite(owner, code, { db });
       expect(r).toMatchObject({ status: 'ok', alreadyMember: true, teamId, projectId });
@@ -106,11 +95,11 @@ describeDb('invites (real DB)', () => {
       const owner = await seedUser(db);
       const partner = await seedUser(db);
       const third = await seedUser(db);
-      const { teamId, projectId } = await seedTeamWithProject(db, owner);
+      const { teamId } = await seedTeamWithProject(db, owner);
       // Fill the team to the cap of 2 (owner + partner).
       await db.insert(teamMemberships).values({ teamId, userId: partner });
 
-      const { code } = await createInvite(owner, projectId, { db });
+      const code = await mintCode(db, teamId);
       expect(await acceptInvite(third, code, { db })).toEqual({ status: 'team_full' });
       expect(await memberCount(db, teamId, third)).toBe(0);
 
@@ -131,7 +120,7 @@ describeDb('invites (real DB)', () => {
       const owner = await seedUser(db);
       const a = await seedUser(db);
       const b = await seedUser(db);
-      const { teamId, projectId } = await seedTeamWithProject(db, owner);
+      const { teamId } = await seedTeamWithProject(db, owner);
 
       expect(await acceptInvite(a, 'no-such-code', { db })).toEqual({ status: 'invalid' });
 
@@ -146,7 +135,7 @@ describeDb('invites (real DB)', () => {
       expect(await memberCount(db, teamId, a)).toBe(0);
 
       // Used: first acceptor wins, a second different user is rejected.
-      const { code } = await createInvite(owner, projectId, { db });
+      const code = await mintCode(db, teamId);
       await acceptInvite(a, code, { db });
       expect(await acceptInvite(b, code, { db })).toEqual({ status: 'used' });
       expect(await memberCount(db, teamId, b)).toBe(0);

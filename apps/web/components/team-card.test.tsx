@@ -122,6 +122,61 @@ describe('TeamsPanel — multiple teams', () => {
   });
 });
 
+const soloTeam: TeamForUser = {
+  id: 't4',
+  name: 'Solo',
+  isOwner: true,
+  members: [
+    {
+      userId: 'u1',
+      email: 'owner@test.local',
+      displayName: 'Owner',
+      isOwner: true,
+      joinedAt: null,
+    },
+  ],
+};
+
+describe('TeamsPanel — per-team controls', () => {
+  it('owner of a solo team sees Invite (no full note, no remove)', () => {
+    const { getByTestId, queryByTestId } = render(<TeamsPanel teams={[soloTeam]} />);
+    expect(getByTestId('team-invite-button')).toBeTruthy();
+    expect(queryByTestId('team-full-note')).toBeNull();
+    expect(queryByTestId('team-member-remove')).toBeNull();
+    expect(queryByTestId('team-leave-button')).toBeNull();
+  });
+
+  it('owner of a full team sees the full note + a Remove on the partner, no Invite', () => {
+    const { getByTestId, queryByTestId, getAllByTestId } = render(<TeamsPanel teams={[acme]} />);
+    expect(getByTestId('team-full-note')).toBeTruthy();
+    expect(queryByTestId('team-invite-button')).toBeNull();
+    // One Remove control — on the partner, not the owner.
+    expect(getAllByTestId('team-member-remove')).toHaveLength(1);
+  });
+
+  it('a member sees Leave and no invite/remove controls', () => {
+    const { getByTestId, queryByTestId } = render(<TeamsPanel teams={[beta]} />);
+    expect(getByTestId('team-leave-button')).toBeTruthy();
+    expect(queryByTestId('team-invite-button')).toBeNull();
+    expect(queryByTestId('team-member-remove')).toBeNull();
+  });
+
+  it('minting an invite reveals the link + copy', async () => {
+    vi.spyOn(global, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ url: 'https://praxis.local/invite/abc' }), { status: 200 }),
+    );
+    const { getByTestId } = render(<TeamsPanel teams={[soloTeam]} />);
+    await act(async () => {
+      fireEvent.click(getByTestId('team-invite-button'));
+    });
+    await waitFor(() => getByTestId('team-invite-link'));
+    expect((getByTestId('team-invite-link') as HTMLInputElement).value).toBe(
+      'https://praxis.local/invite/abc',
+    );
+    expect(getByTestId('team-invite-copy')).toBeTruthy();
+  });
+});
+
 describe('TeamsPanel — rename', () => {
   it('disables Save until the name changes, then PATCHes the right team and refreshes', async () => {
     const fetchMock = vi

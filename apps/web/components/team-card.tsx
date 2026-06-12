@@ -8,13 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Stamp } from '@/components/ui/stamp';
 import type { TeamForUser, TeamMember } from '@/lib/teams';
 
-// Team management on /settings (STORY-54/55). A user may own and belong to
+// Team management on /settings (STORY-54/55/56). A user may own and belong to
 // multiple teams, so this renders a panel: an always-available create form plus
 // one card per team (each labelled with its name and its members by name). The
-// owner of a team can rename it inline; a member sees it read-only. Name bound to
-// TEAM_NAME_MAX in lib/teams.ts (inlined — that module pulls in the server-only
-// db client). Per-team invite/remove/leave controls come in STORY-56.
+// owner can rename, invite a partner (until the team is full), and remove the
+// partner; a member can leave. Bounds mirror lib/teams.ts (inlined — that module
+// pulls in the server-only db client).
 const TEAM_NAME_MAX = 60;
+const TEAM_MAX_MEMBERS = 2;
 
 export function TeamsPanel({ teams }: { teams: TeamForUser[] }) {
   return (
@@ -102,6 +103,7 @@ function CreateTeam({ hasTeams }: { hasTeams: boolean }) {
 }
 
 function TeamCard({ team }: { team: TeamForUser }) {
+  const full = team.members.length >= TEAM_MAX_MEMBERS;
   return (
     <div data-testid="team-card" className="space-y-4 rounded-lg border p-5">
       <h3 data-testid="team-name" className="text-lg font-semibold">
@@ -112,9 +114,26 @@ function TeamCard({ team }: { team: TeamForUser }) {
 
       <ul className="divide-y rounded-md border">
         {team.members.map((member) => (
-          <MemberRow key={member.userId} member={member} />
+          <MemberRow
+            key={member.userId}
+            member={member}
+            teamId={team.id}
+            canManage={team.isOwner}
+          />
         ))}
       </ul>
+
+      {team.isOwner ? (
+        full ? (
+          <p data-testid="team-full-note" className="text-xs text-muted-foreground">
+            This team is full (a pair). Remove the partner to invite someone else.
+          </p>
+        ) : (
+          <InviteControl teamId={team.id} />
+        )
+      ) : (
+        <LeaveTeamButton teamId={team.id} />
+      )}
     </div>
   );
 }
@@ -182,7 +201,147 @@ function RenameTeam({ teamId, name: initialName }: { teamId: string; name: strin
   );
 }
 
-function MemberRow({ member }: { member: TeamMember }) {
+function InviteControl({ teamId }: { teamId: string }) {
+  const [link, setLink] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function mint() {
+    setPending(true);
+    setError(null);
+    setCopied(false);
+    try {
+      const res = await fetch(`/api/teams/${teamId}/invites`, { method: 'POST' });
+      if (!res.ok) {
+        setPending(false);
+        setError('Could not create an invite link.');
+        return;
+      }
+      const { url } = (await res.json()) as { url?: string };
+      setLink(url ?? null);
+      setPending(false);
+    } catch {
+      setPending(false);
+      setError('Could not create an invite link.');
+    }
+  }
+
+  async function copy() {
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  if (!link) {
+    return (
+      <div className="space-y-1">
+        <Button
+          variant="stamp"
+          size="sm"
+          data-testid="team-invite-button"
+          onClick={mint}
+          disabled={pending}
+        >
+          {pending ? 'Creating…' : 'Invite partner'}
+        </Button>
+        {error && <p className="text-xs text-destructive">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">Share this single-use link with your partner:</p>
+      <div className="flex items-center gap-2">
+        <Input data-testid="team-invite-link" value={link} readOnly />
+        <Button variant="stamp" size="sm" data-testid="team-invite-copy" onClick={copy}>
+          {copied ? 'Copied' : 'Copy'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function RemoveMemberButton({ teamId, userId }: { teamId: string; userId: string }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+
+  async function onClick() {
+    if (!window.confirm('Remove this partner from the team? They lose access to its projects.')) {
+      return;
+    }
+    setPending(true);
+    try {
+      const res = await fetch(`/api/teams/${teamId}/members/${userId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        setPending(false);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      data-testid="team-member-remove"
+      onClick={onClick}
+      disabled={pending}
+    >
+      {pending ? 'Removing…' : 'Remove'}
+    </Button>
+  );
+}
+
+function LeaveTeamButton({ teamId }: { teamId: string }) {
+  const router = useRouter();
+  const [pending, setPending] = useState(false);
+
+  async function onClick() {
+    if (!window.confirm('Leave this team? You lose access to its projects.')) return;
+    setPending(true);
+    try {
+      const res = await fetch(`/api/teams/${teamId}/leave`, { method: 'POST' });
+      if (!res.ok) {
+        setPending(false);
+        return;
+      }
+      router.refresh();
+    } catch {
+      setPending(false);
+    }
+  }
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      data-testid="team-leave-button"
+      onClick={onClick}
+      disabled={pending}
+    >
+      {pending ? 'Leaving…' : 'Leave team'}
+    </Button>
+  );
+}
+
+function MemberRow({
+  member,
+  teamId,
+  canManage,
+}: {
+  member: TeamMember;
+  teamId: string;
+  canManage: boolean;
+}) {
   // Display name falls back to email when absent — and an empty/whitespace
   // display name counts as absent (Better Auth seeds it to '' on signup, not
   // null, so `?? email` alone would render a blank row).
@@ -205,6 +364,9 @@ function MemberRow({ member }: { member: TeamMember }) {
           <span className="text-xs text-muted-foreground">
             Joined {member.joinedAt.toLocaleDateString()}
           </span>
+        )}
+        {canManage && !member.isOwner && (
+          <RemoveMemberButton teamId={teamId} userId={member.userId} />
         )}
       </div>
     </li>
