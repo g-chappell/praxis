@@ -7,13 +7,13 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { auditLog, teamMemberships, teams, users } from '@praxis/db';
 import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
 
-import { createTeam, getTeamsForUser, renameTeam } from './teams';
+import { createTeam, getTeamsForUser, leaveTeam, removeMember, renameTeam } from './teams';
 
 const describeDb = dbTestsEnabled() ? describe : describe.skip;
 
@@ -164,6 +164,89 @@ describeDb('renameTeam (real DB)', () => {
         error: 'invalid_name',
       });
       expect(await renameTeam(owner, randomUUID(), 'Ghost', db)).toEqual({ error: 'not_found' });
+    });
+  });
+});
+
+async function teamMemberIds(db: TestDb, teamId: string): Promise<string[]> {
+  const rows = await db
+    .select({ userId: teamMemberships.userId })
+    .from(teamMemberships)
+    .where(eq(teamMemberships.teamId, teamId));
+  return rows.map((r) => r.userId).sort();
+}
+
+describeDb('removeMember (real DB)', () => {
+  it('owner removes the partner; audits team.member_removed; idempotent', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const created = await createTeam(owner, 'Acme', db);
+      if (!('team' in created)) throw new Error('expected team');
+      const partner = await seedUser(db);
+      await db.insert(teamMemberships).values({ teamId: created.team.id, userId: partner });
+
+      expect(await removeMember(owner, created.team.id, partner, db)).toEqual({ ok: true });
+      expect(await teamMemberIds(db, created.team.id)).toEqual([owner]);
+
+      const audits = await db
+        .select({ action: auditLog.action, targetId: auditLog.targetId })
+        .from(auditLog)
+        .where(eq(auditLog.targetId, created.team.id));
+      expect(audits).toContainEqual({ action: 'team.member_removed', targetId: created.team.id });
+
+      // Idempotent: removing again is still ok and writes no second audit row.
+      expect(await removeMember(owner, created.team.id, partner, db)).toEqual({ ok: true });
+      const after = await db
+        .select({ action: auditLog.action })
+        .from(auditLog)
+        .where(
+          and(eq(auditLog.targetId, created.team.id), eq(auditLog.action, 'team.member_removed')),
+        );
+      expect(after).toHaveLength(1);
+    });
+  });
+
+  it('403s a non-owner and refuses removing the owner', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const created = await createTeam(owner, 'Acme', db);
+      if (!('team' in created)) throw new Error('expected team');
+      const partner = await seedUser(db);
+      await db.insert(teamMemberships).values({ teamId: created.team.id, userId: partner });
+
+      expect(await removeMember(partner, created.team.id, owner, db)).toEqual({
+        error: 'not_owner',
+      });
+      expect(await removeMember(owner, created.team.id, owner, db)).toEqual({
+        error: 'cannot_remove_owner',
+      });
+      expect(await removeMember(owner, randomUUID(), partner, db)).toEqual({ error: 'not_found' });
+      // Nothing was removed by the refused calls.
+      expect(await teamMemberIds(db, created.team.id)).toEqual([owner, partner].sort());
+    });
+  });
+});
+
+describeDb('leaveTeam (real DB)', () => {
+  it('a non-owner leaves; audits team.member_left; the owner cannot leave', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const created = await createTeam(owner, 'Acme', db);
+      if (!('team' in created)) throw new Error('expected team');
+      const partner = await seedUser(db);
+      await db.insert(teamMemberships).values({ teamId: created.team.id, userId: partner });
+
+      expect(await leaveTeam(owner, created.team.id, db)).toEqual({ error: 'owner_cannot_leave' });
+      expect(await leaveTeam(partner, created.team.id, db)).toEqual({ ok: true });
+      expect(await teamMemberIds(db, created.team.id)).toEqual([owner]);
+
+      const audits = await db
+        .select({ action: auditLog.action, targetId: auditLog.targetId })
+        .from(auditLog)
+        .where(eq(auditLog.targetId, created.team.id));
+      expect(audits).toContainEqual({ action: 'team.member_left', targetId: created.team.id });
+
+      expect(await leaveTeam(partner, randomUUID(), db)).toEqual({ error: 'not_found' });
     });
   });
 });

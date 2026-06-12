@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 49 / 56 (88%)
+- **Features verified:** 50 / 56 (89%)
 - **Total tasks:** 176
-- **Done:** 161 (91%)
-- **Ready:** 15
+- **Done:** 166 (94%)
+- **Ready:** 10
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2637,7 +2637,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     - Two-team flow passes: create A -> create B -> both listed with members by name -> rename B leaves A unchanged
     - STORY-55 acceptance_criteria satisfied.
 
-- **STORY-56** — Manage each pair — invite, remove, leave per team (cap of 2)
+- **STORY-56** — Manage each pair — invite, remove, leave per team (cap of 2)  [:white_check_mark: verified]
   > Per-team membership management, owner-controlled, each team bounded to a
   > pair. On a team's card in /settings the owner mints an invite (only when
   > that team has <2 members) and can remove the partner; a member can leave
@@ -2665,7 +2665,7 @@ and projects reflect REAL participation + ownership, not bare membership.
   - More than 2 members, roles beyond owner/partner
   - Email/notification on invite or removal
   - Project-team selection on create (STORY-57)
-  - :black_circle: **TASK-170** — Cap enforcement on acceptInvite + 'team_full' result  `high` `small` _(apps/web)_
+  - :white_check_mark: **TASK-170** — Cap enforcement on acceptInvite + 'team_full' result  `high` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/388)
     > In acceptInvite, before adding membership, count the invite's team's
     > members; if already 2 and the accepter isn't already a member, return
     > {status:'team_full'} (add nothing). Preserve the existing atomic
@@ -2675,7 +2675,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     - A 3rd distinct user accepting a valid invite for a 2-member team gets status team_full and no membership row is added
     - An existing member re-opening their link still returns ok (already a member); the single-use atomic claim is unchanged
     - /invite/[code] shows a clear team-full message (testid invite-error) for team_full
-  - :black_circle: **TASK-171** — lib + API: removeMember (owner) + leaveTeam (non-owner) with audit  `high` `medium` _(apps/web, packages/db)_
+  - :white_check_mark: **TASK-171** — lib + API: removeMember (owner) + leaveTeam (non-owner) with audit  `high` `medium` _(apps/web, packages/db)_ · [PR](https://github.com/g-chappell/praxis/pull/388)
     > Add the audit_action enum values team.member_removed +
     > team.member_left (migration). removeMember(ownerId, teamId,
     > targetUserId): owner-gated (403), refuse removing the owner/self,
@@ -2688,7 +2688,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     - Non-owner calling remove -> 403; owner removing the partner deletes the membership + writes team.member_removed
     - Owner attempting to remove self or to leave that team -> refused (4xx); non-owner leave deletes own membership + writes team.member_left
     - After removal the target's userOwnsProject for that team's project is false (POST /api/sessions -> 403)
-  - :black_circle: **TASK-172** — lib + API: team-level invite mint (owner-only, cap-aware)  `high` `small` _(apps/web)_
+  - :white_check_mark: **TASK-172** — lib + API: team-level invite mint (owner-only, cap-aware)  `high` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/388)
     > Add createTeamInvite(userId, teamId): owner-gated (403 non-owner),
     > refuse when that team already has 2 members (409 team_full), else
     > mint via the existing teamInvites path. Route POST
@@ -2698,7 +2698,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     _Task AC:_
     - Non-owner mint -> 403; mint when that team is full -> 409 team_full
     - Owner mint for a team with <2 members -> returns a /invite/<code> url
-  - :black_circle: **TASK-173** — Team card controls: per-team invite / remove / leave; drop workspace Invite button  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-173** — Team card controls: per-team invite / remove / leave; drop workspace Invite button  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/388)  
     _depends on: TASK-171, TASK-172_
     > Extend each team card (STORY-55 list). Owner: 'Invite partner' (mint
     > + link + copy, shown only when that team has <2 members; a 'team is
@@ -2712,7 +2712,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     _Task AC:_
     - On a team they own, the owner sees Invite only when <2 members (else the full note) + a Remove per partner; a member sees Leave and no invite/remove controls
     - Removing or leaving refreshes the list to the new membership; the workspace header no longer renders an Invite button
-  - :black_circle: **TASK-174** :checkered_flag: — e2e: invite -> accept -> cap blocks 3rd -> owner removes -> access revoked  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-174** :checkered_flag: — e2e: invite -> accept -> cap blocks 3rd -> owner removes -> access revoked  `med` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/388)  
     _depends on: TASK-170, TASK-171, TASK-172, TASK-173_
     > Two-user Playwright: owner mints from a team card, partner accepts +
     > sees that team's project; a 3rd user accepting is shown team-full;

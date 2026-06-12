@@ -1,23 +1,17 @@
-// Project sharing via single-use invite links (STORY-31). An owner mints a code
-// bound to their project's team; whoever redeems it joins that team and thereby
-// gains access to its projects (userOwnsProject is team-scoped). Built on the
-// existing team_invites table — no schema change. Single-use: the claim is an
-// atomic conditional UPDATE so concurrent redemptions can't both win.
+// Team invite links (STORY-31/56). The team owner mints a single-use code bound
+// to a team; whoever redeems it joins that team and thereby gains access to its
+// projects (userOwnsProject is team-scoped). Built on the team_invites table —
+// no schema change. Single-use: the claim is an atomic conditional UPDATE so
+// concurrent redemptions can't both win. Joining is capped per team (STORY-56).
 
 import { randomBytes } from 'node:crypto';
 
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 
-import { projects, teamInvites, teamMemberships } from '@praxis/db';
+import { projects, teamInvites, teamMemberships, teams } from '@praxis/db';
 import { type Database, db as defaultDb } from '@praxis/db/client';
 
-/** Caller isn't a member of the project's team — they can't mint an invite. */
-export class ForbiddenError extends Error {
-  constructor(message = 'forbidden') {
-    super(message);
-    this.name = 'ForbiddenError';
-  }
-}
+import { TEAM_MAX_MEMBERS } from '@/lib/teams';
 
 interface Deps {
   /** Injectable for tests; defaults to the lazy @praxis/db/client singleton. */
@@ -31,31 +25,39 @@ export interface CreatedInvite {
   expiresAt: Date;
 }
 
-/** Mint a single-use, 7-day invite for the project's team. Throws
- *  {@link ForbiddenError} when the caller isn't a member of that team. */
-export async function createInvite(
+export type CreateTeamInviteResult =
+  | { invite: CreatedInvite }
+  | { error: 'not_found' | 'not_owner' | 'team_full' };
+
+/** Mint a single-use, 7-day invite for a team the caller OWNS (STORY-56) —
+ *  the team-level generalization of {@link createInvite}, with no project.
+ *  Owner-gated (not_owner), 404 (not_found) if the team is gone, and refused
+ *  once the team is at the cap (team_full). */
+export async function createTeamInvite(
   userId: string,
-  projectId: string,
+  teamId: string,
   { db = defaultDb }: Deps = {},
-): Promise<CreatedInvite> {
-  const [row] = await db
-    .select({ teamId: projects.teamId })
-    .from(projects)
-    .innerJoin(teamMemberships, eq(teamMemberships.teamId, projects.teamId))
-    .where(and(eq(projects.id, projectId), eq(teamMemberships.userId, userId)))
+): Promise<CreateTeamInviteResult> {
+  const [team] = await db
+    .select({ createdBy: teams.createdBy })
+    .from(teams)
+    .where(eq(teams.id, teamId))
     .limit(1);
-  if (!row) throw new ForbiddenError();
+  if (!team) return { error: 'not_found' };
+  if (team.createdBy !== userId) return { error: 'not_owner' };
+  if ((await memberCount(db, teamId)) >= TEAM_MAX_MEMBERS) return { error: 'team_full' };
 
   const code = randomBytes(16).toString('base64url');
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
-  await db.insert(teamInvites).values({ teamId: row.teamId, inviteCode: code, expiresAt });
-  return { code, expiresAt };
+  await db.insert(teamInvites).values({ teamId, inviteCode: code, expiresAt });
+  return { invite: { code, expiresAt } };
 }
 
 export type AcceptResult =
   | { status: 'invalid' }
   | { status: 'expired' }
   | { status: 'used' }
+  | { status: 'team_full' }
   | { status: 'ok'; teamId: string; projectId: string | null; alreadyMember: boolean };
 
 /** Redeem an invite code for a user. Validates the code, no-ops if they're
@@ -79,9 +81,16 @@ export async function acceptInvite(
   const projectId = await newestProjectId(db, teamId);
 
   // Already on the team (e.g. the owner opening their own link, or a re-open by
-  // the original acceptor): no write, and don't consume the code.
+  // the original acceptor): no write, and don't consume the code. Checked before
+  // the cap so an existing member's re-open still succeeds on a full team.
   if (await isMember(db, teamId, userId)) {
     return { status: 'ok', teamId, projectId, alreadyMember: true };
+  }
+
+  // Cap of 2 per team (STORY-56): a fresh joiner is refused once the team is
+  // full. The invite is left unconsumed so the owner can still reconcile.
+  if ((await memberCount(db, teamId)) >= TEAM_MAX_MEMBERS) {
+    return { status: 'team_full' };
   }
 
   // Claim the single-use invite atomically: only the redemption that flips
@@ -106,6 +115,15 @@ export async function acceptInvite(
 
   await db.insert(teamMemberships).values({ teamId, userId }).onConflictDoNothing();
   return { status: 'ok', teamId, projectId, alreadyMember: false };
+}
+
+/** Current member count for a team — used to enforce the per-team cap. */
+async function memberCount(db: Database, teamId: string): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(teamMemberships)
+    .where(eq(teamMemberships.teamId, teamId));
+  return row?.n ?? 0;
 }
 
 async function isMember(db: Database, teamId: string, userId: string): Promise<boolean> {

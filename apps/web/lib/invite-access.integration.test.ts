@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { projects, teamMemberships, teams, users } from '@praxis/db';
 import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
 
-import { acceptInvite, createInvite } from './invites';
+import { acceptInvite, createTeamInvite } from './invites';
 import { userOwnsProject } from './projects';
 
 const describeDb = dbTestsEnabled() ? describe : describe.skip;
@@ -50,8 +50,9 @@ describeDb('invite access loop (real DB)', () => {
       // Before: the joiner cannot open the project (the workspace page would redirect).
       expect(await userOwnsProject(joiner, projectId, db)).toBe(false);
 
-      const { code } = await createInvite(owner, projectId, { db });
-      const result = await acceptInvite(joiner, code, { db });
+      const minted = await createTeamInvite(owner, team!.id, { db });
+      if (!('invite' in minted)) throw new Error('expected invite');
+      const result = await acceptInvite(joiner, minted.invite.code, { db });
 
       // The accept route redirects to result.projectId — assert it's the shared one.
       expect(result).toEqual({ status: 'ok', teamId: team!.id, projectId, alreadyMember: false });
@@ -81,7 +82,9 @@ describeDb('invite access loop (real DB)', () => {
         })
         .returning({ id: projects.id });
 
-      const { code } = await createInvite(owner, project!.id, { db });
+      const minted = await createTeamInvite(owner, team!.id, { db });
+      if (!('invite' in minted)) throw new Error('expected invite');
+      const code = minted.invite.code;
       await acceptInvite(first, code, { db });
       expect(await acceptInvite(third, code, { db })).toEqual({ status: 'used' });
       expect(await userOwnsProject(third, project!.id, db)).toBe(false);

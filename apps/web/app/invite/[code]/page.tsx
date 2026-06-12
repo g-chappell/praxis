@@ -38,6 +38,7 @@ const REASONS: Record<Exclude<AcceptResult['status'], 'ok'>, string> = {
   invalid: "This invite link isn't valid.",
   expired: 'This invite link has expired. Ask the project owner for a new one.',
   used: 'This invite link has already been used.',
+  team_full: 'This team is full (a pair). Ask the owner to make room.',
 };
 
 function InviteError({ reason }: { reason: Exclude<AcceptResult['status'], 'ok'> }) {

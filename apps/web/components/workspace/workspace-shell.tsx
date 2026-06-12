@@ -15,7 +15,6 @@ import { CodeEditor } from '@/components/workspace/code-editor';
 import { FileTree } from '@/components/workspace/file-tree';
 import { GitPanel } from '@/components/workspace/git-panel';
 import { FolderTab } from '@/components/ui/folder-tab';
-import { InviteButton } from '@/components/workspace/invite-button';
 import { LearningPanel } from '@/components/workspace/learning-panel';
 import { ControlBar } from '@/components/workspace/control-bar';
 import { PresenceBar } from '@/components/workspace/presence-bar';
@@ -105,7 +104,7 @@ function ResizablePanels({
     return (
       <div className="flex h-full">
         <div className="flex min-w-0 basis-[20%] flex-col">
-          <FilesPane projectId={projectId} />
+          <FilesPane />
         </div>
         <div className="w-1 bg-border" />
         <div className="flex min-w-0 basis-[52%] flex-col">
@@ -127,7 +126,7 @@ function ResizablePanels({
       className="h-full"
     >
       <Panel id="files" defaultSize="20%" minSize="12%" className="flex min-w-0 flex-col">
-        <FilesPane projectId={projectId} />
+        <FilesPane />
       </Panel>
 
       <ResizeHandle />
@@ -145,13 +144,10 @@ function ResizablePanels({
   );
 }
 
-function FilesPane({ projectId }: { projectId: string }) {
+function FilesPane() {
   return (
     <>
       <PaneHeader>Files</PaneHeader>
-      <div className="border-b-2 px-3 py-2">
-        <InviteButton projectId={projectId} />
-      </div>
       <PresenceBar />
       <ControlBar />
       <div className="min-h-0 flex-1 overflow-y-auto">
