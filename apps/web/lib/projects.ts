@@ -4,7 +4,7 @@
 
 import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 
-import { projects, teamMemberships } from '@praxis/db';
+import { projects, teamMemberships, teams } from '@praxis/db';
 import { type Database, db } from '@praxis/db/client';
 
 export interface ProjectSummary {
@@ -13,6 +13,38 @@ export interface ProjectSummary {
   description: string | null;
   createdAt: Date | null;
   archivedAt: Date | null;
+  teamId: string;
+  teamName: string;
+}
+
+export type ResolveCreateTeamResult = { teamId: string } | { error: 'needs_team' | 'forbidden' };
+
+/** Resolve which team a new project belongs to (STORY-57). With an explicit
+ *  `teamId` the user must be a member of it (else `forbidden`); without one it
+ *  defaults to their most-recent team, or `needs_team` when they're in none.
+ *  Members may create in any team they belong to (not owner-gated). */
+export async function resolveCreateTeam(
+  userId: string,
+  teamId: string | undefined,
+  database: Database = db,
+): Promise<ResolveCreateTeamResult> {
+  if (teamId) {
+    const [member] = await database
+      .select({ teamId: teamMemberships.teamId })
+      .from(teamMemberships)
+      .where(and(eq(teamMemberships.teamId, teamId), eq(teamMemberships.userId, userId)))
+      .limit(1);
+    return member ? { teamId } : { error: 'forbidden' };
+  }
+
+  const [recent] = await database
+    .select({ teamId: teamMemberships.teamId })
+    .from(teamMemberships)
+    .innerJoin(teams, eq(teams.id, teamMemberships.teamId))
+    .where(eq(teamMemberships.userId, userId))
+    .orderBy(desc(teams.createdAt))
+    .limit(1);
+  return recent ? { teamId: recent.teamId } : { error: 'needs_team' };
 }
 
 /** Which slice of a user's projects to list. Defaults to `active` everywhere. */
@@ -110,9 +142,12 @@ export async function listUserProjects(
       description: projects.description,
       createdAt: projects.createdAt,
       archivedAt: projects.archivedAt,
+      teamId: projects.teamId,
+      teamName: teams.name,
     })
     .from(projects)
     .innerJoin(teamMemberships, eq(teamMemberships.teamId, projects.teamId))
+    .innerJoin(teams, eq(teams.id, projects.teamId))
     .where(and(eq(teamMemberships.userId, userId), archiveFilter))
     .orderBy(order);
 }
@@ -173,17 +208,29 @@ export async function updateProject(
   }
   if (Object.keys(patch).length === 0) return null;
 
-  const [row] = await database
+  const updated = await database
     .update(projects)
     .set(patch)
     .where(eq(projects.id, projectId))
-    .returning({
+    .returning({ id: projects.id });
+  if (updated.length === 0) return null;
+
+  // Re-select with the team join so the returned summary carries its team label
+  // (a RETURNING clause can't join — STORY-57 added teamName to ProjectSummary).
+  const [row] = await database
+    .select({
       id: projects.id,
       name: projects.name,
       description: projects.description,
       createdAt: projects.createdAt,
       archivedAt: projects.archivedAt,
-    });
+      teamId: projects.teamId,
+      teamName: teams.name,
+    })
+    .from(projects)
+    .innerJoin(teams, eq(teams.id, projects.teamId))
+    .where(eq(projects.id, projectId))
+    .limit(1);
   return row ?? null;
 }
 

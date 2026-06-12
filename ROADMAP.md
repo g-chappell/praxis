@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 50 / 56 (89%)
+- **Features verified:** 51 / 56 (91%)
 - **Total tasks:** 176
-- **Done:** 166 (94%)
-- **Ready:** 10
+- **Done:** 169 (96%)
+- **Ready:** 7
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -2722,7 +2722,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     - Full flow passes: invite->accept->3rd blocked (team_full)->owner removes->removed user loses project access
     - STORY-56 acceptance_criteria satisfied.
 
-- **STORY-57** — Choose a team when creating a project
+- **STORY-57** — Choose a team when creating a project  [:white_check_mark: verified]
   > With users in multiple teams, a new project must say which team it
   > belongs to. The New-project form gains a team selector (the user's owned
   > + member teams); POST /api/projects takes a validated teamId. The
@@ -2742,7 +2742,7 @@ and projects reflect REAL participation + ownership, not bare membership.
   - An 'active team' global context / nav switcher (selection is per-create only)
   - Moving an existing project between teams; per-team dashboard filter tabs
   - Restricting create to owned teams (members of a team may also create in it)
-  - :black_circle: **TASK-175** — lib + API: create project under a chosen team; list with team label  `high` `medium` _(apps/web)_
+  - :white_check_mark: **TASK-175** — lib + API: create project under a chosen team; list with team label  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/389)
     > POST /api/projects accepts { teamId } and creates under it only when
     > the user is a member (else 403); a missing teamId with exactly one
     > team defaults to it; zero teams still 409 needs_team. listUserProjects
@@ -2750,7 +2750,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     _Task AC:_
     - POST with a teamId the user belongs to creates under it; a teamId they don't belong to -> 403; zero teams -> 409 needs_team
     - listUserProjects includes each project's team name across all the user's teams
-  - :black_circle: **TASK-176** — New-project form team selector + dashboard team labels  `high` `medium` _(apps/web)_  
+  - :white_check_mark: **TASK-176** — New-project form team selector + dashboard team labels  `high` `medium` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/389)  
     _depends on: TASK-175_
     > CreateProjectForm gains a team <select> populated from the user's
     > teams (preselect the most-recent; required). The dashboard passes the
@@ -2759,7 +2759,7 @@ and projects reflect REAL participation + ownership, not bare membership.
     _Task AC:_
     - The selector lists all the user's teams; a user in 2 teams can pick which one and the project lands under the chosen team
     - The dashboard shows each project's team name; a single-team user sees it preselected
-  - :black_circle: **TASK-177** :checkered_flag: — e2e: pick a team on create; project shows under that team  `med` `small` _(apps/web)_  
+  - :white_check_mark: **TASK-177** :checkered_flag: — e2e: pick a team on create; project shows under that team  `med` `small` _(apps/web)_ · [PR](https://github.com/g-chappell/praxis/pull/389)  
     _depends on: TASK-175, TASK-176_
     > Playwright: a user in two teams creates a project, selects Team B,
     > and the project appears on the dashboard labelled Team B.

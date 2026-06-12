@@ -57,7 +57,7 @@ export default async function DashboardPage({
               Open one to resume, or start a new one.
             </p>
           </div>
-          <CreateProjectForm hasTeam={teams.length > 0} />
+          <CreateProjectForm teams={teams.map((t) => ({ id: t.id, name: t.name }))} />
         </div>
 
         <div className="mb-5 flex gap-1 border-b-2" role="tablist">
