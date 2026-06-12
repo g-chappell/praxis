@@ -180,11 +180,10 @@ function LedgerView({ projects }: { projects: ProjectSummary[] }) {
                     {p.description}
                   </span>
                 )}
-                {p.createdAt && (
-                  <span className="label-mono mt-0.5 block">
-                    Created {new Date(p.createdAt).toISOString().slice(0, 10)}
-                  </span>
-                )}
+                <span className="label-mono mt-0.5 block" data-testid="project-team-label">
+                  {p.teamName}
+                  {p.createdAt && ` · Created ${new Date(p.createdAt).toISOString().slice(0, 10)}`}
+                </span>
               </div>
               <div className="flex items-center gap-3">
                 <Stamp solid={!archived}>{archived ? 'Archived' : 'Active'}</Stamp>
@@ -236,6 +235,13 @@ function ShelfView({ projects }: { projects: ProjectSummary[] }) {
                   {spine}
                 </Link>
               )}
+              <span
+                data-testid="project-team-label"
+                title={p.teamName}
+                className="max-w-14 truncate text-[0.6rem] text-muted-foreground"
+              >
+                {p.teamName}
+              </span>
               <div className="opacity-0 transition-opacity group-hover:opacity-100">
                 <ProjectActions p={p} archived={archived} />
               </div>
