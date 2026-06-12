@@ -4180,8 +4180,8 @@ epics:
           - "Partner (non-owner) opens /settings -> sees team name read-only + member list"
         out_of_scope:
           - "Inviting / removing members and leaving a team (STORY-55) — this pass shows members and the empty-state mentions invites but builds no invite/remove controls"
-          - "Editing your own display name / profile (STORY-56)"
-          - "Fixing admin session/project attribution (STORY-57)"
+          - "Editing your own display name / profile (a later story)"
+          - "Fixing admin session/project attribution (a later story)"
           - "More than one team per user, transferring ownership, deleting a team, team avatars"
         tasks:
           - id: TASK-162
@@ -4286,48 +4286,132 @@ epics:
               - "The full no-team->create->rename->project flow passes; pre-create a project is blocked with needs_team guidance"
               - "STORY-54 acceptance_criteria satisfied."
       - id: STORY-55
-        title: "Manage your pair — invite, remove, leave (owner-controlled, cap of 2)"
+        title: "Own and belong to multiple teams (each a pair)"
         description: |
-          Make team membership owner-controlled and bounded to a pair. On
-          /settings the owner mints an invite link (only when the team has <2
-          members) and can remove the partner; a non-owner can leave. Accepting
-          an invite is refused once the team has 2 members. Settings becomes the
-          single invite surface — the workspace header Invite button is removed.
-          This is the remediation surface: the owner of an over-cap team
-          (graham's 3-member team in prod) reconciles it back to a pair here.
+          Evolve past STORY-54's one-team-per-user limit: a user may create and
+          own more than one team, and may also be a partner in teams owned by
+          others. /settings lists every team the user owns or belongs to, each
+          card clearly labelled with the team name and showing its members by
+          name (display name, falling back to email) with owner/partner badges
+          and joined dates. Per-team rename stays owner-gated. Each team is still
+          a pair (cap of 2) — joining/inviting is STORY-56; project-team
+          selection is STORY-57. Foundation for the rest of multi-team.
         acceptance_criteria:
-          - "Only the team owner (teams.createdBy) can mint an invite or remove a member; a non-owner has no invite/remove controls and the corresponding APIs return 403 for them."
-          - "The 'Invite partner' control appears only when the team has fewer than 2 members; at 2 members it's replaced by a 'team is full' note. Minting when full returns 409."
-          - "Accepting an invite when the team already has 2 members is refused with a clear 'this team is full' message on /invite/[code] and adds no membership; an existing member re-opening their link still no-ops (already a member)."
-          - "The owner can remove the partner (confirm dialog -> membership deleted -> audit team.member_removed); the owner cannot remove themselves and cannot be removed. After removal the target can no longer open the project (bounced) or start a new session (POST /api/sessions -> 403)."
-          - "A non-owner can leave the team (confirm -> own membership deleted -> audit team.member_left -> lands in a no-team state); the owner cannot leave (refused)."
-          - "An over-cap team (>2 members) can be reconciled to 2 by the owner removing members; the cap only blocks new joins, never existing ones."
+          - "A user already on a team can create another team and becomes its owner; the previous one-team-per-user 409 is gone — createTeam no longer refuses an existing member."
+          - "getTeamsForUser returns every team the user owns OR is a member of (not just one), each with its members [{userId, name, isOwner, joinedAt}]; the old single-team getTeamForUser callers are migrated."
+          - "/settings renders a list of team cards (newest first); each card shows the team name and, beneath it, that team's members by name (display name -> email fallback) with an owner badge, the partner if any, and joined dates."
+          - "A team's owner sees its name editable (rename persists + audit team.renamed, scoped to that team); a member sees that team's name read-only. Rename targets the correct team in the list."
+          - "A user in zero teams still sees the empty state inviting them to create one; the Create-team control stays available even once they have a team."
+        user_flow:
+          - "User with one team opens /settings -> 'Create team' is still available -> creates a second -> both cards listed, user is owner of both"
+          - "Partner (member of someone else's team) opens /settings -> sees that team's card (name read-only, members by name) alongside any team they own"
+          - "Owner edits the name on one card -> only that team renames"
+        out_of_scope:
+          - "Inviting / removing / leaving members (STORY-56) and project-team selection (STORY-57)"
+          - "Editing your own display name / profile (a later story) — members render by display name, falling back to email"
+          - "More than 2 members per team, roles beyond owner/partner, transferring ownership, deleting a team"
+        tasks:
+          - id: TASK-167
+            title: "lib: getTeamsForUser (plural) + drop the one-team-per-user 409"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web", "packages/db"]
+            description: |
+              Replace getTeamForUser with getTeamsForUser(userId): all teams the
+              user owns or belongs to (distinct), each hydrated with members
+              [{userId, email, displayName, isOwner, joinedAt}] + the viewer's
+              isOwner. Remove the already_in_team guard from createTeam (a user may
+              own multiple teams; createTeam still validates the name and makes the
+              creator owner+member). Migrate single-team callers (settings card,
+              dashboard hasTeam) to the list. Keep a thin getTeamById for rename.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "createTeam succeeds for a user already on a team (no 409); the creator is owner+member of the new team"
+              - "getTeamsForUser returns every owned and member team with members; an unrelated user's team is excluded"
+              - "teams.integration tests updated; rename stays owner-gated per team"
+          - id: TASK-168
+            title: "Settings: list all your teams, each with its members by name"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Replace the single TeamCard with a list rendered from
+              getTeamsForUser: one card per team (newest first), each showing the
+              team name (editable for the owner, read-only for a member) and its
+              member rows by name with owner/partner badge + joined date. Keep the
+              create-team form always available (empty state when zero teams).
+              Testids: team-card (per card), team-name, team-member-row,
+              team-member-owner-badge; rename targets the card's team id.
+            depends_on: [TASK-167]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "A user with two teams sees two cards, each labelled with its name and its own members by name"
+              - "Owner can rename a specific card (persists to that team only); a member's card name is read-only"
+              - "Create-team form is available even when the user already has a team; zero teams shows the empty state"
+          - id: TASK-169
+            title: "e2e: create a second team; each card lists its members by name"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Playwright: a user creates team A, then team B from /settings; both
+              cards appear, the user is owner of both, and each card shows its
+              member list by name. Rename team B and confirm team A is untouched.
+            depends_on: [TASK-167, TASK-168]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Two-team flow passes: create A -> create B -> both listed with members by name -> rename B leaves A unchanged"
+              - "STORY-55 acceptance_criteria satisfied."
+      - id: STORY-56
+        title: "Manage each pair — invite, remove, leave per team (cap of 2)"
+        description: |
+          Per-team membership management, owner-controlled, each team bounded to a
+          pair. On a team's card in /settings the owner mints an invite (only when
+          that team has <2 members) and can remove the partner; a member can leave
+          that team. Accepting an invite for a full team is refused. Settings is
+          the single invite surface — the workspace header Invite button is
+          removed. Remediation surface: the owner of an over-cap team (e.g.
+          graham's 3-member team in prod) reconciles it back to a pair here.
+        acceptance_criteria:
+          - "Only a team's owner (teams.createdBy) can mint an invite for that team or remove its members; a non-owner has no invite/remove controls and those APIs 403 for them (per team)."
+          - "The 'Invite partner' control shows on a team's card only when that team has <2 members; at 2 it's replaced by a 'team is full' note. Minting for a full team returns 409 team_full."
+          - "Accepting an invite when its team already has 2 members is refused with a clear 'this team is full' message on /invite/[code] and adds no membership; an existing member re-opening their link still no-ops."
+          - "The owner can remove the partner from a team (confirm -> membership deleted -> audit team.member_removed); the owner cannot remove themselves and cannot be removed. After removal the target loses access to that team's projects (bounced; POST /api/sessions -> 403)."
+          - "A member can leave a team they don't own (confirm -> own membership deleted -> audit team.member_left -> that card disappears from their list); the owner cannot leave their own team (refused)."
+          - "An over-cap team (>2 members) is reconciled to 2 by the owner removing members; the cap only blocks new joins, never existing ones."
           - "Settings is the only invite surface — the workspace header Invite button is removed."
         user_flow:
-          - "Owner on /settings with a solo team -> clicks 'Invite partner' -> link minted + Copy; shares it out-of-band"
-          - "Invitee opens /invite/[code] -> (team has room) joins as partner, lands in the shared project"
-          - "A third person opens an invite for a full team -> /invite/[code] shows 'This team is full (a pair). Ask the owner to make room.'"
-          - "Owner on /settings -> per-partner 'Remove' -> confirm -> member list updates; removed user is blocked on their next request"
-          - "Partner on /settings -> 'Leave team' -> confirm -> returns to the no-team empty state"
+          - "Owner on a solo team's card -> 'Invite partner' -> link minted + Copy; shares it out-of-band"
+          - "Invitee opens /invite/[code] -> (team has room) joins as partner, lands in that team's project"
+          - "A third person opens an invite for a full team -> 'This team is full (a pair). Ask the owner to make room.'"
+          - "Owner -> per-partner 'Remove' on a card -> confirm -> that card's member list updates; removed user blocked on their next request"
+          - "Partner -> 'Leave team' on a card -> confirm -> that card leaves their list"
         out_of_scope:
-          - "Force-terminating a removed/left member's already-open live socket or preview (next-request enforcement only — new sessions 403 and re-open is bounced, but an open WS continues until it ends)"
+          - "Force-terminating a removed/left member's already-open live socket or preview (next-request enforcement only)"
           - "Transferring ownership, deleting a team, or the owner leaving"
           - "More than 2 members, roles beyond owner/partner"
           - "Email/notification on invite or removal"
-          - "Team create/rename (STORY-54), profile (STORY-56), admin attribution (STORY-57)"
+          - "Project-team selection on create (STORY-57)"
         tasks:
-          - id: TASK-167
+          - id: TASK-170
             title: "Cap enforcement on acceptInvite + 'team_full' result"
             status: ready
             priority: high
             complexity: small
             workspaces: ["apps/web"]
             description: |
-              In acceptInvite, before adding membership, count the team's members;
-              if already 2 and the accepter isn't already a member, return
+              In acceptInvite, before adding membership, count the invite's team's
+              members; if already 2 and the accepter isn't already a member, return
               {status:'team_full'} (add nothing). Preserve the existing atomic
-              single-use claim + already-member no-op. /invite/[code] page renders
-              a 'this team is full' message for team_full (extend the REASONS map).
+              single-use claim + already-member no-op. /invite/[code] renders a
+              'this team is full' message for team_full (extend the REASONS map).
             depends_on: []
             attempt_count: 0
             is_terminal: false
@@ -4335,82 +4419,155 @@ epics:
               - "A 3rd distinct user accepting a valid invite for a 2-member team gets status team_full and no membership row is added"
               - "An existing member re-opening their link still returns ok (already a member); the single-use atomic claim is unchanged"
               - "/invite/[code] shows a clear team-full message (testid invite-error) for team_full"
-          - id: TASK-168
+          - id: TASK-171
             title: "lib + API: removeMember (owner) + leaveTeam (non-owner) with audit"
             status: ready
             priority: high
             complexity: medium
-            workspaces: ["apps/web"]
+            workspaces: ["apps/web", "packages/db"]
             description: |
-              removeMember(ownerId, teamId, targetUserId): owner-gated (403
-              otherwise), refuse removing the owner/self-as-owner, delete the
-              team_membership, recordAudit('team.member_removed'). leaveTeam(userId):
-              delete own non-owner membership, recordAudit('team.member_left');
-              owner leaving is refused (409). Routes: DELETE
-              /api/teams/:id/members/:userId, POST /api/teams/:id/leave.
-              Removal/leave is idempotent.
+              Add the audit_action enum values team.member_removed +
+              team.member_left (migration). removeMember(ownerId, teamId,
+              targetUserId): owner-gated (403), refuse removing the owner/self,
+              delete the team_membership, recordAudit('team.member_removed').
+              leaveTeam(userId, teamId): delete own non-owner membership,
+              recordAudit('team.member_left'); the owner leaving is refused (409).
+              Routes: DELETE /api/teams/:id/members/:userId, POST
+              /api/teams/:id/leave. Removal/leave is idempotent.
             depends_on: []
             attempt_count: 0
             is_terminal: false
             task_acceptance:
               - "Non-owner calling remove -> 403; owner removing the partner deletes the membership + writes team.member_removed"
-              - "Owner attempting to remove self or to leave -> refused (4xx); non-owner leave deletes own membership + writes team.member_left"
-              - "After removal the target's userOwnsProject(project) is false (POST /api/sessions -> 403)"
-          - id: TASK-169
+              - "Owner attempting to remove self or to leave that team -> refused (4xx); non-owner leave deletes own membership + writes team.member_left"
+              - "After removal the target's userOwnsProject for that team's project is false (POST /api/sessions -> 403)"
+          - id: TASK-172
             title: "lib + API: team-level invite mint (owner-only, cap-aware)"
             status: ready
             priority: high
             complexity: small
             workspaces: ["apps/web"]
             description: |
-              Add createTeamInvite(userId): resolve the user's team, owner-gated
-              (403 non-owner), refuse when the team already has 2 members
-              (409 team_full), else mint via the existing teamInvites path. Route
-              POST /api/teams/invites returning {code,url,expiresAt}. Generalizes
+              Add createTeamInvite(userId, teamId): owner-gated (403 non-owner),
+              refuse when that team already has 2 members (409 team_full), else
+              mint via the existing teamInvites path. Route POST
+              /api/teams/:id/invites returning {code,url,expiresAt}. Generalizes
               the current createInvite(userId, projectId) to a teamId lookup with
               no project.
             depends_on: []
             attempt_count: 0
             is_terminal: false
             task_acceptance:
-              - "Non-owner mint -> 403; mint when the team is full -> 409"
-              - "Owner mint with <2 members -> returns a /invite/<code> url"
-          - id: TASK-170
-            title: "Settings Team card controls: invite / remove / leave; remove workspace Invite button"
+              - "Non-owner mint -> 403; mint when that team is full -> 409 team_full"
+              - "Owner mint for a team with <2 members -> returns a /invite/<code> url"
+          - id: TASK-173
+            title: "Team card controls: per-team invite / remove / leave; drop workspace Invite button"
             status: ready
             priority: high
             complexity: medium
             workspaces: ["apps/web"]
             description: |
-              Extend the STORY-54 Team card. Owner: 'Invite partner' (mint + link
-              + copy, shown only when <2 members; a 'team is full' note at 2) and a
-              per-partner 'Remove' (confirm). Non-owner: 'Leave team' (confirm).
-              Reuse the invite link/copy UI; confirm dialogs mirror the
-              archive/delete pattern; router.refresh on success; inline errors.
-              Remove the workspace header InviteButton
-              (apps/web/components/workspace/invite-button.tsx usage). Testids:
+              Extend each team card (STORY-55 list). Owner: 'Invite partner' (mint
+              + link + copy, shown only when that team has <2 members; a 'team is
+              full' note at 2) and a per-partner 'Remove' (confirm). Member: 'Leave
+              team' (confirm). Reuse the invite link/copy UI; confirm dialogs
+              mirror the archive/delete pattern; router.refresh on success; inline
+              errors. Remove the workspace header InviteButton
+              (components/workspace/invite-button.tsx usage). Testids:
               team-invite-button, team-invite-link, team-invite-copy,
               team-full-note, team-member-remove, team-leave-button.
-            depends_on: [TASK-168, TASK-169]
+            depends_on: [TASK-171, TASK-172]
             attempt_count: 0
             is_terminal: false
             task_acceptance:
-              - "Owner sees Invite only when <2 members (else the full note) + a Remove per partner; non-owner sees Leave and no invite/remove controls"
-              - "Removing or leaving refreshes the card to the new membership; the workspace header no longer renders an Invite button"
-          - id: TASK-171
+              - "On a team they own, the owner sees Invite only when <2 members (else the full note) + a Remove per partner; a member sees Leave and no invite/remove controls"
+              - "Removing or leaving refreshes the list to the new membership; the workspace header no longer renders an Invite button"
+          - id: TASK-174
             title: "e2e: invite -> accept -> cap blocks 3rd -> owner removes -> access revoked"
             status: ready
             priority: med
             complexity: small
             workspaces: ["apps/web"]
             description: |
-              Two-user Playwright: owner mints from /settings, partner accepts +
-              sees a team project; a 3rd user accepting is shown team-full; owner
-              removes the partner -> partner re-opening the project is bounced (no
-              access). Assert the workspace header has no Invite button.
-            depends_on: [TASK-167, TASK-168, TASK-169, TASK-170]
+              Two-user Playwright: owner mints from a team card, partner accepts +
+              sees that team's project; a 3rd user accepting is shown team-full;
+              owner removes the partner -> partner re-opening the project is bounced
+              (no access). Assert the workspace header has no Invite button.
+            depends_on: [TASK-170, TASK-171, TASK-172, TASK-173]
             attempt_count: 0
             is_terminal: true
             task_acceptance:
               - "Full flow passes: invite->accept->3rd blocked (team_full)->owner removes->removed user loses project access"
-              - "STORY-55 acceptance_criteria satisfied."
+              - "STORY-56 acceptance_criteria satisfied."
+      - id: STORY-57
+        title: "Choose a team when creating a project"
+        description: |
+          With users in multiple teams, a new project must say which team it
+          belongs to. The New-project form gains a team selector (the user's owned
+          + member teams); POST /api/projects takes a validated teamId. The
+          dashboard lists projects across all the user's teams, each labelled with
+          its team name. A user in zero teams still gets the create-or-join
+          guidance (STORY-54).
+        acceptance_criteria:
+          - "The New-project form shows a team selector listing every team the user owns or belongs to; the selection is required and defaults to the most-recent team."
+          - "POST /api/projects accepts a teamId and creates the project under it only if the user is a member of that team; a teamId the user doesn't belong to is refused (403), and a zero-team user still gets 409 needs_team."
+          - "The dashboard lists projects from all the user's teams (not just one), each row/card labelled with its team name."
+          - "A user in exactly one team sees that team preselected (no friction); the teamless guidance/link to /settings is unchanged."
+        user_flow:
+          - "User in two teams clicks 'New project' -> picks Team B in the selector -> the project is created under Team B and appears labelled 'Team B' on the dashboard"
+          - "User in one team -> selector preselects it -> create works as before"
+          - "User in zero teams -> create-or-join-a-team guidance (unchanged)"
+        out_of_scope:
+          - "An 'active team' global context / nav switcher (selection is per-create only)"
+          - "Moving an existing project between teams; per-team dashboard filter tabs"
+          - "Restricting create to owned teams (members of a team may also create in it)"
+        tasks:
+          - id: TASK-175
+            title: "lib + API: create project under a chosen team; list with team label"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              POST /api/projects accepts { teamId } and creates under it only when
+              the user is a member (else 403); a missing teamId with exactly one
+              team defaults to it; zero teams still 409 needs_team. listUserProjects
+              returns each project's teamId + team name (join) for labelling.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "POST with a teamId the user belongs to creates under it; a teamId they don't belong to -> 403; zero teams -> 409 needs_team"
+              - "listUserProjects includes each project's team name across all the user's teams"
+          - id: TASK-176
+            title: "New-project form team selector + dashboard team labels"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              CreateProjectForm gains a team <select> populated from the user's
+              teams (preselect the most-recent; required). The dashboard passes the
+              teams + renders each project labelled with its team name. Testid:
+              create-project-team-select.
+            depends_on: [TASK-175]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "The selector lists all the user's teams; a user in 2 teams can pick which one and the project lands under the chosen team"
+              - "The dashboard shows each project's team name; a single-team user sees it preselected"
+          - id: TASK-177
+            title: "e2e: pick a team on create; project shows under that team"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Playwright: a user in two teams creates a project, selects Team B,
+              and the project appears on the dashboard labelled Team B.
+            depends_on: [TASK-175, TASK-176]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "Two-team create flow passes: select Team B -> project created under B -> dashboard shows it labelled B"
+              - "STORY-57 acceptance_criteria satisfied."
