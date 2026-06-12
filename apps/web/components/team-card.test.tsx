@@ -94,6 +94,25 @@ describe('TeamsPanel — multiple teams', () => {
     expect(getByTestId('team-create-form')).toBeTruthy();
   });
 
+  it('falls back to email when a member has an empty/whitespace display name', () => {
+    const blankName: TeamForUser = {
+      id: 't3',
+      name: 'Gamma',
+      isOwner: true,
+      members: [
+        {
+          userId: 'u9',
+          email: 'solo@test.local',
+          displayName: '  ',
+          isOwner: true,
+          joinedAt: null,
+        },
+      ],
+    };
+    const { getByTestId } = render(<TeamsPanel teams={[blankName]} />);
+    expect(getByTestId('team-member-row').textContent).toContain('solo@test.local');
+  });
+
   it('owner card renders the owner badge + an editable name; member card is read-only', () => {
     const { getAllByTestId } = render(<TeamsPanel teams={[acme, beta]} />);
     // Acme (owned) has a rename input; Beta (member) does not.

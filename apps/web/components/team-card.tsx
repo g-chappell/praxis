@@ -183,11 +183,15 @@ function RenameTeam({ teamId, name: initialName }: { teamId: string; name: strin
 }
 
 function MemberRow({ member }: { member: TeamMember }) {
+  // Display name falls back to email when absent — and an empty/whitespace
+  // display name counts as absent (Better Auth seeds it to '' on signup, not
+  // null, so `?? email` alone would render a blank row).
+  const name = member.displayName?.trim();
   return (
     <li data-testid="team-member-row" className="flex items-center justify-between gap-3 px-3 py-2">
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium">{member.displayName ?? member.email}</p>
-        {member.displayName && (
+        <p className="truncate text-sm font-medium">{name || member.email}</p>
+        {name && name !== member.email && (
           <p className="truncate text-xs text-muted-foreground">{member.email}</p>
         )}
       </div>
