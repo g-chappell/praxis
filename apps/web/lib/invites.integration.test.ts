@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest';
 import { projects, teamInvites, teamMemberships, teams, users } from '@praxis/db';
 import { type TestDb, dbTestsEnabled, withDb } from '@praxis/db/test';
 
-import { ForbiddenError, acceptInvite, createInvite } from './invites';
+import { ForbiddenError, acceptInvite, createInvite, createTeamInvite } from './invites';
 
 const describeDb = dbTestsEnabled() ? describe : describe.skip;
 
@@ -150,6 +150,33 @@ describeDb('invites (real DB)', () => {
       await acceptInvite(a, code, { db });
       expect(await acceptInvite(b, code, { db })).toEqual({ status: 'used' });
       expect(await memberCount(db, teamId, b)).toBe(0);
+    });
+  });
+
+  it('createTeamInvite: owner mints; non-owner 403; full team team_full; unknown 404', async () => {
+    await withDb(async (db) => {
+      const owner = await seedUser(db);
+      const { teamId } = await seedTeamWithProject(db, owner);
+
+      const minted = await createTeamInvite(owner, teamId, { db });
+      expect('invite' in minted).toBe(true);
+      if ('invite' in minted) {
+        expect(minted.invite.code).toMatch(/^[A-Za-z0-9_-]{16,}$/);
+        const [row] = await db
+          .select()
+          .from(teamInvites)
+          .where(eq(teamInvites.inviteCode, minted.invite.code));
+        expect(row!.teamId).toBe(teamId);
+      }
+
+      const stranger = await seedUser(db);
+      expect(await createTeamInvite(stranger, teamId, { db })).toEqual({ error: 'not_owner' });
+      expect(await createTeamInvite(owner, randomUUID(), { db })).toEqual({ error: 'not_found' });
+
+      // Fill the team to the cap → minting is refused.
+      const partner = await seedUser(db);
+      await db.insert(teamMemberships).values({ teamId, userId: partner });
+      expect(await createTeamInvite(owner, teamId, { db })).toEqual({ error: 'team_full' });
     });
   });
 });

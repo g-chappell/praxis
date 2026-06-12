@@ -8,7 +8,7 @@ import { randomBytes } from 'node:crypto';
 
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 
-import { projects, teamInvites, teamMemberships } from '@praxis/db';
+import { projects, teamInvites, teamMemberships, teams } from '@praxis/db';
 import { type Database, db as defaultDb } from '@praxis/db/client';
 
 import { TEAM_MAX_MEMBERS } from '@/lib/teams';
@@ -52,6 +52,34 @@ export async function createInvite(
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
   await db.insert(teamInvites).values({ teamId: row.teamId, inviteCode: code, expiresAt });
   return { code, expiresAt };
+}
+
+export type CreateTeamInviteResult =
+  | { invite: CreatedInvite }
+  | { error: 'not_found' | 'not_owner' | 'team_full' };
+
+/** Mint a single-use, 7-day invite for a team the caller OWNS (STORY-56) —
+ *  the team-level generalization of {@link createInvite}, with no project.
+ *  Owner-gated (not_owner), 404 (not_found) if the team is gone, and refused
+ *  once the team is at the cap (team_full). */
+export async function createTeamInvite(
+  userId: string,
+  teamId: string,
+  { db = defaultDb }: Deps = {},
+): Promise<CreateTeamInviteResult> {
+  const [team] = await db
+    .select({ createdBy: teams.createdBy })
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
+  if (!team) return { error: 'not_found' };
+  if (team.createdBy !== userId) return { error: 'not_owner' };
+  if ((await memberCount(db, teamId)) >= TEAM_MAX_MEMBERS) return { error: 'team_full' };
+
+  const code = randomBytes(16).toString('base64url');
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+  await db.insert(teamInvites).values({ teamId, inviteCode: code, expiresAt });
+  return { invite: { code, expiresAt } };
 }
 
 export type AcceptResult =
