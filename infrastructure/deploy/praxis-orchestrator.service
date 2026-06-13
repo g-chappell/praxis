@@ -44,6 +44,14 @@ ExecStart=/usr/bin/docker run --rm --name praxis-orchestrator \
   -p 127.0.0.1:4001:4001 \
   ghcr.io/g-chappell/praxis-orchestrator:latest
 
+# STORY-19 / ADR-0021: when sandboxes run on the internal praxis-sandbox-net
+# (PRAXIS_NETWORK), the orchestrator must also join it to reach their previews.
+# `docker run` joins only one network and the container is recreated each start,
+# so re-attach the second network here. No-op (exit 0) when the network doesn't
+# exist (egress not provisioned) or it's already attached — so this is safe on a
+# host that hasn't set up the egress allowlist yet.
+ExecStartPost=/bin/sh -c 'for i in 1 2 3 4 5; do /usr/bin/docker network connect praxis-sandbox-net praxis-orchestrator 2>/dev/null && exit 0; sleep 1; done; exit 0'
+
 ExecStop=/usr/bin/docker stop praxis-orchestrator
 
 [Install]
