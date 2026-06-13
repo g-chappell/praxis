@@ -223,6 +223,28 @@ curl -sf http://127.0.0.1:4001/health
 curl -sf https://api.praxis.blacksail.dev/health
 ```
 
+### Sandbox egress allowlist (STORY-19 / ADR-0021)
+
+Done live 2026-06-13. Restricts sandbox outbound to an allowlist via an internal
+network + forward proxy. The unit's `ExecStartPost` re-attaches the orchestrator
+to `praxis-sandbox-net` on every start (no-op until the network exists). Full
+provisioning + verify steps: `infrastructure/docker/egress-proxy/README.md`. In
+short, on the VPS:
+
+```bash
+sudo docker network create --internal praxis-sandbox-net
+sudo docker build -t praxis-egress infrastructure/docker/egress-proxy
+sudo docker run -d --name praxis-egress --restart unless-stopped --network praxis-sandbox-net praxis-egress
+sudo docker network connect praxis-net praxis-egress
+# env-file: PRAXIS_NETWORK=praxis-sandbox-net, PRAXIS_EGRESS_PROXY_URL=http://praxis-egress:3128,
+#           PRAXIS_EGRESS_NO_PROXY=praxis-orchestrator   (then daemon-reload + restart)
+```
+
+Verified: a sandbox reaches `api.anthropic.com`/`registry.npmjs.org` through the
+proxy, an arbitrary host is blocked (CONNECT 403), and a real agent session
+reaches Anthropic through the proxy. To extend the allowlist: edit
+`egress-proxy/allowlist` + `docker kill -s HUP praxis-egress`.
+
 ### What the operator still needs to do
 
 Three items the executor cannot do from the VPS:

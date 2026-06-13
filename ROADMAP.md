@@ -8,7 +8,7 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 52 / 56 (93%)
+- **Features verified:** 53 / 56 (95%)
 - **Total tasks:** 176
 - **Done:** 172 (98%)
 - **Ready:** 4
@@ -402,7 +402,7 @@ hello-world session that joins all three.
     - Integration test: write marker file, stop session, restart, marker present.
     - STORY-09 acceptance_criteria satisfied.
 
-- **STORY-19** — Sandbox outbound network egress allowlist  [:hourglass: pending]
+- **STORY-19** — Sandbox outbound network egress allowlist  [:white_check_mark: verified]
   > Restrict sandbox containers to an outbound allowlist (Anthropic API,
   > OpenAI API, npm, PyPI, GitHub read-only) with no inbound except the
   > exposed preview port, per project_plan.md §6. Deferred from STORY-07,
