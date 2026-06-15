@@ -177,3 +177,25 @@ How to give the in-sandbox agent an MCP tool **without touching `packages/acp-ho
   the orchestrator owns the DB. Fail **closed** on a paid-API guard. The endpoint host is
   `PRAXIS_MCP_USAGE_URL` (default `http://praxis-orchestrator:4001/internal/mcp/usage` on
   `praxis-net`).
+
+### Platform keys are captured per-session; the MCP cred file is seeded then
+
+The decrypted platform keys (Anthropic `apiKey`, optional OpenAI `openaiKey`) are
+captured **when a project's session room is first created** (`createProjectRoom` /
+`getOrCreateRoom` in `routes/sessions.ts`) and **held for that room's lifetime** —
+the first creator's keys win; a later joiner's (or a freshly-rotated admin key) does
+**not** swap in. The image-gen MCP cred file (`/run/praxis-mcp/config.json`) is
+written only at room creation. **So rotating a platform key in admin does not
+affect an already-open session** — it keeps the old key (this surfaced as an
+image-gen 401 after a key fix). Fix: get a **fresh room** (stop the sandbox or let
+it idle-shutdown ~30 min, then reopen) so the orchestrator re-decrypts and re-seeds.
+
+### image-gen MCP has no custom base-URL
+
+`infrastructure/mcp-servers/image-gen` hardcodes `new OpenAI({ apiKey })` against
+`api.openai.com` with model `gpt-image-1` — **no base-URL / Azure support**. A
+university/Azure/gateway OpenAI key (different format, its own endpoint) can't work
+here even if valid; supporting it needs a base-URL plumbed end-to-end (admin → cred
+file → `config.ts` → client) + the endpoint added to the egress allowlist. Admin
+key validation is **format-only** (`sk-`/`sk-ant-` prefix, a typo guard, not a
+liveness check) — a format-valid-but-wrong key still 401s at runtime.

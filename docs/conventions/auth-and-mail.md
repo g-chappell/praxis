@@ -100,6 +100,31 @@ beforeAll(async ({ request }) => {
 Without this, the first real test step times out on compile and the
 e2e flakes intermittently.
 
+Two more Playwright-against-the-real-app gotchas that bit the team flow:
+
+- **Await the request before reloading.** A pattern of *optimistic UI assert →
+  `page.reload()`* races an in-flight write while `next dev` cold-compiles the
+  route, **aborting the request** so the change never persists (looked like a
+  product bug; was a test bug). Wrap the action in
+  `Promise.all([page.waitForResponse(r => …method==='PATCH'), btn.click()])` and
+  reload only after the response lands.
+- **`DATABASE_URL` for the auto-started server.** The Playwright `webServer`
+  inherits the shell's `DATABASE_URL`; in this repo that's often
+  `…@db:5432` (a docker-internal host unreachable from the host) or the prod
+  `:5432` role (rejects `praxis:praxis` over TCP). Run e2e against the **dev DB**
+  explicitly: `DATABASE_URL=postgres://praxis:praxis@127.0.0.1:5433/praxis pnpm exec playwright test …`.
+  `reuseExistingServer` will also silently reuse a stale wrong-env server — kill
+  the `:3100` process between env changes.
+
+## Member display names — `displayName` is `''`, not `null`
+
+Better Auth seeds a new user's name/`display_name` to an **empty string**, not
+`null`. So `displayName ?? email` (or `m.name ?? m.email`) renders a **blank**
+name, never the email fallback — `??` only catches null/undefined. Always
+`displayName?.trim() || email`. This bit the settings team card and the admin
+project-detail member list; assume any "name with email fallback" render needs
+the `|| email` form, and cover the empty-string case in tests.
+
 ## Mailer interface — Dev vs Resend
 
 `apps/web/src/lib/mail.ts` exposes a `sendMail(opts)` function backed

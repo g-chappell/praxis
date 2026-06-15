@@ -133,9 +133,53 @@ WantedBy=multi-user.target
 - Health-checking lives in the **image** (or Caddy's `health_uri`),
   not in systemd. systemd cares about "is the container running",
   not "is the app healthy".
+- **A container that needs a second network needs an `ExecStartPost`.**
+  `docker run --network X` joins exactly one network, and the unit
+  **recreates the container every (re)start** — so a manual
+  `docker network connect Y` is **lost on the next restart/deploy** and
+  silently breaks whatever relied on network Y. Re-attach in the unit:
+  `ExecStartPost=/bin/sh -c 'for i in 1 2 3 4 5; do docker network connect Y praxis-<service> 2>/dev/null && exit 0; sleep 1; done; exit 0'`
+  (the retry covers the container-create race; `exit 0` makes it a no-op
+  when Y is absent or already attached). The orchestrator uses this to
+  reach sandbox previews on the internal `praxis-sandbox-net` (STORY-19).
+  A VPS-local drop-in works but **put it in the repo unit** too, or a
+  rebuild loses it.
 
 CI validates new units with `systemd-analyze verify
 infrastructure/deploy/*.service`.
+
+## Secret handling + rotation on the VPS
+
+The env-files at `/etc/praxis/*.env` hold live prod secrets (DB password,
+`PRAXIS_MASTER_KEY`, `BETTER_AUTH_SECRET`, `ORCHESTRATOR_INTERNAL_SECRET`,
+`RESEND_API_KEY`). **Never `cat` them** — printing values into a transcript is an
+exposure (AGENTS.md tier-1). To edit: `grep -c`/`grep -l` for names, `sed -i` the
+line (value interpolated from a `$(…)` var, never echoed), and confirm with the
+masked URL (`sed -E 's|://([^:]+):[^@]*@|://\1:***@|'`).
+
+**Rotation procedure** (all self-rotatable except `RESEND_API_KEY`, which is
+issued by the Resend dashboard):
+
+- **DB password** — `ALTER USER praxis WITH PASSWORD '<new>'` (local `psql` is
+  trust-auth) + update `DATABASE_URL` (praxis.env) and `POSTGRES_PASSWORD`
+  (praxis-postgres.env); restart web + orchestrator (existing pooled connections
+  survive the `ALTER`; new ones need the restart).
+- **`BETTER_AUTH_SECRET`** — new random; restart web. **Logs out all users.**
+- **`ORCHESTRATOR_INTERNAL_SECRET`** — new random; web + orchestrator share
+  praxis.env, restart both.
+- **`PRAXIS_MASTER_KEY`** — must **re-encrypt at rest first**, then swap env. The
+  key (XSalsa20-Poly1305 secretbox, base64 of 32 bytes — see `packages/crypto`)
+  encrypts `oauth_tokens.{access,refresh}_token_encrypted`,
+  `platform_api_keys.key_encrypted`, `mcp_connectors.credentials_encrypted`.
+  Procedure: dump ciphertext via `psql`; a node script (libsodium, resolved via
+  `createRequire('/opt/praxis/packages/crypto/package.json')`) decrypts with the
+  OLD key + re-encrypts with the NEW, verifying each round-trips **before** apply;
+  `UPDATE` in a transaction; then swap the env line and restart. Verify the live
+  platform keys decrypt under the new key (print booleans, not values). Once
+  re-encrypted + verified, the leaked old key is inert.
+
+Back up the env-files first (`cp praxis.env praxis.env.bak-<ts>`, root-only) and
+delete the loose new-secret copies once they're in the env-file.
 
 ## Sudoers fragment
 
