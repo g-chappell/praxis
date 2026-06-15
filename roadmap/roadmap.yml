@@ -4609,3 +4609,429 @@ epics:
             task_acceptance:
               - "Two-team create flow passes: select Team B -> project created under B -> dashboard shows it labelled B"
               - "STORY-57 acceptance_criteria satisfied."
+
+  - id: EPIC-11
+    title: "Activity & event analytics"
+    description: |
+      Capture a broad stream of user/platform events into the existing
+      project-scoped `events` table (generalized to user-level) and give admins
+      a view to browse and aggregate them. Privacy: log event metadata only,
+      never raw prompt text.
+    stories:
+      - id: STORY-58
+        title: "Capture platform-wide user events"
+        description: |
+          Today only admin/destructive actions are recorded (audit_log). Capture
+          a broad stream of user/platform events so activity is observable.
+        acceptance_criteria:
+          - "events.project_id becomes nullable (migration) plus an index on (user_id, created_at); existing rows are unaffected."
+          - "recordEvent(userId, type, payload, projectId?) inserts one events row, is best-effort (swallows errors like recordAudit), and never stores raw prompt text."
+          - "Each wired action emits exactly one typed event: auth.signed_in/out, project.created/opened/archived/restored/duplicated/deleted, session.started/ended, prompt.submitted (metadata only: char/token count), team.member_joined/left, team.invite_minted."
+        user_flow: null
+        out_of_scope:
+          - "The admin read view (separate story); retention/pruning of old events; raw prompt/response bodies; consent/opt-out UI."
+        tasks:
+          - id: TASK-178
+            title: "db: events.project_id nullable + (user_id, created_at) index"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["packages/db"]
+            description: |
+              Migration relaxes events.project_id to nullable and adds
+              idx_events_user_time on (user_id, created_at). Idempotent; regen
+              drizzle codegen types.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "migration makes project_id nullable + adds idx_events_user_time"
+              - "drizzle codegen types regenerate clean"
+          - id: TASK-179
+            title: "recordEvent helper + event-type union"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web", "services/orchestrator"]
+            description: |
+              Add recordEvent(userId, type, payload, projectId?) that inserts one
+              events row best-effort (swallow + console.warn on error, like
+              recordAudit). Shared event-type union. The orchestrator already
+              writes events via usage.ts/chat-history.ts — reuse that path for
+              session/prompt events.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "recordEvent inserts a row with userId/type/payload/projectId?"
+              - "a thrown DB error is swallowed, not propagated"
+          - id: TASK-180
+            title: "Wire recordEvent into the action sites"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web", "services/orchestrator"]
+            description: |
+              Emit events at: auth sign-in/out (web), project
+              create/open/archive/restore/duplicate/delete (web), session
+              start/end + prompt.submitted (orchestrator; metadata only — char/token
+              count, not the text), team join/leave + invite mint (web).
+            depends_on: [TASK-179]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "each listed action emits its event type exactly once"
+              - "prompt.submitted payload has length/token metadata, not the prompt text"
+          - id: TASK-181
+            title: "Tests: event capture"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Unit for recordEvent (best-effort) + integration that key sites write
+              the expected event rows.
+            depends_on: [TASK-178, TASK-179, TASK-180]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "integration: creating a project writes a project.created event row"
+              - "STORY-58 acceptance_criteria satisfied."
+      - id: STORY-59
+        title: "Admin activity & analytics view"
+        description: |
+          An admin screen to browse the captured event stream and see headline
+          activity aggregates.
+        acceptance_criteria:
+          - "A new admin Activity surface (distinct from the audit-log viewer) lists events newest-first — time, user (name->email), type, project — filterable by user, event type, and time window (default 30 days)."
+          - "Headline aggregate cards over the window: active users (distinct user_id), sessions started, total events, top event types."
+          - "Empty state when no matches; the list caps at a sane limit (e.g. 200) with the cap disclosed."
+        user_flow:
+          - "Admin clicks 'Activity' in the admin sub-nav -> the activity view"
+          - "Sees aggregate cards + an events table for the last 30 days"
+          - "Filters by a user / event type / time window -> table + cards update"
+        out_of_scope:
+          - "Charts beyond simple counts; CSV export; real-time streaming; per-event drill-down pages."
+        tasks:
+          - id: TASK-182
+            title: "lib: list + aggregate event queries"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              listEvents(filter: {userId?, type?, since}, limit) newest-first
+              capped; aggregateEvents(window) -> {activeUsers, sessionsStarted,
+              total, byType[]}.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "listEvents filters by user/type/since and caps results"
+              - "aggregates return distinct-user + by-type counts for a window"
+          - id: TASK-183
+            title: "Admin Activity page + table + aggregate cards + filters"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Admin page rendering the aggregate cards + a filterable events table
+              (user-by-name with email fallback). Filters: user, type, window
+              (default 30d). Empty + cap-disclosed states. Testids for table + filters.
+            depends_on: [TASK-182]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "table renders user by name with email fallback"
+              - "filters re-query and update table + cards"
+              - "empty state shows when no matches"
+          - id: TASK-184
+            title: "Tests: admin activity view"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Component test for filter/empty behavior + integration for the queries.
+            depends_on: [TASK-183]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "filtering updates results"
+              - "STORY-59 acceptance_criteria satisfied."
+
+  - id: EPIC-12
+    title: "Admin & UX polish"
+    description: |
+      Small admin/UX fixes — in-admin navigation, a member-name display bug, and
+      cursor visibility on the parchment theme.
+    stories:
+      - id: STORY-60
+        title: "Admin screen polish: back-nav + member names"
+        description: |
+          Make every admin page navigable back to the admin home without the top
+          navbar, and fix blank member names on the admin project detail.
+        acceptance_criteria:
+          - "Every /admin/* page renders a persistent admin sub-nav (in admin/layout.tsx) linking to all admin sections (Overview, Projects, Users, Activity, Usage, API keys, Connectors, Blocklist) with the current section marked active — returning to the admin home never requires the top navbar."
+          - "The admin project-detail member list shows each member's display name (trimmed) falling back to email when blank — no blank rows."
+        user_flow:
+          - "Admin on any /admin/* page uses the sub-nav to navigate without the top navbar"
+          - "Admin opens a project detail -> each member row shows a name or email, never blank"
+        out_of_scope:
+          - "Admin IA redesign; editing member display names (profile, future); advanced responsive sub-nav behavior."
+        tasks:
+          - id: TASK-185
+            title: "Admin sub-nav in admin/layout.tsx"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Persistent sub-nav listing all admin sections with active-state
+              highlighting, rendered in the admin layout so it appears on every
+              /admin/* page.
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "each admin section link renders + the active one is marked"
+              - "navigating between sections doesn't need the top navbar"
+          - id: TASK-186
+            title: "Fix admin project-detail member name fallback"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              In apps/web/app/admin/projects/[id]/page.tsx change member display
+              from m.name ?? m.email to m.name?.trim() || m.email (the
+              displayName='' bug class).
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "a member with empty/blank display name shows their email, not blank"
+          - id: TASK-187
+            title: "Tests: sub-nav active + member fallback"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Component tests for the sub-nav active state and the member
+              name->email fallback.
+            depends_on: [TASK-185, TASK-186]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "active section is marked"
+              - "blank display name falls back to email"
+              - "STORY-60 acceptance_criteria satisfied."
+      - id: STORY-61
+        title: "Higher-contrast cursor on parchment"
+        description: |
+          Improve mouse-cursor visibility against the beige/parchment background.
+        acceptance_criteria:
+          - "On the beige/parchment surfaces (dashboard, settings, workspace, admin) the default cursor is higher-contrast (dark-outlined/scaled via CSS) without overriding semantic cursors (links/buttons keep pointer, inputs keep text)."
+          - "Theme-aware: no visibility regression in dark mode."
+        user_flow:
+          - "User moves the mouse across the beige dashboard/workspace -> the cursor is clearly visible against the background"
+        out_of_scope:
+          - "Custom-drawn brand cursor asset; per-user cursor preference; changing the background color itself."
+        tasks:
+          - id: TASK-188
+            title: "Cursor CSS treatment (scoped, theme-aware)"
+            status: ready
+            priority: high
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Higher-contrast default cursor on the app's beige surfaces via CSS in
+              globals.css; scoped so interactive elements keep their semantic
+              cursors; theme-aware (no dark-mode regression).
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "default cursor on beige surfaces is higher-contrast"
+              - "links/buttons/inputs retain their semantic cursors"
+          - id: TASK-189
+            title: "Verify cursor across surfaces + dark mode"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Verify cursor visibility on workspace, dashboard, settings, admin in
+              light mode and confirm no regression in dark mode.
+            depends_on: [TASK-188]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "cursor visible on all main surfaces in light mode"
+              - "no regression in dark mode"
+              - "STORY-61 acceptance_criteria satisfied."
+
+  - id: EPIC-13
+    title: "Email + password authentication"
+    description: |
+      Add real email+password signup/login alongside magic link (Better Auth
+      emailAndPassword) with required email verification. Non-breaking; magic
+      link stays; no user migration.
+    stories:
+      - id: STORY-62
+        title: "Email + password signup & login (email verification required)"
+        description: |
+          Add real email+password signup/login alongside magic link, with required
+          email verification on signup.
+        acceptance_criteria:
+          - "Better Auth emailAndPassword is enabled with requireEmailVerification; signup with email+password creates an account and sends a verification email via the existing mailer; email+password login is blocked until verified."
+          - "Signup validates email format + password (min 8) and surfaces server errors (e.g. email already in use); success shows a 'check your email to verify' state."
+          - "Clicking the verification link marks the account verified and lands the user signed-in (or at /signin ready to log in)."
+          - "/signin offers email+password login alongside the magic-link option; an unverified password account logging in is blocked with a clear 'verify your email' message + resend; magic link continues unchanged."
+        user_flow:
+          - "New user -> /signup -> email+password -> submit -> 'check your email' state; verification email sent"
+          - "User clicks verify link -> account verified -> signed in / can log in"
+          - "Returning user -> /signin -> 'Password' option -> email+password -> /dashboard"
+          - "Unverified user tries password login -> blocked with 'verify your email' + Resend"
+        out_of_scope:
+          - "OAuth/social login; MFA; password strength meter beyond min length; migrating existing magic-link users to passwords; account deletion."
+        tasks:
+          - id: TASK-190
+            title: "Enable emailAndPassword + email verification in Better Auth"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web", "packages/db"]
+            description: |
+              Enable emailAndPassword with requireEmailVerification in lib/auth.ts;
+              wire sendVerificationEmail through the existing mailer interface;
+              confirm Better Auth account/verification tables exist (schema).
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "emailAndPassword + requireEmailVerification enabled"
+              - "sendVerificationEmail routes through the existing mailer"
+          - id: TASK-191
+            title: "/signup page + route"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Signup form (email + password), client validation (email format,
+              password min 8), calls authClient.signUp.email; on success shows a
+              'check your email to verify' state; surfaces server errors (e.g.
+              email in use). Testids.
+            depends_on: [TASK-190]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "empty/invalid email or <8-char password blocks submit"
+              - "successful signup shows check-email state and does not log in until verified"
+          - id: TASK-192
+            title: "Email-verification landing"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Handle the Better Auth verification link: valid -> mark verified ->
+              signed-in/dashboard or /signin; invalid/expired -> clear error + resend.
+            depends_on: [TASK-190]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "a valid verify link marks the account verified"
+              - "an invalid/expired link shows a clear error + resend"
+          - id: TASK-193
+            title: "/signin: email+password alongside magic link"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Add email+password login to /signin alongside the magic-link option;
+              unverified account -> 'verify your email' + resend; magic link unchanged.
+            depends_on: [TASK-190]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "email+password login succeeds for a verified account"
+              - "unverified login blocked with verify message + resend; magic link still works"
+          - id: TASK-194
+            title: "e2e: signup -> verify -> login"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Playwright: signup -> verify via DevMailer link -> password login ->
+              /dashboard.
+            depends_on: [TASK-191, TASK-192, TASK-193]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "full signup->verify->password-login flow passes"
+              - "STORY-62 acceptance_criteria satisfied."
+      - id: STORY-63
+        title: "Password reset"
+        description: |
+          Forgot-password -> email -> reset, via the existing mailer and Better Auth.
+        acceptance_criteria:
+          - "A 'Forgot password?' entry from /signin lets a user request a reset; a reset email is sent via the mailer; the response is always neutral ('if an account exists, we sent a link') to avoid account enumeration."
+          - "The reset link opens a set-new-password page (min 8 + confirm); submitting updates the password and lets the user log in with it; the link is single-use + time-limited."
+        user_flow:
+          - "User -> /signin -> 'Forgot password?' -> enters email -> 'if an account exists...' confirmation"
+          - "Opens reset email -> set-new-password page -> submits -> can log in with the new password"
+        out_of_scope:
+          - "Reset via SMS/other channels; password history/reuse rules; forced reset on suspicious activity."
+        tasks:
+          - id: TASK-195
+            title: "Forgot-password request page + route"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Forgot-password page/route from /signin: enters email, calls
+              authClient.requestPasswordReset via the mailer; always returns the
+              neutral 'if an account exists' message (no enumeration).
+            depends_on: []
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "request always returns the neutral message (no enumeration)"
+              - "a reset email is sent for an existing account"
+          - id: TASK-196
+            title: "Reset-token page (set new password)"
+            status: ready
+            priority: high
+            complexity: medium
+            workspaces: ["apps/web"]
+            description: |
+              Set-new-password page from the reset link: new password + confirm
+              (min 8), calls authClient.resetPassword; single-use + time-limited token.
+            depends_on: [TASK-195]
+            attempt_count: 0
+            is_terminal: false
+            task_acceptance:
+              - "<8-char or mismatched confirm blocks submit"
+              - "valid token + new password updates it; invalid/expired token errors"
+          - id: TASK-197
+            title: "e2e: request -> reset -> login"
+            status: ready
+            priority: med
+            complexity: small
+            workspaces: ["apps/web"]
+            description: |
+              Playwright: request reset -> open DevMailer reset link -> set new
+              password -> log in with it.
+            depends_on: [TASK-195, TASK-196]
+            attempt_count: 0
+            is_terminal: true
+            task_acceptance:
+              - "request->reset->login-with-new-password flow passes"
+              - "STORY-63 acceptance_criteria satisfied."
