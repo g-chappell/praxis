@@ -8,10 +8,10 @@ _Created: 2026-05-31_
 
 ## Summary
 
-- **Features verified:** 53 / 62 (85%)
-- **Total tasks:** 196
-- **Done:** 172 (88%)
-- **Ready:** 24
+- **Features verified:** 53 / 67 (79%)
+- **Total tasks:** 217
+- **Done:** 172 (79%)
+- **Ready:** 45
 - **In progress:** 0
 - **Blocked:** 0
 
@@ -3005,3 +3005,326 @@ link stays; no user migration.
     _Task AC:_
     - request->reset->login-with-new-password flow passes
     - STORY-63 acceptance_criteria satisfied.
+
+## EPIC-14 — Unity game template with in-sandbox Unity CLI
+
+A third template where a pair builds a Unity game, with the Unity CLI
+installed in the sandbox so the agent compiles, tests, and builds it.
+Unity does not fit the Node-shaped sandbox layer: a ~14 GB image, 8 GB
+RAM, no dev server, and a licence requirement. So the epic stacks four
+things — per-template runtime profiles, the Unity sandbox image, the
+licence as an admin-managed platform credential, then the template and
+its build/preview loop.
+
+Decisions (planning Q&A): single-host, resize the VPS (no remote-Docker
+abstraction); platform-owned Unity Personal .ulf, admin-managed like the
+Anthropic key (POC posture on the operator's own account — licences are
+per named user); hybrid loop (compile + EditMode tests every turn, WebGL
+build on request); Unity 6.0 LTS 6000.0.80f1 + WebGL, 3D URP starter.
+
+Blocked on an operator prerequisite: this VPS is 1 vCPU / 3 GB RAM /
+14 GB free and cannot even pull the image. Implementation starts once it
+is resized to at least 4 vCPU / 16 GB RAM / 200 GB disk.
+
+Neither the Sandbox interface nor AcpHost changes shape. Two ADRs:
+ADR-0022 (per-template runtime profiles — the resource-limit relaxation
+AGENTS.md requires) and ADR-0023 (Unity licence as a platform credential).
+
+- **STORY-64** — Per-template sandbox runtime profiles (image + resources)
+  > Make the sandbox image and its resource limits a per-template
+  > decision instead of module constants. Foundation for the Unity
+  > image; changes nothing for the existing Node templates.
+  **Acceptance criteria:**
+  - A template's sandbox.json can declare baseImage and resources (memory, cpus, disk); start() honours them, and sandbox.json's baseImage field — dead config today — is actually used.
+  - Templates that declare nothing still get today's defaults: praxis-sandbox-base, 2 GB, 1 CPU, 5 GB disk. Existing projects are unaffected.
+  - A profile may declare max_concurrent; starting past the cap fails with a clear error surfaced to the user rather than OOM-ing the host.
+  - ADR-0022 records the per-template profile decision, including that resource limits are now per-template rather than the fixed 1 CPU / 2 GB / 5 GB caps.
+  **Out of scope:**
+  - Per-user or per-project overrides of a template's profile (template-level only).
+  - Scheduling sandboxes across multiple Docker hosts — single-host stays.
+  - Changing the Sandbox interface shape; start(projectId, templateId) is untouched.
+  - :black_circle: **TASK-198** — Resolve sandbox image and resource limits per template  `high` `medium` _(packages/sandbox)_
+    > Add readSandboxManifest(templatesDir, templateId) to
+    > packages/sandbox and resolve image + Memory + NanoCpus +
+    > StorageOpt from it in start(). templatesDir is already read for
+    > template seeding, so this is the same source of truth. Today's
+    > module constants become the fallback defaults.
+    _Task AC:_
+    - a template declaring baseImage/resources gets them; one declaring nothing gets praxis-sandbox-base / 2 GB / 1 CPU
+    - a malformed or missing sandbox.json falls back to defaults instead of failing the start
+  - :black_circle: **TASK-199** — Cap concurrent heavy sandboxes per profile  `high` `small` _(packages/sandbox)_  
+    _depends on: TASK-198_
+    > A profile may declare max_concurrent. start() counts running
+    > sandboxes for that template (reusing the existing label query)
+    > and refuses past the cap with a clear, surfaced error rather
+    > than letting the host OOM.
+    _Task AC:_
+    - starting past max_concurrent throws a typed error naming the template and cap
+    - the error reaches the user as a readable message, not a stack trace
+  - :black_circle: **TASK-200** :checkered_flag: — ADR-0022 + real-daemon test for template profiles  `med` `small` _(packages/sandbox)_  
+    _depends on: TASK-198, TASK-199_
+    > ADR-0022 (per-template sandbox runtime profiles — the
+    > resource-limit relaxation AGENTS.md requires). A
+    > RUN_DOCKER_TESTS=1 integration test proving a template-declared
+    > image and limits are honoured on a real daemon. Update
+    > docs/conventions/orchestrator-runtime.md.
+    _Task AC:_
+    - RUN_DOCKER_TESTS=1 test asserts the container's actual image and HostConfig limits match the profile
+    - STORY-64 acceptance_criteria satisfied.
+
+- **STORY-65** — Unity sandbox image + host capacity
+  > Build the Unity sandbox image and make the host able to hold it.
+  > The image is ~14 GB on disk, so disk hygiene and the build workflow
+  > both need guards.
+  **Acceptance criteria:**
+  - praxis-sandbox-unity builds from unityci/editor:ubuntu-6000.0.80f1-webgl-3 with Node 20, claude-code, the pinned ACP adapter, the image-gen MCP wrapper, git, praxis-preview-serve and praxis-unity-build; docker run ... unity-editor -version prints 6000.0.80f1.
+  - A path-triggered workflow builds and pushes the image from the self-hosted runner, refusing to start when free disk is below the headroom the image needs rather than filling /.
+  - praxis-hygiene never prunes praxis-sandbox-unity, and its free-space floor accounts for a ~14 GB image; a DRY_RUN pass confirms the image survives.
+  - Unity's licence, package and download hosts are allowlisted in the egress proxy: a UPM resolve succeeds from inside a real container while a non-allowlisted host is still refused.
+  - docs/runbooks/vps-resize.md records the resize, and docs/runbooks/sandbox-unity-image.md the image's build/push/ops, mirroring sandbox-base-image.md.
+  **User flow:**
+  1. Operator resizes the VPS per the runbook, then triggers the image build
+  2. Workflow checks free disk, builds praxis-sandbox-unity, pushes it
+  3. Operator verifies unity-editor -version and a UPM resolve inside a real container through praxis-egress
+  **Out of scope:**
+  - A second or remote build host — single-host stays (see EPIC-14 decisions).
+  - Build targets beyond WebGL (Android/iOS/desktop).
+  - Unity Build Server / floating licences.
+  - :black_circle: **TASK-201** — VPS resize runbook + hygiene disk-headroom policy  `high` `small` _(infrastructure/deploy)_
+    > docs/runbooks/vps-resize.md: current vs target spec, the resize
+    > procedure, and what to re-check afterwards. Update
+    > praxis-hygiene.sh so it never prunes praxis-sandbox-unity and
+    > its free-space floor accounts for a ~14 GB image.
+    _Task AC:_
+    - DRY_RUN=1 praxis-hygiene.sh leaves praxis-sandbox-unity untouched
+    - the runbook states the minimum viable and recommended host spec
+  - :black_circle: **TASK-202** — sandbox-unity Dockerfile (Unity 6 + Node + ACP adapter)  `high` `medium` _(infrastructure/docker)_
+    > infrastructure/docker/sandbox-unity/Dockerfile, FROM
+    > unityci/editor:ubuntu-6000.0.80f1-webgl-3 — Unity is the base and
+    > Node layers on top, not the reverse. Adds Node 20,
+    > @anthropic-ai/claude-code, the ACP adapter pinned to the same
+    > version as sandbox-base, the praxis-mcp-image-gen wrapper, git,
+    > inotify-tools, plus praxis-preview-serve and praxis-unity-build.
+    _Task AC:_
+    - the built image runs unity-editor -version and prints 6000.0.80f1
+    - the ACP adapter version matches sandbox-base's pin
+  - :black_circle: **TASK-203** — build-sandbox-unity workflow with a free-disk guard  `high` `small` _(infrastructure/docker)_  
+    _depends on: TASK-202_
+    > .github/workflows/build-sandbox-unity.yml on the self-hosted
+    > runner, path-triggered plus workflow_dispatch, with a pre-build
+    > free-disk check that fails loudly rather than filling /.
+    _Task AC:_
+    - the job fails with a clear message when free disk is under the required headroom
+    - a successful run pushes the tagged image
+  - :black_circle: **TASK-204** :checkered_flag: — Unity egress allowlist + image runbook + live verify  `high` `small` _(infrastructure/docker)_  
+    _depends on: TASK-201, TASK-203_
+    > Add Unity's licence/package/download hosts to the egress-proxy
+    > allowlist. Write docs/runbooks/sandbox-unity-image.md mirroring
+    > sandbox-base-image.md. Live-verify on the resized VPS:
+    > unity-editor -version and a UPM resolve through praxis-egress
+    > inside a real container, and that a non-allowlisted host is
+    > still refused.
+    _Task AC:_
+    - UPM resolve succeeds through the proxy; a non-allowlisted host is still blocked
+    - STORY-65 acceptance_criteria satisfied.
+
+- **STORY-66** — Unity licence as an admin-managed platform credential
+  > Unity refuses batchmode unactivated. Store a platform-owned Unity
+  > Personal .ulf the same way as the platform Anthropic key —
+  > encrypted at rest, masked in admin, injected per sandbox — and
+  > activate it inside each Unity sandbox without the licence ever
+  > touching /workspace.
+  **Acceptance criteria:**
+  - key_provider gains unity; the licence is stored encrypted via packages/crypto as a JSON payload and is never returned, logged, or rendered in plaintext.
+  - An admin can paste a .ulf (plus the Unity email), see it masked, rotate it, and clear it from /admin/api-keys; the surface is role-gated server-side and each action writes an audit entry.
+  - A Unity sandbox activates the licence at room creation and the room is not marked ready until activation succeeds; teardown returns the licence.
+  - Live check: after a Unity room is running, no licence material appears in /workspace, in the container env, in orchestrator logs, or in a snapshot — it lives only at an ephemeral path outside /workspace and is deleted after activation.
+  - docs/runbooks/unity-licence.md documents the one-time manual activation flow (createManualActivationFile -> upload .alf -> download .ulf -> paste into admin) plus rotation, and states the .ulf is pasted into admin only, never cat-ed into a terminal or committed.
+  **User flow:**
+  1. Admin runs the manual activation flow once and gets a .ulf
+  2. Admin pastes it at /admin/api-keys with the Unity email; it reads back masked
+  3. A pair opens a Unity project; the orchestrator activates the licence before the workspace is ready
+  4. Admin rotates the licence later; the old value is overwritten and unreadable
+  **Out of scope:**
+  - Per-user bring-your-own Unity licences.
+  - Unity Build Server or floating/seat-managed licences.
+  - Liveness checking the licence against Unity's servers — validation is a .ulf shape/typo guard only, like the format-only API-key check.
+  - :black_circle: **TASK-205** — key_provider enum + unity, migration and codegen  `high` `small` _(packages/db)_
+    > Extend the key_provider enum with unity; generate the migration
+    > and re-run codegen. Operator follow-up: apply the SQL by hand
+    > post-merge — prod has no Drizzle journal (see
+    > docs/conventions/database.md).
+    _Task AC:_
+    - schema, migration and generated types agree; the drift check passes
+    - the PR body lists the manual prod migration as an operator follow-up
+  - :black_circle: **TASK-206** — praxis/keys Unity licence helpers over a JSON payload  `high` `medium` _(packages/keys)_  
+    _depends on: TASK-205_
+    > In packages/keys, add setUnityLicense / tryGetUnityLicense /
+    > getUnityLicenseMeta beside the existing platform-key helpers.
+    > The encrypted value is a JSON payload rather than a bare string.
+    > Shape-validate the .ulf as a typo guard (not a liveness check)
+    > and expose a masked form for display.
+    _Task AC:_
+    - round-trip encrypt/decrypt of the payload works; meta returns masked values only
+    - a non-.ulf paste is rejected with a clear message
+  - :black_circle: **TASK-207** — Admin Unity licence panel + manual activation runbook  `high` `medium` _(apps/web)_  
+    _depends on: TASK-206_
+    > Admin surface on /admin/api-keys beside the existing key form —
+    > paste .ulf plus Unity email, masked readback, rotate, clear —
+    > role-gated server-side with audit entries like the other
+    > credential actions. Ships docs/runbooks/unity-licence.md: the
+    > one-time manual activation flow, rotation, and returnlicense.
+    _Task AC:_
+    - a non-admin cannot reach the surface or its actions server-side
+    - paste, masked readback, rotate and clear each write an audit entry
+  - :black_circle: **TASK-208** :checkered_flag: — Activate the Unity licence per sandbox, ephemerally  `high` `medium` _(services/orchestrator, packages/sandbox)_  
+    _depends on: TASK-206, TASK-207_
+    > Extend the internal POST /sessions payload alongside
+    > apiKey/openaiKey. The orchestrator writes the licence to an
+    > ephemeral path outside /workspace, runs unity-editor batchmode
+    > manual activation, deletes the file, and asserts activation
+    > before the room is marked ready; teardown returns the licence.
+    > ADR-0023 records the ToS posture. Live-verify no licence
+    > material in /workspace, env, logs or a snapshot.
+    _Task AC:_
+    - a Unity room fails to become ready if activation fails, with a readable error
+    - STORY-66 acceptance_criteria satisfied.
+
+- **STORY-67** — The unity-webgl-game template
+  > The template itself — a Unity 6 URP project with build entry points
+  > the agent can drive from the CLI, registered in the create-project
+  > picker.
+  **Acceptance criteria:**
+  - templates/unity-webgl-game/ holds a Unity 6.0 LTS project (URP, a 3D starter scene) that opens without triggering a project upgrade, with a Unity .gitignore excluding Library/, Temp/, Build/, Logs/ and obj/.
+  - Assets/Editor/PraxisBuild.cs exposes BuildWebGL and CompileAndTest as -executeMethod entry points, writing deterministically to Build/WebGL and returning meaningful exit codes.
+  - WebGL compression is disabled in ProjectSettings so a plain static server can serve the build.
+  - sandbox.json declares baseImage praxis-sandbox-unity, the Unity resource profile, preview_port, praxis-preview-serve as dev, and the image-gen MCP server; the template appears in the create-project picker and creating from it seeds a working project.
+  - CI fails if ProjectSettings/ProjectVersion.txt and the Dockerfile's Unity version disagree — a mismatch silently triggers a project upgrade on first open.
+  - The template ships AGENTS.md (plus the @AGENTS.md CLAUDE.md one-liner), a README, and .claude/skills for build-webgl and commit-checkpoint, encoding the hybrid loop: compile + EditMode tests every turn, WebGL build on request.
+  **User flow:**
+  1. A pair picks the Unity template on create-project
+  2. The sandbox starts from the Unity image with the project seeded
+  3. They prompt the agent; it edits the scene, compiles, and runs EditMode tests each turn
+  4. They ask for a build; the agent runs build-webgl and reports back
+  **Out of scope:**
+  - Multiplayer/netcode, physics-heavy or asset-store starter content — one small 3D scene.
+  - PlayMode tests requiring a GPU.
+  - Build targets beyond WebGL.
+  - :black_circle: **TASK-209** — Unity 6 project skeleton for the template  `high` `medium` _(templates/unity-webgl-game)_
+    > templates/unity-webgl-game/: ProjectSettings (WebGL compression
+    > disabled so any static server can serve the build),
+    > Packages/manifest.json with URP, a 3D starter scene, and a Unity
+    > .gitignore covering Library/, Temp/, Build/, Logs/, obj/.
+    _Task AC:_
+    - the project opens on 6000.0.80f1 without a project-upgrade prompt
+    - no Library/ or Build/ artefacts are committed
+  - :black_circle: **TASK-210** — PraxisBuild.cs BuildWebGL and CompileAndTest entry points  `high` `medium` _(templates/unity-webgl-game)_  
+    _depends on: TASK-209_
+    > Assets/Editor/PraxisBuild.cs with BuildWebGL and CompileAndTest
+    > for -executeMethod. Deterministic output to Build/WebGL,
+    > meaningful exit codes so a failed compile or test run is
+    > distinguishable from a failed build.
+    _Task AC:_
+    - batchmode -executeMethod BuildWebGL produces Build/WebGL and exits 0
+    - a deliberate compile error exits non-zero with the error in the log
+  - :black_circle: **TASK-211** — template.json, sandbox.json, registry entry, version guard  `high` `small` _(templates/unity-webgl-game, apps/web)_  
+    _depends on: TASK-202, TASK-209_
+    > template.json plus sandbox.json (baseImage
+    > praxis-sandbox-unity, the Unity resource profile, preview_port,
+    > dev praxis-preview-serve, image-gen MCP — texture and sprite
+    > generation fits a game template), and the entry in the web
+    > template registry. Plus a CI guard that ProjectVersion.txt
+    > matches the Dockerfile's Unity version.
+    _Task AC:_
+    - the template appears in the create-project picker and validates on POST
+    - CI fails when ProjectVersion.txt and the Dockerfile disagree
+  - :black_circle: **TASK-212** :checkered_flag: — Template AGENTS.md, README, and agent skills  `med` `small` _(templates/unity-webgl-game)_  
+    _depends on: TASK-210, TASK-211_
+    > AGENTS.md plus the one-line CLAUDE.md import, a README, and
+    > .claude/skills — build-webgl (detached build, poll, report) and
+    > commit-checkpoint (from the Three.js template). AGENTS.md
+    > encodes the hybrid loop: compile + EditMode tests every turn,
+    > WebGL build on request.
+    _Task AC:_
+    - an agent following AGENTS.md compiles and tests each turn without being told
+    - STORY-67 acceptance_criteria satisfied.
+
+- **STORY-68** — Build + preview loop in the workspace
+  > A Unity project has no dev server and its build takes far longer
+  > than an agent tool call. Serve the build statically, run builds
+  > detached, and give the pair both an agent path and an explicit
+  > Build button — with shared progress in a multiplayer room.
+  **Acceptance criteria:**
+  - praxis-preview-serve serves Build/WebGL with correct MIME types for Unity's .wasm and .data, and answers immediately even before a first build so the readiness probe flips fast.
+  - With no build output it shows a real status page driven by actual build state — never built, building, or last build failed with a log tail — not a placeholder.
+  - praxis-unity-build launches the build detached and returns immediately, with --status and --tail, so a 20-minute build outlives the agent's Bash tool timeout.
+  - A pair can trigger a WebGL build two ways — asking the agent, or pressing a Build button in the preview pane — and both drive the same endpoint and produce identical state.
+  - Build state (building / succeeded / failed + log tail) is broadcast to the room, so both people see the same progress; a build already in flight is joined, not duplicated, and the button is disabled while one runs.
+  - When a build finishes, the preview pane shows the new build — via the existing turn-complete reload for the agent path, and directly for the button path.
+  **User flow:**
+  1. A pair opens a Unity project; the preview pane shows a 'never built' status page immediately
+  2. They prompt the agent, or press Build
+  3. Both see a progress strip while the build runs; a failure shows the log tail
+  4. On success the preview pane loads the WebGL build and they play it
+  **Out of scope:**
+  - Building on every turn — compile + EditMode tests only; WebGL on request.
+  - Queuing multiple builds; a build in flight is joined, not stacked.
+  - Streaming full build logs to the browser — a tail on failure is enough.
+  - :black_circle: **TASK-213** — praxis-preview-serve: static WebGL server + status page  `high` `medium` _(infrastructure/docker)_  
+    _depends on: TASK-202_
+    > Static server over Build/WebGL with correct MIME types for
+    > Unity's .wasm and .data, and a status page driven by real build
+    > state (never built / building / failed plus a log tail) when
+    > there is no build output. Answers instantly so the existing
+    > readiness probe works unchanged.
+    _Task AC:_
+    - .wasm and .data are served with the MIME types Unity's loader requires
+    - with no build output the page reflects real state, never a hardcoded placeholder
+  - :black_circle: **TASK-214** — praxis-unity-build: detached build with status and tail  `high` `medium` _(infrastructure/docker)_  
+    _depends on: TASK-202_
+    > Launch the Unity WebGL build detached to a log file and return
+    > immediately, with --status and --tail for polling. A 5-20 minute
+    > build must outlive the agent's Bash tool timeout without
+    > touching packages/acp-host.
+    _Task AC:_
+    - the command returns in seconds while the build continues
+    - --status distinguishes building, succeeded and failed; --tail shows the log
+  - :black_circle: **TASK-215** — Orchestrator build endpoint + build-progress broadcast  `high` `medium` _(services/orchestrator)_  
+    _depends on: TASK-214_
+    > A token-gated route that invokes praxis-unity-build in the
+    > project's sandbox and streams state (building / succeeded /
+    > failed plus log tail) as a room broadcast beside
+    > workspace_ready. A build already in flight is joined, not
+    > duplicated, so both people in a room see one build.
+    _Task AC:_
+    - two concurrent triggers join one build rather than starting two
+    - every client in the room receives the same state transitions
+  - :black_circle: **TASK-216** — Build button + progress strip in the preview pane  `high` `medium` _(apps/web)_  
+    _depends on: TASK-215_
+    > Explicit Build control in the workspace preview pane wired
+    > through the workspace socket — disabled while a build is in
+    > flight, with a progress/log strip and a failure state showing
+    > the log tail. The agent path and the button drive the same
+    > endpoint, so either produces identical state for both viewers.
+    _Task AC:_
+    - pressing Build disables it for both people in the room until the build settles
+    - a failed build surfaces the log tail rather than a generic error
+  - :black_circle: **TASK-217** — Readiness, reload, and build-button test coverage  `med` `small` _(apps/web, services/orchestrator)_  
+    _depends on: TASK-213, TASK-216_
+    > Cover a no-dev-server template: the static server answers
+    > immediately so previewReady flips fast; the turn-complete reload
+    > path picks up a new build; component tests for the button's
+    > idle, building and failed states.
+    _Task AC:_
+    - a test pins that previewReady flips without waiting for a build
+    - a test pins that a finished build reaches the preview pane
+  - :black_circle: **TASK-218** :checkered_flag: — Live e2e: Unity project from prompt to playable build  `high` `medium` _(apps/web)_  
+    _depends on: TASK-212, TASK-217_
+    > On the resized VPS: create a Unity project, prompt the agent to
+    > change the scene, watch it compile and run EditMode tests, build
+    > both ways (ask the agent, and press the button), and play the
+    > WebGL build in the preview pane with a second person in the room
+    > seeing the same progress. Then mark the story verified.
+    _Task AC:_
+    - the full loop works from the browser and the preview serves the build over HTTPS
+    - STORY-68 acceptance_criteria satisfied.
